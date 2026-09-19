@@ -11,6 +11,9 @@
 	import type { FoodEntry, FoodReference } from '$lib/types/nutrition';
 	import { telegram } from '$lib/telegram';
 	import { nutritionForGrams } from '$lib/utils/foodScan';
+	import { frequentFoods, type FrequentFood } from '$lib/utils/foodHistory';
+	import { plannerStore } from '$lib/stores/plannerStore.svelte';
+	import { formatNumber } from '$lib/utils/format';
 	import { mealForTime, resolveMeal, type MealType } from '$lib/utils/meals';
 
 	type Props = {
@@ -74,6 +77,40 @@
 	/** Типичные порции. Одно нажатие вместо набора числа на ходу. */
 	const QUICK_GRAMS = [50, 100, 150, 200, 300];
 
+	/**
+	 * Что человек уже ел — для повтора в одно нажатие.
+	 *
+	 * Список зависит от выбранного приёма: утром предлагать вчерашний ужин
+	 * бессмысленно. При правке записи список не нужен — блюдо уже выбрано.
+	 */
+	const repeats = $derived(
+		entry
+			? []
+			: frequentFoods(plannerStore.foodEntries, {
+					end: plannerStore.currentDate,
+					meal,
+					timeZone: plannerStore.doc.user.timezone
+				})
+	);
+
+	/**
+	 * Повтор подставляет запись целиком.
+	 *
+	 * Связь со справочником при этом рвётся: значения взяты из прошлой
+	 * записи человека, и пересчитывать их по таблице поверх — значит
+	 * подменить его же цифры.
+	 */
+	function repeat(food: FrequentFood) {
+		telegram.haptic.selection();
+		reference = null;
+		name = food.name;
+		grams = food.grams != null ? String(food.grams) : '';
+		calories = String(food.calories);
+		protein = String(food.protein);
+		fat = String(food.fat);
+		carbs = String(food.carbs);
+	}
+
 	function applyReference(grams: number) {
 		if (!reference) return;
 
@@ -119,15 +156,28 @@
 		return Number(normalized);
 	}
 
+	/**
+	 * Пустой макрос — это ноль, а не ошибка.
+	 *
+	 * Калории человек знает почти всегда, белки-жиры-углеводы — далеко
+	 * не всегда. Требовать все четыре числа значит не дать записать еду
+	 * вообще; бот в такой ситуации давно пишет нули и предлагает поправить
+	 * в приложении. Мусор в поле по-прежнему ошибка: «абв» — это опечатка,
+	 * а не «не знаю».
+	 */
+	function toMacro(value: string): number {
+		return value.trim() === '' ? 0 : toNumber(value);
+	}
+
 	function buildDraft(): Partial<FoodDraft> {
 		return {
 			name,
 			// Вес необязателен: пустое поле означает «не указано», а не ноль.
 			grams: grams.trim() === '' ? undefined : toNumber(grams),
 			calories: toNumber(calories),
-			protein: toNumber(protein),
-			fat: toNumber(fat),
-			carbs: toNumber(carbs),
+			protein: toMacro(protein),
+			fat: toMacro(fat),
+			carbs: toMacro(carbs),
 			meal
 		};
 	}
@@ -204,6 +254,32 @@
 
 <form onsubmit={submit} class="py-1">
 	{#if !entry}
+		{#if repeats.length > 0}
+			<!--
+				Повтор стоит выше поиска: человек ест одно и то же, и чаще всего
+				нужная строка уже здесь — искать её по справочнику незачем.
+			-->
+			<div class="mb-4">
+				<p class="text-xs text-muted-foreground">Повторить</p>
+				<div class="mt-1.5 flex flex-wrap gap-1.5">
+					{#each repeats as food (food.name)}
+						<button
+							type="button"
+							onclick={() => repeat(food)}
+							class="flex items-center gap-1.5 rounded-full border border-line-strong px-3 py-1.5
+							       text-[11px] transition-[transform,border-color] duration-500 ease-flux
+							       hover:border-lavender/60 active:scale-95"
+						>
+							<span class="max-w-32 truncate">{food.name}</span>
+							<span class="tabular text-muted-foreground">
+								{formatNumber(Math.round(food.calories))}
+							</span>
+						</button>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
 		<!--
 			Поиск только при создании: при правке записи название уже выбрано,
 			а подстановка чужих значений поверх правки сбивала бы с толку.
