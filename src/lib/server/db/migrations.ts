@@ -216,5 +216,25 @@ export const MIGRATIONS: Migration[] = [
 		// в интерфейсе такие записи раскладываются по времени создания.
 		name: '0005_food_meal',
 		statements: [`ALTER TABLE food_entries ADD COLUMN meal TEXT`]
+	},
+	{
+		// Дневник веса. Уникальность по паре «пользователь + день»: одна
+		// запись на сутки, иначе два устройства развели бы один день
+		// на две строки и график получил бы ступеньку из ниоткуда.
+		name: '0006_weight_entries',
+		statements: [
+			`CREATE TABLE IF NOT EXISTS weight_entries (
+				id TEXT PRIMARY KEY,
+				user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				created_at TEXT NOT NULL,
+				updated_at TEXT NOT NULL,
+				deleted_at TEXT,
+				date TEXT NOT NULL,
+				weight_kg REAL NOT NULL,
+				note TEXT
+			)`,
+			`CREATE INDEX IF NOT EXISTS weight_user_updated_idx ON weight_entries (user_id, updated_at)`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS weight_user_date_idx ON weight_entries (user_id, date)`
+		]
 	}
 ];

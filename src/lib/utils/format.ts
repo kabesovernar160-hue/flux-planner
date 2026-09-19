@@ -51,6 +51,18 @@ export function formatMacro(value: number): string {
 	return Number.isInteger(value) ? String(value) : value.toFixed(1).replace('.', ',');
 }
 
+/**
+ * Вес: всегда с одним знаком после запятой.
+ *
+ * В отличие от макросов, «78» и «78,0» здесь не равнозначны: бытовые весы
+ * показывают десятые, и ровное число выглядит как округление, которого
+ * не делали. Одинаковая длина строки заодно не дёргает вёрстку при правке.
+ */
+export function formatWeight(value: number): string {
+	if (!Number.isFinite(value)) return '0,0';
+	return value.toFixed(1).replace('.', ',');
+}
+
 /** Приветствие по местному времени устройства. */
 export function greeting(date = new Date()): string {
 	const h = date.getHours();

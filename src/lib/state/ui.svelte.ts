@@ -30,6 +30,9 @@ class UiState {
 	/** Шторка привычки: создание или правка. */
 	habitSheetOpen = $state(false);
 
+	/** Шторка взвешивания. */
+	weightSheetOpen = $state(false);
+
 	/**
 	 * Идентификатор правимой привычки, а не сама запись.
 	 *
@@ -88,6 +91,15 @@ class UiState {
 	closeHabitSheet() {
 		this.habitSheetOpen = false;
 		this.habitId = null;
+	}
+
+	openWeightSheet() {
+		this.createSheetOpen = false;
+		this.weightSheetOpen = true;
+	}
+
+	closeWeightSheet() {
+		this.weightSheetOpen = false;
 	}
 
 	openFinanceSheet(category?: FinanceCategory, type?: FinanceEntryType) {

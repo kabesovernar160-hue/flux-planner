@@ -6,6 +6,7 @@
 	import FinanceSheet from '$lib/components/finance/finance-sheet.svelte';
 	import HabitSheet from '$lib/components/habits/habit-sheet.svelte';
 	import PlanSheet from '$lib/components/plan/plan-sheet.svelte';
+	import WeightSheet from '$lib/components/weight/weight-sheet.svelte';
 	import OnboardingFlow from '$lib/components/onboarding/onboarding-flow.svelte';
 	import CreateSheet from '$lib/components/navigation/create-sheet.svelte';
 	import { untrack } from 'svelte';
@@ -156,3 +157,4 @@
 <FinanceSheet />
 <HabitSheet />
 <PlanSheet />
+<WeightSheet />

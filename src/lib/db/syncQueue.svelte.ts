@@ -1,4 +1,9 @@
-import { loadDayRecordsForSync, loadRawForSync, mergeDayRecordsFromSync } from './localDb';
+import {
+	dedupeWeightEntries,
+	loadDayRecordsForSync,
+	loadRawForSync,
+	mergeDayRecordsFromSync
+} from './localDb';
 import { getDriver, STORES, type StoreName } from './storage';
 import { plannerStore } from '$lib/stores/plannerStore.svelte';
 import { telegram } from '$lib/telegram';
@@ -7,7 +12,7 @@ import { nowIso } from '$lib/utils/date';
 export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'error';
 
 /** Коллекции-таблицы: каждая лежит в своём хранилище IndexedDB. */
-type EntryCollection = 'food' | 'habits' | 'completions' | 'finance' | 'plan';
+type EntryCollection = 'food' | 'habits' | 'completions' | 'finance' | 'plan' | 'weight';
 
 /**
  * Коллекции-дни: цели и бюджет дня.
@@ -25,7 +30,8 @@ const STORE_BY_COLLECTION: Record<EntryCollection, StoreName> = {
 	habits: STORES.habits,
 	completions: STORES.habitCompletions,
 	finance: STORES.financeEntries,
-	plan: STORES.planItems
+	plan: STORES.planItems,
+	weight: STORES.weightEntries
 };
 
 const DAY_COLLECTIONS: DayCollection[] = ['nutritionDays', 'financeDays'];
@@ -244,6 +250,11 @@ class SyncQueue {
 			if (!store) continue;
 
 			await driver.putMany(store, rows);
+
+			// Пришедшее взвешивание может повторить день, записанный локально
+			// под другим идентификатором: сервер слил их по дню, здесь
+			// остаётся убрать лишнюю строку.
+			if (collection === 'weight') await dedupeWeightEntries();
 		}
 	}
 

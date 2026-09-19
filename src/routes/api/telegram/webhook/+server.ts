@@ -37,7 +37,9 @@ import {
 } from '$lib/server/telegram/botMessages';
 import type { FoodScanResult } from '$lib/types/nutrition';
 import { getToday, nowIso } from '$lib/utils/date';
+import { formatWeight } from '$lib/utils/format';
 import { mealForTime } from '$lib/utils/meals';
+import { isWeightInRange, MAX_WEIGHT_KG, MIN_WEIGHT_KG, roundWeight } from '$lib/utils/weight';
 import { createId } from '$lib/utils/id';
 import type { RequestHandler } from './$types';
 
@@ -91,6 +93,16 @@ interface TelegramCallbackQuery {
 
 /** Формат «450 борщ»: число калорий и название. */
 const QUICK_ENTRY = /^\s*(\d+(?:[.,]\d+)?)\s+(.{1,80})\s*$/;
+
+/**
+ * Формат «вес 78,4».
+ *
+ * Разбирается правилом, а не моделью: взвешивание — короткая цифра, которую
+ * человек шлёт каждое утро, и гонять ради неё запрос к ИИ значит платить
+ * за то, что надёжнее делает регулярное выражение. Проверка должна стоять
+ * раньше «450 борщ», иначе «вес 78» стал бы едой на 78 килокалорий.
+ */
+const WEIGHT_ENTRY = /^\s*вес[\s:]+(\d{2,3}(?:[.,]\d{1,2})?)\s*(?:кг)?\s*$/i;
 
 /** Команда с возможным суффиксом бота: /start@flux_planner_bot. */
 function command(text: string): string {
@@ -460,6 +472,42 @@ async function handleFreeText(
 	});
 }
 
+/**
+ * Запись веса из чата.
+ *
+ * Одна запись на день, как и в приложении: повторное сообщение заменяет
+ * значение, а не добавляет второе. Слияние по дню делает сервер, поэтому
+ * идентификатор здесь случайный.
+ */
+async function saveWeight(
+	repositories: Repositories,
+	userId: string,
+	timezone: string,
+	weightKg: number,
+	chatId: number
+): Promise<void> {
+	if (!isWeightInRange(weightKg)) {
+		await sendMessage(chatId, `Вес должен быть между ${MIN_WEIGHT_KG} и ${MAX_WEIGHT_KG} кг.`);
+		return;
+	}
+
+	const timestamp = nowIso();
+	const rounded = roundWeight(weightKg);
+
+	await repositories.weight.upsertMany(userId, [
+		{
+			id: createId(),
+			createdAt: timestamp,
+			updatedAt: timestamp,
+			deletedAt: null,
+			date: getToday(timezone),
+			weightKg: rounded
+		} as never
+	]);
+
+	await sendMessage(chatId, `Записал вес: ${formatWeight(rounded)} кг.`);
+}
+
 async function handleMessage(message: TelegramMessage, chatId: number, fromId: number) {
 	// Платежи приходят обычными сообщениями и должны обрабатываться
 	// до разбора текста: у них его просто нет.
@@ -491,6 +539,12 @@ async function handleMessage(message: TelegramMessage, chatId: number, fromId: n
 
 	if (message.photo?.length) {
 		await handlePhoto(message, chatId, userId, repositories);
+		return;
+	}
+
+	const weight = WEIGHT_ENTRY.exec(text);
+	if (weight) {
+		await saveWeight(repositories, userId, timezone, Number(weight[1].replace(',', '.')), chatId);
 		return;
 	}
 

@@ -2,6 +2,7 @@ import type { DailyFinanceRecord, FinanceEntry } from '$lib/types/finance';
 import type { Habit, HabitCompletion } from '$lib/types/habit';
 import type { DailyNutritionRecord, FoodEntry } from '$lib/types/nutrition';
 import type { PlanItem } from '$lib/types/plan';
+import type { WeightEntry } from '$lib/types/weight';
 import type {
 	PlannerDocument,
 	PlannerSettings,
@@ -56,7 +57,8 @@ export function createDefaultState(timezone?: string): PlannerState {
 		habits: [],
 		habitCompletions: [],
 		financeEntries: [],
-		planItems: []
+		planItems: [],
+		weightEntries: []
 	};
 }
 
@@ -132,6 +134,16 @@ function isPlanItem(value: unknown): value is PlanItem {
 		isNonEmptyString(value.date) &&
 		isNonEmptyString(value.title) &&
 		typeof value.done === 'boolean'
+	);
+}
+
+function isWeightEntry(value: unknown): value is WeightEntry {
+	return (
+		isRecord(value) &&
+		isNonEmptyString(value.id) &&
+		isNonEmptyString(value.date) &&
+		isFiniteNumber(value.weightKg) &&
+		value.weightKg > 0
 	);
 }
 
@@ -231,6 +243,26 @@ export function migrateDocument(raw: unknown): PlannerDocument | null {
 	};
 }
 
+/**
+ * Одна запись веса на день.
+ *
+ * Два устройства, взвесившиеся офлайн в один и тот же день, приходят
+ * с разными случайными идентификаторами: сервер сливает их по паре
+ * «пользователь + день», а локально после обмена лежат обе строки.
+ * В дневнике это выглядело бы как два взвешивания подряд, поэтому
+ * остаётся более свежая.
+ */
+function dedupeByDate(entries: WeightEntry[]): WeightEntry[] {
+	const best = new Map<string, WeightEntry>();
+
+	for (const entry of entries) {
+		const current = best.get(entry.date);
+		if (!current || entry.updatedAt > current.updatedAt) best.set(entry.date, entry);
+	}
+
+	return [...best.values()];
+}
+
 function hasDayRecordsWithoutMeta(raw: unknown): boolean {
 	if (!isRecord(raw)) return false;
 
@@ -263,13 +295,14 @@ function byCreatedAt<T extends { createdAt: string; id: string }>(items: T[]): T
 export async function loadPlannerState(timezone?: string): Promise<PlannerState> {
 	const driver = await getDriver();
 
-	const [rawDoc, foods, habits, completions, finance, plan] = await Promise.all([
+	const [rawDoc, foods, habits, completions, finance, plan, weight] = await Promise.all([
 		driver.get<unknown>(STORES.plannerState, PLANNER_DOC_KEY),
 		driver.getAll<unknown>(STORES.foodEntries),
 		driver.getAll<unknown>(STORES.habits),
 		driver.getAll<unknown>(STORES.habitCompletions),
 		driver.getAll<unknown>(STORES.financeEntries),
-		driver.getAll<unknown>(STORES.planItems)
+		driver.getAll<unknown>(STORES.planItems),
+		driver.getAll<unknown>(STORES.weightEntries)
 	]);
 
 	const document = migrateDocument(rawDoc) ?? createDefaultDocument(timezone);
@@ -287,7 +320,12 @@ export async function loadPlannerState(timezone?: string): Promise<PlannerState>
 		habits: byCreatedAt(sanitizeArray(habits, isHabit)),
 		habitCompletions: byCreatedAt(sanitizeArray(completions, isHabitCompletion)),
 		financeEntries: byCreatedAt(sanitizeArray(finance, isFinanceEntry)),
-		planItems: byCreatedAt(sanitizeArray(plan, isPlanItem))
+		planItems: byCreatedAt(sanitizeArray(plan, isPlanItem)),
+		// Вес сортируется по дню, а не по времени создания: записанное задним
+		// числом должно встать в график на своё место, а не в конец.
+		weightEntries: dedupeByDate(sanitizeArray<WeightEntry>(weight, isWeightEntry)).sort((a, b) =>
+			a.date.localeCompare(b.date)
+		)
 	};
 }
 
@@ -303,7 +341,15 @@ export async function savePlannerDocument(document: PlannerDocument): Promise<vo
  */
 export async function savePlannerState(state: PlannerState): Promise<void> {
 	const driver = await getDriver();
-	const { foodEntries, habits, habitCompletions, financeEntries, planItems, ...document } = state;
+	const {
+		foodEntries,
+		habits,
+		habitCompletions,
+		financeEntries,
+		planItems,
+		weightEntries,
+		...document
+	} = state;
 
 	await savePlannerDocument(document);
 	await Promise.all([
@@ -311,7 +357,8 @@ export async function savePlannerState(state: PlannerState): Promise<void> {
 		driver.putMany(STORES.habits, habits),
 		driver.putMany(STORES.habitCompletions, habitCompletions),
 		driver.putMany(STORES.financeEntries, financeEntries),
-		driver.putMany(STORES.planItems, planItems)
+		driver.putMany(STORES.planItems, planItems),
+		driver.putMany(STORES.weightEntries, weightEntries)
 	]);
 }
 
@@ -376,6 +423,14 @@ export async function deleteFinanceEntry(id: string): Promise<void> {
  * Отдельно от loadPlannerState: приложению удалённые записи не нужны,
  * а синхронизации нужны именно они — иначе удаление не доедет до сервера.
  */
+export async function saveWeightEntry(entry: WeightEntry): Promise<void> {
+	await (await getDriver()).put(STORES.weightEntries, entry);
+}
+
+export async function deleteWeightEntry(id: string): Promise<void> {
+	await tombstone(STORES.weightEntries, id);
+}
+
 export async function loadRawForSync<T>(store: StoreName): Promise<T[]> {
 	return (await getDriver()).getAll<T>(store);
 }
@@ -449,6 +504,38 @@ export async function mergeDayRecordsFromSync(
 			: mergeDayRows(document.finance, rows, isDailyFinance);
 
 	if (changed) await savePlannerDocument(document);
+}
+
+/**
+ * Уборка задвоенных взвешиваний в хранилище.
+ *
+ * Чтение и так показывает по одной записи на день, но лишняя строка
+ * продолжала бы уезжать на сервер при каждой правке. Надгробия не трогаем:
+ * без них удаление не доедет до других устройств.
+ */
+export async function dedupeWeightEntries(): Promise<void> {
+	const driver = await getDriver();
+	const rows = await driver.getAll<WeightEntry>(STORES.weightEntries);
+
+	const best = new Map<string, WeightEntry>();
+	const extra: string[] = [];
+
+	for (const row of rows) {
+		if (!isWeightEntry(row) || row.deletedAt) continue;
+
+		const current = best.get(row.date);
+		if (!current) {
+			best.set(row.date, row);
+			continue;
+		}
+
+		const newer = row.updatedAt > current.updatedAt ? row : current;
+		const older = newer === row ? current : row;
+		best.set(row.date, newer);
+		extra.push(older.id);
+	}
+
+	for (const id of extra) await driver.delete(STORES.weightEntries, id);
 }
 
 export async function clearAllData(): Promise<void> {

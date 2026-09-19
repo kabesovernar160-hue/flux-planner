@@ -20,6 +20,7 @@ export interface ExportPayload {
 	habitCompletions: PlannerState['habitCompletions'];
 	financeEntries: PlannerState['financeEntries'];
 	planItems: PlannerState['planItems'];
+	weightEntries: PlannerState['weightEntries'];
 }
 
 /**
@@ -40,7 +41,8 @@ export function buildExport(state: PlannerState, now: string): ExportPayload {
 		habits: state.habits,
 		habitCompletions: state.habitCompletions,
 		financeEntries: state.financeEntries,
-		planItems: state.planItems
+		planItems: state.planItems,
+		weightEntries: state.weightEntries
 	};
 }
 
@@ -56,7 +58,7 @@ export function exportFileName(now: string): string {
  * единственный формат, с которым человек что-то сделает без программиста.
  */
 export function toFoodCsv(entries: PlannerState['foodEntries']): string {
-	const header = ['date', 'name', 'grams', 'calories', 'protein', 'fat', 'carbs', 'source'];
+	const header = ['date', 'meal', 'name', 'grams', 'calories', 'protein', 'fat', 'carbs', 'source'];
 
 	const escape = (value: unknown): string => {
 		const text = value === undefined || value === null ? '' : String(value);
@@ -68,6 +70,9 @@ export function toFoodCsv(entries: PlannerState['foodEntries']): string {
 	const rows = entries.map((entry) =>
 		[
 			entry.date,
+			// Приём пищи как он записан: у старых записей его нет, и выдумывать
+			// значение для таблицы нельзя — пустая ячейка честнее.
+			entry.meal ?? '',
 			entry.name,
 			entry.grams ?? '',
 			entry.calories,

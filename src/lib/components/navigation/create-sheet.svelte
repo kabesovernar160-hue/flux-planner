@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CheckCircle, ForkKnife, ListChecks, Wallet } from 'phosphor-svelte';
+	import { CheckCircle, ForkKnife, ListChecks, Scales, Wallet } from 'phosphor-svelte';
 	import type { Component } from 'svelte';
 	import Sheet from '$lib/components/ui/sheet.svelte';
 	import { ui } from '$lib/state/ui.svelte';
@@ -28,6 +28,12 @@
 			hint: 'Название, иконка, расписание',
 			icon: CheckCircle,
 			open: () => ui.openHabitSheet()
+		},
+		{
+			label: 'Вес',
+			hint: 'Взвешивание за сегодня',
+			icon: Scales,
+			open: () => ui.openWeightSheet()
 		}
 	];
 </script>

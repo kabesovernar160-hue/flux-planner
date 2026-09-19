@@ -217,6 +217,31 @@ describe('buildDailySummary', () => {
 		expect(summary).toContain('из 1 000 ₽');
 	});
 
+	it('вес показывается, только если сегодня взвешивались', async () => {
+		await repositories.food.upsertMany(user.id, [
+			{
+				id: 'f-w',
+				...stamps,
+				date: DATE,
+				name: 'Каша',
+				calories: 250,
+				protein: 8,
+				fat: 5,
+				carbs: 40,
+				source: 'manual'
+			} as never
+		]);
+
+		// Строка «Вес: —» каждый вечер превращается в укор, а не в сводку.
+		expect((await buildDailySummary(db, user, DATE)).text).not.toContain('Вес:');
+
+		await repositories.weight.upsertMany(user.id, [
+			{ id: 'w1', ...stamps, date: DATE, weightKg: 78.4 } as never
+		]);
+
+		expect((await buildDailySummary(db, user, DATE)).text).toContain('Вес: 78,4 кг');
+	});
+
 	it('выпитая вода из синхронизированной записи дня попадает в сводку', async () => {
 		// Записи дня приезжают с устройства коллекцией nutritionDays.
 		// Пока клиент их не слал, бот писал «Вода: 0,0 из 2,5 л» любому,

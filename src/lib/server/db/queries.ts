@@ -7,11 +7,13 @@ import {
 	foodEntries,
 	habitCompletions,
 	habits,
-	plannerState
+	plannerState,
+	weightEntries
 } from './schema';
 import type { DailyFinance, FinanceEntry } from '$lib/types/finance';
 import type { Habit, HabitCompletion } from '$lib/types/habit';
 import type { DailyNutrition, FoodEntry } from '$lib/types/nutrition';
+import type { WeightEntry } from '$lib/types/weight';
 
 /**
  * Чтения для отчётов и уведомлений.
@@ -47,10 +49,12 @@ export interface DaySnapshot {
 	completions: HabitCompletion[];
 	finance: FinanceEntry[];
 	budget: DailyFinance | null;
+	/** Взвешивание этого дня, если оно было. */
+	weight: WeightEntry | null;
 }
 
 export async function loadDaySnapshot(db: Db, userId: string, date: string): Promise<DaySnapshot> {
-	const [foods, nutritionRows, habitRows, completionRows, financeRows, budgetRows] =
+	const [foods, nutritionRows, habitRows, completionRows, financeRows, budgetRows, weightRows] =
 		await Promise.all([
 			db
 				.select()
@@ -107,6 +111,17 @@ export async function loadDaySnapshot(db: Db, userId: string, date: string): Pro
 						isNull(dailyFinance.deletedAt)
 					)
 				)
+				.limit(1),
+			db
+				.select()
+				.from(weightEntries)
+				.where(
+					and(
+						eq(weightEntries.userId, userId),
+						eq(weightEntries.date, date),
+						isNull(weightEntries.deletedAt)
+					)
+				)
 				.limit(1)
 		]);
 
@@ -116,6 +131,7 @@ export async function loadDaySnapshot(db: Db, userId: string, date: string): Pro
 		habits: habitRows as unknown as Habit[],
 		completions: completionRows as unknown as HabitCompletion[],
 		finance: financeRows as unknown as FinanceEntry[],
-		budget: (budgetRows[0] as unknown as DailyFinance) ?? null
+		budget: (budgetRows[0] as unknown as DailyFinance) ?? null,
+		weight: (weightRows[0] as unknown as WeightEntry) ?? null
 	};
 }

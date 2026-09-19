@@ -145,6 +145,27 @@ export const planItems = sqliteTable(
 	]
 );
 
+/**
+ * Дневник веса.
+ *
+ * Одна запись на день, как и в приложении: уникальный индекс по паре
+ * «пользователь + день» не даёт двум устройствам развести один день
+ * на две строки.
+ */
+export const weightEntries = sqliteTable(
+	'weight_entries',
+	{
+		...syncColumns,
+		date: text('date').notNull(),
+		weightKg: real('weight_kg').notNull(),
+		note: text('note')
+	},
+	(table) => [
+		index('weight_user_updated_idx').on(table.userId, table.updatedAt),
+		uniqueIndex('weight_user_date_idx').on(table.userId, table.date)
+	]
+);
+
 export const dailyNutrition = sqliteTable(
 	'daily_nutrition',
 	{
@@ -278,6 +299,7 @@ export type FoodEntryRow = typeof foodEntries.$inferSelect;
 export type HabitRow = typeof habits.$inferSelect;
 export type HabitCompletionRow = typeof habitCompletions.$inferSelect;
 export type FinanceEntryRow = typeof financeEntries.$inferSelect;
+export type WeightEntryRow = typeof weightEntries.$inferSelect;
 export type DailyNutritionRow = typeof dailyNutrition.$inferSelect;
 export type DailyFinanceRow = typeof dailyFinance.$inferSelect;
 export type PlanItemRow = typeof planItems.$inferSelect;

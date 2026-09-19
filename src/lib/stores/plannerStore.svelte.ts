@@ -8,6 +8,7 @@ import type {
 import type { Habit, HabitCompletion, HabitFrequency } from '$lib/types/habit';
 import type { DailyNutrition, DailyNutritionRecord, FoodEntry } from '$lib/types/nutrition';
 import type { PlanItem } from '$lib/types/plan';
+import type { WeightEntry } from '$lib/types/weight';
 import type {
 	PlannerDocument,
 	PlannerSettings,
@@ -72,6 +73,7 @@ export class PlannerStore {
 	habitCompletions = $state<HabitCompletion[]>([]);
 	financeEntries = $state<FinanceEntry[]>([]);
 	planItems = $state<PlanItem[]>([]);
+	weightEntries = $state<WeightEntry[]>([]);
 
 	/** Выбранный день. Меняется пользователем или переходом полуночи. */
 	currentDate = $state<DateKey>(getToday());
@@ -110,6 +112,7 @@ export class PlannerStore {
 		this.habitCompletions = state.habitCompletions;
 		this.financeEntries = state.financeEntries;
 		this.planItems = state.planItems;
+		this.weightEntries = state.weightEntries;
 	}
 
 	/**
@@ -154,6 +157,7 @@ export class PlannerStore {
 		this.habits = [];
 		this.habitCompletions = [];
 		this.financeEntries = [];
+		this.weightEntries = [];
 		this.currentDate = getToday(this.doc.user.timezone);
 		this.#followToday = true;
 
@@ -445,6 +449,60 @@ export class PlannerStore {
 		this.#saveDoc();
 	}
 
+	/* ───────────────── Вес ───────────────── */
+
+	/**
+	 * Запись веса за день.
+	 *
+	 * Одна запись на дату: повторное взвешивание в тот же день заменяет
+	 * прежнее значение, а не добавляет второе. Три цифры за сутки отличаются
+	 * в основном содержимым желудка — в графике это шум, а не динамика.
+	 */
+	setWeight(weightKg: number, date: DateKey = this.currentDate, note?: string): WeightEntry | null {
+		if (!Number.isFinite(weightKg) || weightKg <= 0) return null;
+
+		const existing = this.weightEntries.find((entry) => entry.date === date);
+
+		if (existing) {
+			existing.weightKg = weightKg;
+			existing.note = note;
+			existing.updatedAt = nowIso();
+			const snapshot = $state.snapshot(existing);
+			this.#persist(() => db.saveWeightEntry(snapshot));
+			return snapshot;
+		}
+
+		const timestamp = nowIso();
+		const entry: WeightEntry = {
+			id: createId(),
+			date,
+			weightKg,
+			note,
+			createdAt: timestamp,
+			updatedAt: timestamp
+		};
+
+		// Порядок по дню: запись задним числом должна встать в график
+		// на своё место, а не в конец.
+		this.weightEntries.push(entry);
+		this.weightEntries.sort((a, b) => a.date.localeCompare(b.date));
+
+		this.#persist(() => db.saveWeightEntry(entry));
+		return entry;
+	}
+
+	removeWeight(date: DateKey): void {
+		const index = this.weightEntries.findIndex((entry) => entry.date === date);
+		if (index === -1) return;
+
+		const [removed] = this.weightEntries.splice(index, 1);
+		this.#persist(() => db.deleteWeightEntry(removed.id));
+	}
+
+	getWeight(date: DateKey): WeightEntry | undefined {
+		return this.weightEntries.find((entry) => entry.date === date);
+	}
+
 	/* ───────────────── Привычки ───────────────── */
 
 	createHabit(input: HabitInput): Habit {
@@ -708,6 +766,17 @@ export class PlannerStore {
 			totals[entry.category] = (totals[entry.category] ?? 0) + entry.amount;
 		}
 		return totals;
+	});
+
+	/**
+	 * Последнее взвешивание.
+	 *
+	 * Именно последнее по дате, а не по времени записи: вес, добавленный
+	 * задним числом за прошлую неделю, не делает прошлую неделю «текущей».
+	 */
+	latestWeight = $derived.by<WeightEntry | null>(() => {
+		const entries = this.weightEntries;
+		return entries.length > 0 ? entries[entries.length - 1] : null;
 	});
 
 	/** Подряд идущие дни, где закрыты все запланированные привычки. */

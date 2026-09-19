@@ -16,7 +16,7 @@ export const DB_NAME = 'flux-planner';
  * при росте номера, и без этого у тех, кто уже открывал приложение,
  * новое хранилище просто не появится.
  */
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 export const STORES = {
 	plannerState: 'plannerState',
@@ -24,7 +24,8 @@ export const STORES = {
 	habits: 'habits',
 	habitCompletions: 'habitCompletions',
 	financeEntries: 'financeEntries',
-	planItems: 'planItems'
+	planItems: 'planItems',
+	weightEntries: 'weightEntries'
 } as const;
 
 export type StoreName = (typeof STORES)[keyof typeof STORES];
@@ -91,6 +92,9 @@ function openDatabase(): Promise<IDBDatabase> {
 			}
 			if (!db.objectStoreNames.contains(STORES.planItems)) {
 				db.createObjectStore(STORES.planItems, { keyPath: 'id' }).createIndex('date', 'date');
+			}
+			if (!db.objectStoreNames.contains(STORES.weightEntries)) {
+				db.createObjectStore(STORES.weightEntries, { keyPath: 'id' }).createIndex('date', 'date');
 			}
 		};
 

@@ -3,6 +3,7 @@ import type { DailyFinanceRecord, FinanceEntry } from './finance';
 import type { Habit, HabitCompletion } from './habit';
 import type { DailyNutritionRecord, FoodEntry } from './nutrition';
 import type { PlanItem } from './plan';
+import type { WeightEntry } from './weight';
 
 /**
  * Версия схемы локального хранилища.
@@ -99,12 +100,14 @@ export interface PlannerState {
 	financeEntries: FinanceEntry[];
 	/** План на день: разовые цели вроде «ужин в 19:00». */
 	planItems: PlanItem[];
+	/** Дневник веса: одна запись на день. */
+	weightEntries: WeightEntry[];
 }
 
 /** Singleton-документ: всё, кроме коллекций записей. */
 export type PlannerDocument = Omit<
 	PlannerState,
-	'foodEntries' | 'habits' | 'habitCompletions' | 'financeEntries' | 'planItems'
+	'foodEntries' | 'habits' | 'habitCompletions' | 'financeEntries' | 'planItems' | 'weightEntries'
 >;
 
 export type StoreStatus =

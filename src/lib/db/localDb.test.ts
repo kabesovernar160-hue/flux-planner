@@ -4,6 +4,7 @@ import {
 	clearAllData,
 	createDefaultDocument,
 	getStorageKind,
+	dedupeWeightEntries,
 	loadDayRecordsForSync,
 	loadPlannerState,
 	mergeDayRecordsFromSync,
@@ -12,7 +13,8 @@ import {
 	saveFoodEntry,
 	saveHabit,
 	saveHabitCompletion,
-	savePlannerDocument
+	savePlannerDocument,
+	saveWeightEntry
 } from './localDb';
 import { getDriver, PLANNER_DOC_KEY, resetDriverForTests, STORES } from './storage';
 import { createId } from '$lib/utils/id';
@@ -336,5 +338,63 @@ describe('записи дня в синхронизации', () => {
 		await mergeDayRecordsFromSync('nutritionDays', [{ date: '2026-01-15' }, null, 'строка']);
 
 		expect((await loadPlannerState()).nutrition['2026-01-15']).toBeUndefined();
+	});
+});
+
+describe('дневник веса', () => {
+	const weight = (id: string, date: string, weightKg: number, updatedAt: string) => ({
+		id,
+		date,
+		weightKg,
+		createdAt: '2026-01-15T08:00:00.000Z',
+		updatedAt
+	});
+
+	it('на день остаётся одна запись, более свежая', async () => {
+		// Два устройства, взвесившиеся офлайн в один день, приходят с разными
+		// идентификаторами: сервер сливает их по дню, локально остаются обе.
+		await saveWeightEntry(weight('w-a', '2026-01-15', 78, '2026-01-15T08:00:00.000Z'));
+		await saveWeightEntry(weight('w-b', '2026-01-15', 77.4, '2026-01-15T10:00:00.000Z'));
+
+		const state = await loadPlannerState();
+
+		expect(state.weightEntries).toHaveLength(1);
+		expect(state.weightEntries[0].weightKg).toBe(77.4);
+	});
+
+	it('уборка убирает лишнюю строку из хранилища', async () => {
+		await saveWeightEntry(weight('w-a', '2026-01-15', 78, '2026-01-15T08:00:00.000Z'));
+		await saveWeightEntry(weight('w-b', '2026-01-15', 77.4, '2026-01-15T10:00:00.000Z'));
+
+		await dedupeWeightEntries();
+
+		const driver = await getDriver();
+		const rows = await driver.getAll<{ id: string }>(STORES.weightEntries);
+
+		expect(rows.map((row) => row.id)).toEqual(['w-b']);
+	});
+
+	it('надгробие при уборке не трогается', async () => {
+		// Без надгробия удаление не доедет до других устройств.
+		await saveWeightEntry({
+			...weight('w-dead', '2026-01-14', 79, '2026-01-14T10:00:00.000Z'),
+			deletedAt: '2026-01-14T11:00:00.000Z'
+		});
+
+		await dedupeWeightEntries();
+
+		const driver = await getDriver();
+		const rows = await driver.getAll<{ id: string }>(STORES.weightEntries);
+
+		expect(rows.map((row) => row.id)).toEqual(['w-dead']);
+	});
+
+	it('записи идут по дню, а не по времени создания', async () => {
+		await saveWeightEntry(weight('w-new', '2026-01-15', 78, '2026-01-15T08:00:00.000Z'));
+		await saveWeightEntry(weight('w-old', '2026-01-10', 80, '2026-01-15T09:00:00.000Z'));
+
+		const state = await loadPlannerState();
+
+		expect(state.weightEntries.map((entry) => entry.date)).toEqual(['2026-01-10', '2026-01-15']);
 	});
 });

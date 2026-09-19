@@ -6,6 +6,7 @@ import { getToday } from '$lib/utils/date';
 import { calculateFinanceSummary } from '$lib/utils/finance';
 import { scheduledHabits } from '$lib/utils/habitFrequency';
 import { calculateNutritionSummary } from '$lib/utils/nutrition';
+import { formatWeight } from '$lib/utils/format';
 
 /**
  * Сборка и отправка уведомлений.
@@ -133,6 +134,12 @@ export async function buildDailySummary(
 		`Привычки: ${doneCount} из ${planned.length}`,
 		`Траты: ${formatMoney(finance.spent)} из ${formatMoney(finance.budget)}`
 	];
+
+	// Вес — только если сегодня взвешивались: строка «Вес: —» каждый вечер
+	// быстро превращается в укор, а не в сводку.
+	if (snapshot.weight) {
+		lines.push(`Вес: ${formatWeight(snapshot.weight.weightKg)} кг`);
+	}
 
 	if (finance.isOverBudget) {
 		lines.push('', `Лимит превышен на ${formatMoney(-finance.remaining)}.`);

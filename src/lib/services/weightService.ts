@@ -1,0 +1,111 @@
+import { plannerStore } from '$lib/stores/plannerStore.svelte';
+import type { WeightEntry } from '$lib/types/weight';
+import { dateRange, type DayValue } from '$lib/utils/analytics';
+import type { DateKey } from '$lib/utils/date';
+import { GOAL_REFRESH_THRESHOLD_KG, roundWeight, validateWeight } from '$lib/utils/weight';
+import type { ServiceResult } from './nutritionService';
+import { saveProfile } from './profileService';
+
+// Границы и порог живут в utils/weight: их читает и сервер, которому
+// клиентский стор не нужен. Здесь они переизлучаются, чтобы интерфейсу
+// не приходилось знать про два модуля вместо одного.
+export {
+	GOAL_REFRESH_THRESHOLD_KG,
+	MAX_WEIGHT_KG,
+	MIN_WEIGHT_KG,
+	validateWeight
+} from '$lib/utils/weight';
+
+/**
+ * Дневник веса.
+ *
+ * Правила проверки и вся арифметика динамики живут здесь, а не в компоненте:
+ * те же цифры показывает аналитика и (позже) сводка в чате, и две реализации
+ * одного расчёта разошлись бы на первой же правке.
+ */
+
+export function recordWeight(
+	weightKg: number,
+	date?: DateKey,
+	note?: string
+): ServiceResult<WeightEntry> {
+	const errors = validateWeight(weightKg);
+	if (Object.keys(errors).length > 0) return { ok: false, errors };
+
+	const rounded = roundWeight(weightKg);
+	const entry = plannerStore.setWeight(rounded, date, note?.trim() || undefined);
+
+	return entry
+		? { ok: true, value: entry }
+		: { ok: false, errors: { weightKg: 'Не удалось записать' } };
+}
+
+export function removeWeight(date: DateKey): void {
+	plannerStore.removeWeight(date);
+}
+
+export function getWeight(date: DateKey): WeightEntry | undefined {
+	return plannerStore.getWeight(date);
+}
+
+export function latestWeight(): WeightEntry | null {
+	return plannerStore.latestWeight;
+}
+
+/**
+ * Ряд для графика.
+ *
+ * Дни без взвешивания остаются нулями и отбрасываются рисующим кодом:
+ * соединять их прямой линией — значит показать снижение веса в дни,
+ * когда человек на весы не вставал.
+ */
+export function weightSeries(end: DateKey, days: number): DayValue[] {
+	const byDate = new Map(plannerStore.weightEntries.map((entry) => [entry.date, entry.weightKg]));
+	return dateRange(end, days).map((date) => ({ date, value: byDate.get(date) ?? 0 }));
+}
+
+/**
+ * Изменение веса за период: последнее взвешивание минус первое.
+ *
+ * null, когда сравнивать не с чем: одна точка — это не динамика, и рисовать
+ * «−0,0 кг» по ней честнее не показывать вовсе.
+ */
+export function weightChange(end: DateKey, days: number): number | null {
+	const measured = weightSeries(end, days).filter((day) => day.value > 0);
+	if (measured.length < 2) return null;
+
+	return Math.round((measured[measured.length - 1].value - measured[0].value) * 10) / 10;
+}
+
+/**
+ * Разошёлся ли вес с анкетой.
+ *
+ * Цели считаются от веса, и анкета с прошлогодним весом тихо выдаёт цели,
+ * к которым нет доверия. Предложение пересчитать появляется только когда
+ * разница заметна.
+ */
+export function goalsOutOfDate(): boolean {
+	const profile = plannerStore.doc.settings.profile;
+	const latest = plannerStore.latestWeight;
+	if (!profile || !latest) return false;
+
+	return Math.abs(latest.weightKg - profile.weightKg) >= GOAL_REFRESH_THRESHOLD_KG;
+}
+
+/**
+ * Пересчёт целей по последнему взвешиванию.
+ *
+ * Анкета остаётся прежней, меняется только вес: рост, возраст и уровень
+ * активности спрашивать заново незачем.
+ */
+export function refreshGoalsFromWeight(): ServiceResult<null> {
+	const profile = plannerStore.doc.settings.profile;
+	const latest = plannerStore.latestWeight;
+
+	if (!profile || !latest) {
+		return { ok: false, errors: { profile: 'Сначала заполните анкету в настройках' } };
+	}
+
+	const result = saveProfile({ ...profile, weightKg: latest.weightKg });
+	return result.ok ? { ok: true, value: null } : { ok: false, errors: result.errors };
+}

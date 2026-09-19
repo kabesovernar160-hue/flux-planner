@@ -57,8 +57,9 @@ describe('toFoodCsv', () => {
 		const csv = toFoodCsv(state.foodEntries);
 		const [header, row] = csv.split('\n');
 
-		expect(header).toBe('date,name,grams,calories,protein,fat,carbs,source');
-		expect(row).toBe('2026-01-15,Гречка,250,275,10,2.8,52.5,manual');
+		expect(header).toBe('date,meal,name,grams,calories,protein,fat,carbs,source');
+		// Приём пищи у старой записи пуст: выдумывать его для таблицы нельзя.
+		expect(row).toBe('2026-01-15,,Гречка,250,275,10,2.8,52.5,manual');
 	});
 
 	it('экранирует запятые и кавычки в названии', () => {

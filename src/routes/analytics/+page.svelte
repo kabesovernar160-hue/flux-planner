@@ -1,9 +1,12 @@
 <script lang="ts">
-	import { CheckCircle, Fire, ForkKnife, Wallet } from 'phosphor-svelte';
+	import { CheckCircle, Fire, ForkKnife, Scales, Wallet } from 'phosphor-svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
+	import LineChart from '$lib/components/ui/line-chart.svelte';
 	import PeriodBars from '$lib/components/ui/period-bars.svelte';
 	import { CATEGORY_LABELS } from '$lib/services/financeService';
+	import { weightChange, weightSeries } from '$lib/services/weightService';
+	import { ui } from '$lib/state/ui.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { telegram } from '$lib/telegram';
 	import {
@@ -18,7 +21,7 @@
 		spendingByDay,
 		totalOf
 	} from '$lib/utils/analytics';
-	import { formatMacro, formatMoney, formatNumber } from '$lib/utils/format';
+	import { formatMacro, formatMoney, formatNumber, formatWeight } from '$lib/utils/format';
 
 	/** Неделя и месяц: две привычные рамки, между которыми есть смысл сравнивать. */
 	const PERIODS = [
@@ -43,6 +46,10 @@
 	const income = $derived(incomeByDay(plannerStore.financeEntries, end, days));
 	const totalIncome = $derived(totalOf(income));
 	const balance = $derived(totalIncome - totalOf(spending));
+	const weights = $derived(weightSeries(end, days));
+	const weightDelta = $derived(weightChange(end, days));
+	const latest = $derived(plannerStore.latestWeight);
+
 	const habitRate = $derived(
 		habitRateByDay(plannerStore.habits, plannerStore.habitCompletions, end, days)
 	);
@@ -146,6 +153,58 @@
 					</ul>
 				</div>
 			{/if}
+		{/if}
+	</GlassCard>
+
+	<GlassCard>
+		<div class="mb-3 flex items-center gap-2">
+			<Scales size={16} weight="light" class="text-lavender" />
+			<h2 class="flex-1 text-sm font-medium">Вес</h2>
+			{#if latest}
+				<span class="tabular text-xs text-muted-foreground">{latest.date}</span>
+			{/if}
+		</div>
+
+		{#if !latest}
+			<p class="py-2 text-sm text-muted-foreground">
+				Взвешиваний пока нет. Цели считаются от веса, и его стоит отмечать хотя бы раз в неделю.
+			</p>
+			<button
+				type="button"
+				onclick={() => ui.openWeightSheet()}
+				class="mt-2 w-full rounded-full border border-line-strong py-2.5 text-xs font-medium
+				       transition-[transform,border-color] duration-500 ease-flux
+				       hover:border-lavender/60 active:scale-[0.98]"
+			>
+				Записать вес
+			</button>
+		{:else}
+			<p class="tabular text-3xl leading-none font-semibold tracking-tight">
+				{formatWeight(latest.weightKg)}
+				<span class="text-sm font-normal text-muted-foreground">кг</span>
+			</p>
+
+			{#if weightDelta === null}
+				<p class="mt-1 text-xs text-muted-foreground">
+					За период одно взвешивание — динамику покажут два и больше.
+				</p>
+			{:else}
+				<!--
+					Ноль важен не меньше роста и снижения: «вес не изменился» —
+					это ответ, а не отсутствие данных.
+				-->
+				<p class="mt-1 text-xs text-muted-foreground">
+					{#if weightDelta === 0}
+						За период вес не изменился.
+					{:else}
+						{weightDelta > 0 ? '+' : '−'}{formatWeight(Math.abs(weightDelta))} кг за период.
+					{/if}
+				</p>
+			{/if}
+
+			<div class="mt-4">
+				<LineChart values={weights} format={formatWeight} />
+			</div>
 		{/if}
 	</GlassCard>
 

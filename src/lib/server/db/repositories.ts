@@ -12,6 +12,7 @@ import {
 	planItems,
 	plannerState,
 	users,
+	weightEntries,
 	type UserRow
 } from './schema';
 
@@ -176,6 +177,7 @@ export interface Repositories {
 	habits: SyncRepository<SyncRow>;
 	completions: SyncRepository<SyncRow>;
 	finance: SyncRepository<SyncRow>;
+	weight: SyncRepository<SyncRow>;
 	nutritionDays: SyncRepository<SyncRow>;
 	financeDays: SyncRepository<SyncRow>;
 	plan: SyncRepository<SyncRow>;
@@ -285,6 +287,11 @@ export function createRepositories(db: Db): Repositories {
 		habits: createSyncRepository(db, 'habits', habits as never),
 		completions: createSyncRepository(db, 'habitCompletions', habitCompletions as never),
 		finance: createSyncRepository(db, 'financeEntries', financeEntries as never),
+		// Вес сливается по дню: взвешивание одного дня с двух устройств —
+		// это одна запись с разными идентификаторами, а не две.
+		weight: createSyncRepository(db, 'weightEntries', weightEntries as never, {
+			conflictOnUserDate: true
+		}),
 		nutritionDays: createSyncRepository(db, 'dailyNutrition', dailyNutrition as never, {
 			conflictOnUserDate: true
 		}),

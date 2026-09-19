@@ -11,6 +11,7 @@ export const SYNC_COLLECTIONS = [
 	'habits',
 	'completions',
 	'finance',
+	'weight',
 	'nutritionDays',
 	'financeDays',
 	'plan'
@@ -97,6 +98,7 @@ const REPOSITORY_BY_COLLECTION: Record<SyncCollection, keyof Repositories> = {
 	habits: 'habits',
 	completions: 'completions',
 	finance: 'finance',
+	weight: 'weight',
 	nutritionDays: 'nutritionDays',
 	financeDays: 'financeDays',
 	plan: 'plan'

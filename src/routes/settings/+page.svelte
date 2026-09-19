@@ -172,7 +172,8 @@
 				habits: $state.snapshot(plannerStore.habits),
 				habitCompletions: $state.snapshot(plannerStore.habitCompletions),
 				financeEntries: $state.snapshot(plannerStore.financeEntries),
-				planItems: $state.snapshot(plannerStore.planItems)
+				planItems: $state.snapshot(plannerStore.planItems),
+				weightEntries: $state.snapshot(plannerStore.weightEntries)
 			},
 			now
 		);
