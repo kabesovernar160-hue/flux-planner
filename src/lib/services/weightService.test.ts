@@ -9,9 +9,11 @@ import {
 	latestWeight,
 	recordWeight,
 	refreshGoalsFromWeight,
+	setWeightGoal,
 	removeWeight,
 	validateWeight,
 	weightChange,
+	weightProgress,
 	weightSeries
 } from './weightService';
 
@@ -157,5 +159,83 @@ describe('пересчёт целей по весу', () => {
 		const result = refreshGoalsFromWeight();
 
 		expect(result.ok).toBe(false);
+	});
+});
+
+describe('цель по весу', () => {
+	it('без цели ничего не считает', () => {
+		recordWeight(78);
+		expect(weightProgress(TODAY, 30)).toBeNull();
+	});
+
+	it('показывает остаток до цели', () => {
+		setWeightGoal(75);
+		recordWeight(78.4);
+
+		expect(weightProgress(TODAY, 30)?.remainingKg).toBe(3.4);
+	});
+
+	it('на одном взвешивании темпа и даты нет', () => {
+		// Гадание на одном килограмме человек примет за обещание.
+		setWeightGoal(75);
+		recordWeight(78);
+
+		const progress = weightProgress(TODAY, 30);
+
+		expect(progress?.perWeekKg).toBeNull();
+		expect(progress?.etaDate).toBeNull();
+	});
+
+	it('считает темп и дату при движении к цели', () => {
+		setWeightGoal(75);
+		recordWeight(80, '2026-01-01');
+		recordWeight(79, '2026-01-15');
+
+		const progress = weightProgress(TODAY, 30);
+
+		// Килограмм за две недели — полкило в неделю.
+		expect(progress?.perWeekKg).toBe(-0.5);
+		expect(progress?.etaDate).toBe('2026-03-12');
+	});
+
+	it('при движении от цели даты не обещает', () => {
+		// Честный ответ — молчание, а не дата, до которой «осталось немного».
+		setWeightGoal(75);
+		recordWeight(78, '2026-01-01');
+		recordWeight(80, '2026-01-15');
+
+		const progress = weightProgress(TODAY, 30);
+
+		expect(progress?.perWeekKg).toBe(1);
+		expect(progress?.etaDate).toBeNull();
+	});
+
+	it('слишком далёкую дату не показывает', () => {
+		// «Вы придёте к цели в 2031 году» — не прогноз, а насмешка.
+		setWeightGoal(60);
+		recordWeight(90, '2026-01-01');
+		recordWeight(89.9, '2026-01-15');
+
+		expect(weightProgress(TODAY, 30)?.etaDate).toBeNull();
+	});
+
+	it('взвешивания в пределах недели темпом не считаются', () => {
+		setWeightGoal(75);
+		recordWeight(80, '2026-01-12');
+		recordWeight(79, '2026-01-15');
+
+		expect(weightProgress(TODAY, 30)?.perWeekKg).toBeNull();
+	});
+
+	it('цель снимается нулём', () => {
+		setWeightGoal(75);
+		recordWeight(78);
+		expect(setWeightGoal(null).ok).toBe(true);
+
+		expect(weightProgress(TODAY, 30)).toBeNull();
+	});
+
+	it('нелепую цель не принимает', () => {
+		expect(setWeightGoal(780).ok).toBe(false);
 	});
 });

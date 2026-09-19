@@ -1,7 +1,7 @@
 import { plannerStore } from '$lib/stores/plannerStore.svelte';
 import type { WeightEntry } from '$lib/types/weight';
 import { dateRange, type DayValue } from '$lib/utils/analytics';
-import type { DateKey } from '$lib/utils/date';
+import { addDays, type DateKey } from '$lib/utils/date';
 import { GOAL_REFRESH_THRESHOLD_KG, roundWeight, validateWeight } from '$lib/utils/weight';
 import type { ServiceResult } from './nutritionService';
 import { saveProfile } from './profileService';
@@ -108,4 +108,87 @@ export function refreshGoalsFromWeight(): ServiceResult<null> {
 
 	const result = saveProfile({ ...profile, weightKg: latest.weightKg });
 	return result.ok ? { ok: true, value: null } : { ok: false, errors: result.errors };
+}
+
+export interface WeightProgress {
+	goalKg: number;
+	/** Сколько осталось до цели. Ноль и меньше — цель достигнута. */
+	remainingKg: number;
+	/** Скорость за последнюю неделю периода. null — измерений слишком мало. */
+	perWeekKg: number | null;
+	/** Ожидаемая дата при текущей скорости. null — обещать нечего. */
+	etaDate: DateKey | null;
+}
+
+/**
+ * Насколько далеко цель и когда она наступит при нынешнем темпе.
+ *
+ * Прогноз — самая соблазнительная возможность соврать, поэтому он выдаётся
+ * только когда для него есть основания: минимум два взвешивания, разнесённые
+ * хотя бы на неделю, и движение в сторону цели. Всё остальное — гадание
+ * на одном килограмме, которое человек примет за обещание.
+ *
+ * Горизонт ограничен двумя годами: «вы придёте к цели в 2031 году» —
+ * не прогноз, а насмешка.
+ */
+const MAX_FORECAST_DAYS = 730;
+const MIN_TREND_DAYS = 7;
+const MIN_WEEKLY_CHANGE_KG = 0.1;
+
+export function weightProgress(end: DateKey, days: number): WeightProgress | null {
+	const goalKg = plannerStore.doc.settings.weightGoalKg;
+	const latest = plannerStore.latestWeight;
+
+	if (!goalKg || !latest) return null;
+
+	const remainingKg = Math.round((latest.weightKg - goalKg) * 10) / 10;
+	const measured = weightSeries(end, days).filter((day) => day.value > 0);
+
+	const progress: WeightProgress = {
+		goalKg,
+		remainingKg,
+		perWeekKg: null,
+		etaDate: null
+	};
+
+	if (measured.length < 2) return progress;
+
+	const first = measured[0];
+	const last = measured[measured.length - 1];
+	const spanDays = Math.round(
+		(Date.parse(`${last.date}T00:00:00Z`) - Date.parse(`${first.date}T00:00:00Z`)) / 86_400_000
+	);
+
+	if (spanDays < MIN_TREND_DAYS) return progress;
+
+	const perWeekKg = Math.round(((last.value - first.value) / spanDays) * 7 * 100) / 100;
+	progress.perWeekKg = perWeekKg;
+
+	// Цель достигнута — прогнозировать нечего.
+	if (Math.abs(remainingKg) < 0.1) return progress;
+
+	// Движение должно идти в сторону цели: при обратном темпе честный ответ —
+	// молчание, а не дата, до которой «осталось немного».
+	const towardsGoal = remainingKg > 0 ? perWeekKg < 0 : perWeekKg > 0;
+	if (!towardsGoal || Math.abs(perWeekKg) < MIN_WEEKLY_CHANGE_KG) return progress;
+
+	const daysNeeded = Math.ceil((Math.abs(remainingKg) / Math.abs(perWeekKg)) * 7);
+	if (daysNeeded > MAX_FORECAST_DAYS) return progress;
+
+	progress.etaDate = addDays(last.date, daysNeeded);
+	return progress;
+}
+
+/** Цель по весу. Ноль и пустое значение убирают её совсем. */
+export function setWeightGoal(goalKg: number | null): ServiceResult<null> {
+	if (goalKg === null || goalKg === 0) {
+		plannerStore.updateSettings({ weightGoalKg: undefined });
+		return { ok: true, value: null };
+	}
+
+	const errors = validateWeight(goalKg);
+	if (Object.keys(errors).length > 0) return { ok: false, errors };
+
+	plannerStore.updateSettings({ weightGoalKg: roundWeight(goalKg) });
+	return { ok: true, value: null };
 }

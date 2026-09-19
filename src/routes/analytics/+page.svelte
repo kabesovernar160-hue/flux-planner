@@ -5,7 +5,7 @@
 	import LineChart from '$lib/components/ui/line-chart.svelte';
 	import PeriodBars from '$lib/components/ui/period-bars.svelte';
 	import { CATEGORY_LABELS } from '$lib/services/financeService';
-	import { weightChange, weightSeries } from '$lib/services/weightService';
+	import { weightChange, weightProgress, weightSeries } from '$lib/services/weightService';
 	import { ui } from '$lib/state/ui.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { telegram } from '$lib/telegram';
@@ -49,6 +49,7 @@
 	const weights = $derived(weightSeries(end, days));
 	const weightDelta = $derived(weightChange(end, days));
 	const latest = $derived(plannerStore.latestWeight);
+	const progress = $derived(weightProgress(end, days));
 
 	const habitRate = $derived(
 		habitRateByDay(plannerStore.habits, plannerStore.habitCompletions, end, days)
@@ -205,6 +206,35 @@
 			<div class="mt-4">
 				<LineChart values={weights} format={formatWeight} />
 			</div>
+
+			{#if progress}
+				<!--
+					Прогноз выдаётся только при движении к цели и достаточной
+					истории: дата, посчитанная по одному килограмму, читается
+					как обещание, которого никто не давал.
+				-->
+				<div class="mt-4 border-t border-line/70 pt-3 text-xs text-muted-foreground">
+					{#if progress.remainingKg <= 0.1 && progress.remainingKg >= -0.1}
+						<p>Цель {formatWeight(progress.goalKg)} кг достигнута.</p>
+					{:else}
+						<p>
+							До цели {formatWeight(progress.goalKg)} кг —
+							{formatWeight(Math.abs(progress.remainingKg))} кг
+							{progress.remainingKg > 0 ? 'вниз' : 'вверх'}.
+						</p>
+					{/if}
+
+					{#if progress.perWeekKg !== null && progress.perWeekKg !== 0}
+						<p class="mt-1">
+							Темп: {progress.perWeekKg > 0 ? '+' : '−'}{formatWeight(Math.abs(progress.perWeekKg))} кг
+							в неделю.
+							{#if progress.etaDate}
+								При нём цель — около {progress.etaDate}.
+							{/if}
+						</p>
+					{/if}
+				</div>
+			{/if}
 		{/if}
 	</GlassCard>
 

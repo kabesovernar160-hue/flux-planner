@@ -10,6 +10,7 @@
 		Drop,
 		ForkKnife,
 		PaperPlaneTilt,
+		Scales,
 		Sparkle,
 		Trash,
 		Wallet
@@ -21,11 +22,13 @@
 	import { syncQueue } from '$lib/db/syncQueue.svelte';
 	import { session } from '$lib/state/session.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
+	import { setWeightGoal } from '$lib/services/weightService';
+	import { ui } from '$lib/state/ui.svelte';
 	import { telegram } from '$lib/telegram';
 	import { nowIso, resolveTimeZone } from '$lib/utils/date';
 	import { buildExport, exportFileName, toFoodCsv } from '$lib/utils/exportData';
 	import { GOAL_LABELS } from '$lib/utils/goals';
-	import { formatNumber } from '$lib/utils/format';
+	import { formatNumber, formatWeight } from '$lib/utils/format';
 
 	const settings = $derived(plannerStore.doc.settings);
 	const nutrition = $derived(plannerStore.todayNutrition);
@@ -54,6 +57,28 @@
 	function setCalories(value: number) {
 		plannerStore.updateSettings({ calorieGoal: value });
 		plannerStore.setCalorieGoal(value);
+	}
+
+	/**
+	 * Цель по весу вводится с десятыми, а не целым числом.
+	 *
+	 * Общий commit() округляет до целого — для калорий это правильно,
+	 * для веса нет: между 75 и 75,5 килограммами разница, ради которой
+	 * цель и ставят. Пустое поле снимает цель совсем.
+	 */
+	function commitWeightGoal(raw: string) {
+		const text = raw.trim().replace(',', '.');
+
+		if (text === '') {
+			setWeightGoal(null);
+			return;
+		}
+
+		const parsed = Number(text);
+		if (!Number.isFinite(parsed)) return;
+
+		if (setWeightGoal(parsed).ok) telegram.haptic.impact('light');
+		else telegram.haptic.notification('error');
 	}
 
 	function setMacro(key: 'proteinGoal' | 'fatGoal' | 'carbsGoal', value: number) {
@@ -277,6 +302,57 @@
 				setMacro('carbsGoal', value)
 			)}
 		</div>
+	</GlassCard>
+
+	<GlassCard>
+		<h2 class="mb-1 flex items-center gap-2 text-sm font-medium">
+			<Scales size={15} weight="light" class="text-lavender" />
+			Вес
+		</h2>
+		<p class="mb-2 text-xs leading-relaxed text-muted-foreground">
+			{#if plannerStore.latestWeight}
+				Последнее взвешивание: {formatWeight(plannerStore.latestWeight.weightKg)} кг,
+				{plannerStore.latestWeight.date}.
+			{:else}
+				Взвешиваний пока нет. Цели по питанию считаются от веса, и его стоит отмечать.
+			{/if}
+		</p>
+
+		<!--
+			Цель необязательна: дневник полезен и без неё, а навязанная цифра
+			превращает его в укор. Пустое поле снимает цель.
+		-->
+		<div class="flex items-center gap-3 py-1.5">
+			<label for="goal-weight" class="min-w-0 flex-1 text-sm">Цель</label>
+			<input
+				id="goal-weight"
+				value={plannerStore.doc.settings.weightGoalKg
+					? formatWeight(plannerStore.doc.settings.weightGoalKg)
+					: ''}
+				onblur={(event) => commitWeightGoal(event.currentTarget.value)}
+				onkeydown={(event) => {
+					if (event.key === 'Enter') event.currentTarget.blur();
+				}}
+				type="text"
+				inputmode="decimal"
+				autocomplete="off"
+				placeholder="нет"
+				class="tabular w-24 rounded-xl border border-line-strong bg-white/[0.03] px-3 py-2
+				       text-right text-sm transition-colors duration-300 ease-flux outline-none
+				       placeholder:text-muted-foreground/50 focus:border-lavender"
+			/>
+			<span class="w-10 shrink-0 text-xs text-muted-foreground">кг</span>
+		</div>
+
+		<button
+			type="button"
+			onclick={() => ui.openWeightSheet()}
+			class="mt-2 w-full rounded-full border border-line-strong py-2.5 text-xs font-medium
+			       transition-[transform,border-color] duration-500 ease-flux
+			       hover:border-lavender/60 active:scale-[0.98]"
+		>
+			Записать вес
+		</button>
 	</GlassCard>
 
 	<GlassCard>
