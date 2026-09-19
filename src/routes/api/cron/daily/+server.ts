@@ -5,6 +5,7 @@ import { getReadyDb } from '$lib/server/db/client';
 import { createRepositories } from '$lib/server/db/repositories';
 import { apiError, logServerError } from '$lib/server/errors';
 import {
+	runBudgetWarnings,
 	runDailyNotifications,
 	runHabitReminders
 } from '$lib/server/notifications/notificationService';
@@ -41,8 +42,10 @@ function secretMatches(provided: string, expected: string): boolean {
  * можно успеть. Один эндпоинт с параметром, а не два: рассылка, секрет
  * и уборка у них общие.
  */
-function readKind(value: string | null): 'summary' | 'habits' {
-	return value === 'habits' ? 'habits' : 'summary';
+function readKind(value: string | null): 'summary' | 'habits' | 'budget' {
+	if (value === 'habits') return 'habits';
+	if (value === 'budget') return 'budget';
+	return 'summary';
 }
 
 /**
@@ -82,7 +85,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		const result =
 			kind === 'habits'
 				? await runHabitReminders(db, users, { localHour })
-				: await runDailyNotifications(db, users, { localHour });
+				: kind === 'budget'
+					? await runBudgetWarnings(db, users, { localHour })
+					: await runDailyNotifications(db, users, { localHour });
 
 		// Попутная уборка: таблица счётчиков иначе копит по строке
 		// на каждый новый ключ и никогда не уменьшается.

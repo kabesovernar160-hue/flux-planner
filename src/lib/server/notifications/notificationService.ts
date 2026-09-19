@@ -316,3 +316,18 @@ export async function runHabitReminders(
 ): Promise<RunResult> {
 	return runForUsers(users, options, (user) => sendHabitReminder(db, user));
 }
+
+/**
+ * Предупреждение о подходящем лимите трат.
+ *
+ * Молчит, пока израсходовано меньше девяти десятых: сообщение «потрачено
+ * 300 из 3000» — это не предупреждение, а шум, от которого отключают
+ * уведомления целиком.
+ */
+export async function runBudgetWarnings(
+	db: Db,
+	users: UserRow[],
+	options: RunOptions = {}
+): Promise<RunResult> {
+	return runForUsers(users, options, (user) => sendBudgetWarning(db, user));
+}
