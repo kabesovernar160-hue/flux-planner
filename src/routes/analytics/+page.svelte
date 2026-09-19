@@ -11,6 +11,7 @@
 		averageMacros,
 		averageOfActive,
 		caloriesByDay,
+		caloriesByMeal,
 		expensesByCategory,
 		habitRateByDay,
 		incomeByDay,
@@ -34,6 +35,9 @@
 
 	const calories = $derived(caloriesByDay(plannerStore.foodEntries, end, days));
 	const macros = $derived(averageMacros(plannerStore.foodEntries, end, days));
+	const meals = $derived(
+		caloriesByMeal(plannerStore.foodEntries, end, days, plannerStore.doc.user.timezone)
+	);
 	const spending = $derived(spendingByDay(plannerStore.financeEntries, end, days));
 	const categories = $derived(expensesByCategory(plannerStore.financeEntries, end, days));
 	const income = $derived(incomeByDay(plannerStore.financeEntries, end, days));
@@ -111,6 +115,37 @@
 				{/each}
 			</div>
 			<p class="mt-2 text-[11px] text-muted-foreground">Средние значения за день с записями.</p>
+
+			{#if meals.length > 1}
+				<!--
+					Разбивка по приёмам отвечает на вопрос, который сумма за день
+					не берёт: перебор набегает за ужином или его добирают перекусами.
+				-->
+				<div class="mt-4 border-t border-line/70 pt-3">
+					<p class="mb-2 text-xs text-muted-foreground">Откуда калории</p>
+					<ul class="flex flex-col gap-2">
+						{#each meals as meal (meal.meal)}
+							<li>
+								<div class="mb-1 flex items-baseline gap-2">
+									<span class="min-w-0 flex-1 truncate text-xs">{meal.label}</span>
+									<span class="tabular text-xs text-muted-foreground">
+										{Math.round(meal.share * 100)}%
+									</span>
+									<span class="tabular text-xs font-medium">
+										{formatNumber(Math.round(meal.calories))} ккал
+									</span>
+								</div>
+								<div class="h-1 overflow-hidden rounded-full bg-line">
+									<div
+										class="h-full rounded-full bg-lavender"
+										style="width: {Math.round(meal.share * 100)}%"
+									></div>
+								</div>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
 		{/if}
 	</GlassCard>
 

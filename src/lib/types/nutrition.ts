@@ -1,3 +1,4 @@
+import type { MealType } from '$lib/utils/meals';
 import type { SyncMeta } from './sync';
 
 /** Источник записи о еде: ручной ввод или распознавание по фото. */
@@ -14,6 +15,14 @@ export interface FoodEntry {
 	fat: number;
 	carbs: number;
 	source: FoodSource;
+	/**
+	 * Приём пищи.
+	 *
+	 * Необязательный: у записей, сделанных до появления приёмов, его нет,
+	 * и переписывать их задним числом нельзя — это выдуманные данные.
+	 * Для показа приём таким записям подбирается по времени создания.
+	 */
+	meal?: MealType;
 	createdAt: string;
 	updatedAt: string;
 	/** Надгробие. Заполнено — запись удалена и не показывается. */

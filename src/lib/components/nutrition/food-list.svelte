@@ -6,6 +6,8 @@
 	import type { FoodEntry } from '$lib/types/nutrition';
 	import { telegram } from '$lib/telegram';
 	import { formatNumber } from '$lib/utils/format';
+	import { groupByMeal } from '$lib/utils/meals';
+	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 
 	type Props = {
 		entries: FoodEntry[];
@@ -22,6 +24,15 @@
 	 */
 	let editing = $state<FoodEntry | null>(null);
 
+	/**
+	 * Записи разложены по приёмам пищи.
+	 *
+	 * Плоский список из пятнадцати строк отвечает только на вопрос «сколько
+	 * всего», а человек смотрит в дневник, чтобы понять, где перебрал.
+	 * Пустые приёмы не показываются.
+	 */
+	const groups = $derived(groupByMeal(entries, plannerStore.doc.user.timezone));
+
 	function remove(entry: FoodEntry) {
 		telegram.haptic.impact('medium');
 		removeFood(entry.id);
@@ -31,51 +42,60 @@
 {#if entries.length === 0}
 	<p class="py-2 text-sm text-muted-foreground">{empty}</p>
 {:else}
-	<ul class="flex flex-col gap-1.5">
-		{#each entries as entry (entry.id)}
-			<li class="flex items-center gap-3 rounded-xl border border-line/70 bg-white/[0.02] p-3">
-				<div class="min-w-0 flex-1">
-					<p class="flex items-center gap-1.5 truncate text-sm font-medium">
-						{#if entry.source === 'ai'}
-							<!-- Помечаем оценку по фото: её точность иная, чем у введённой руками. -->
-							<Camera size={13} weight="light" class="shrink-0 text-muted-foreground" />
-						{/if}
-						{entry.name}
-					</p>
-					<p class="tabular mt-0.5 text-xs text-muted-foreground">
-						{formatNumber(entry.calories)} ккал
-						{#if entry.grams}· {formatNumber(entry.grams)} г{/if}
-						· Б {formatNumber(entry.protein)} · Ж {formatNumber(entry.fat)} · У {formatNumber(
-							entry.carbs
-						)}
-					</p>
-				</div>
+	{#each groups as group (group.meal)}
+		<div class="mt-3 mb-1.5 flex items-baseline gap-2 first:mt-0">
+			<h3 class="text-xs font-medium text-muted-foreground">{group.label}</h3>
+			<span class="tabular text-[11px] text-muted-foreground/70">
+				{formatNumber(group.calories)} ккал
+			</span>
+		</div>
 
-				<button
-					type="button"
-					onclick={() => {
-						telegram.haptic.impact('light');
-						editing = entry;
-					}}
-					aria-label="Изменить {entry.name}"
-					class="grid size-8 shrink-0 place-items-center rounded-full border border-line-strong
+		<ul class="flex flex-col gap-1.5">
+			{#each group.entries as entry (entry.id)}
+				<li class="flex items-center gap-3 rounded-xl border border-line/70 bg-white/[0.02] p-3">
+					<div class="min-w-0 flex-1">
+						<p class="flex items-center gap-1.5 truncate text-sm font-medium">
+							{#if entry.source === 'ai'}
+								<!-- Помечаем оценку по фото: её точность иная, чем у введённой руками. -->
+								<Camera size={13} weight="light" class="shrink-0 text-muted-foreground" />
+							{/if}
+							{entry.name}
+						</p>
+						<p class="tabular mt-0.5 text-xs text-muted-foreground">
+							{formatNumber(entry.calories)} ккал
+							{#if entry.grams}· {formatNumber(entry.grams)} г{/if}
+							· Б {formatNumber(entry.protein)} · Ж {formatNumber(entry.fat)} · У {formatNumber(
+								entry.carbs
+							)}
+						</p>
+					</div>
+
+					<button
+						type="button"
+						onclick={() => {
+							telegram.haptic.impact('light');
+							editing = entry;
+						}}
+						aria-label="Изменить {entry.name}"
+						class="grid size-8 shrink-0 place-items-center rounded-full border border-line-strong
 					       transition-transform duration-500 ease-flux active:scale-90"
-				>
-					<PencilSimple size={13} weight="light" />
-				</button>
+					>
+						<PencilSimple size={13} weight="light" />
+					</button>
 
-				<button
-					type="button"
-					onclick={() => remove(entry)}
-					aria-label="Удалить {entry.name}"
-					class="grid size-8 shrink-0 place-items-center rounded-full border border-line-strong
+					<button
+						type="button"
+						onclick={() => remove(entry)}
+						aria-label="Удалить {entry.name}"
+						class="grid size-8 shrink-0 place-items-center rounded-full border border-line-strong
 					       text-muted-foreground transition-transform duration-500 ease-flux active:scale-90"
-				>
-					<Trash size={13} weight="light" />
-				</button>
-			</li>
-		{/each}
-	</ul>
+					>
+						<Trash size={13} weight="light" />
+					</button>
+				</li>
+			{/each}
+		</ul>
+	{/each}
 {/if}
 
 <Sheet open={editing !== null} title="Изменить запись" onclose={() => (editing = null)}>

@@ -3,6 +3,7 @@ import type { Habit, HabitCompletion } from '$lib/types/habit';
 import type { FoodEntry } from '$lib/types/nutrition';
 import type { PlanItem } from '$lib/types/plan';
 import { addDays, type DateKey } from './date';
+import { MEAL_LABELS, MEALS, resolveMeal, type MealType } from './meals';
 import { scheduledHabits } from './habitFrequency';
 
 /**
@@ -277,4 +278,56 @@ export function monthGrid(anchor: DateKey): { date: DateKey; inMonth: boolean }[
 	}
 
 	return cells;
+}
+
+export interface MealShare {
+	meal: MealType;
+	label: string;
+	/** Всего калорий за период. */
+	calories: number;
+	/** Доля от всех калорий периода, 0…1. */
+	share: number;
+}
+
+/**
+ * Калории по приёмам пищи за период.
+ *
+ * Отвечает на вопрос, который плоская сумма за день не берёт: перебор
+ * набегает за ужином или его добирают перекусами. Приём у записей, сделанных
+ * до его появления, определяется по времени создания — как и в дневнике,
+ * чтобы цифры на двух экранах сходились.
+ *
+ * Пустые приёмы не возвращаются: строка «Завтрак — 0» не наблюдение,
+ * а шум в списке.
+ */
+export function caloriesByMeal(
+	entries: FoodEntry[],
+	end: DateKey,
+	days: number,
+	timeZone?: string
+): MealShare[] {
+	const range = new Set(dateRange(end, days));
+	const totals = new Map<MealType, number>();
+
+	for (const entry of entries) {
+		if (!range.has(entry.date)) continue;
+
+		const meal = resolveMeal(entry, timeZone);
+		const calories = Number.isFinite(entry.calories) ? entry.calories : 0;
+		totals.set(meal, (totals.get(meal) ?? 0) + calories);
+	}
+
+	const overall = [...totals.values()].reduce((sum, value) => sum + value, 0);
+
+	return MEALS.filter((meal) => (totals.get(meal) ?? 0) > 0).map((meal) => {
+		const calories = totals.get(meal) ?? 0;
+		return {
+			meal,
+			label: MEAL_LABELS[meal],
+			calories,
+			// Деление на ноль исключено фильтром выше: сюда попадают только
+			// приёмы с ненулевыми калориями, а значит и общая сумма не ноль.
+			share: calories / overall
+		};
+	});
 }

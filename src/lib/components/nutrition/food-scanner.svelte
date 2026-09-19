@@ -4,6 +4,8 @@
 	import FoodForm from './food-form.svelte';
 	import ScanItemCard from './scan-item-card.svelte';
 	import { addScannedFood } from '$lib/services/nutritionService';
+	import MealPicker from './meal-picker.svelte';
+	import { mealForTime, type MealType } from '$lib/utils/meals';
 	import { billing } from '$lib/state/billing.svelte';
 	import { session } from '$lib/state/session.svelte';
 	import type { FoodScanItem, FoodScanResult } from '$lib/types/nutrition';
@@ -233,10 +235,19 @@
 		}
 	}
 
+	/**
+	 * Приём пищи для всего блюда.
+	 *
+	 * Предлагается по времени съёмки: фотографируют еду обычно тогда, когда
+	 * её едят. Один приём на все компоненты — курица, рис и соус с одного
+	 * снимка съедены за один раз.
+	 */
+	let meal = $state<MealType>(mealForTime());
+
 	function confirm() {
 		if (items.length === 0) return;
 
-		const result = addScannedFood($state.snapshot(items));
+		const result = addScannedFood($state.snapshot(items), undefined, meal);
 
 		if (!result.ok) {
 			fail(Object.values(result.errors)[0] ?? 'Не удалось сохранить записи');
@@ -502,6 +513,10 @@
 				<p class="mt-3 text-xs leading-relaxed text-muted-foreground">
 					{CONFIDENCE_HINTS[level]}
 				</p>
+
+				<div class="mt-4">
+					<MealPicker value={meal} onpick={(next) => (meal = next)} />
+				</div>
 
 				<div class="mt-5 rounded-card border border-line/70 bg-white/[0.02] p-4">
 					<p class="tabular text-4xl leading-none font-semibold tracking-tight">

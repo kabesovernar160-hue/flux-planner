@@ -37,6 +37,7 @@ import {
 } from '$lib/server/telegram/botMessages';
 import type { FoodScanResult } from '$lib/types/nutrition';
 import { getToday, nowIso } from '$lib/utils/date';
+import { mealForTime } from '$lib/utils/meals';
 import { createId } from '$lib/utils/id';
 import type { RequestHandler } from './$types';
 
@@ -137,6 +138,10 @@ async function saveScan(
 ): Promise<void> {
 	const timestamp = nowIso();
 	const date = getToday(timezone);
+	// Приём пищи по времени в поясе человека: фотографируют еду обычно тогда,
+	// когда её едят. Разложение по приёмам должно работать и для записей
+	// из чата, иначе дневник у бота и у приложения выглядит по-разному.
+	const meal = mealForTime(new Date(), timezone);
 
 	// Каждый компонент — отдельная запись, как и в приложении: модель данных
 	// у бота и у Mini App обязана быть одна, иначе дневник разъедется.
@@ -156,7 +161,8 @@ async function saveScan(
 					protein: item.protein,
 					fat: item.fat,
 					carbs: item.carbs,
-					source: 'ai'
+					source: 'ai',
+					meal
 				}) as never
 		)
 	);
@@ -513,7 +519,8 @@ async function handleMessage(message: TelegramMessage, chatId: number, fromId: n
 				protein: 0,
 				fat: 0,
 				carbs: 0,
-				source: 'manual'
+				source: 'manual',
+				meal: mealForTime(new Date(), timezone)
 			} as never
 		]);
 

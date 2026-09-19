@@ -1,6 +1,7 @@
 import type { ParsedIntent } from '../ai/intentSchema';
 import type { Repositories } from '../db/repositories';
 import { addDays, getToday, nowIso, type DateKey } from '$lib/utils/date';
+import { mealForTime } from '$lib/utils/meals';
 import { createId } from '$lib/utils/id';
 
 /**
@@ -73,7 +74,11 @@ export async function applyIntent(
 				protein: 0,
 				fat: 0,
 				carbs: 0,
-				source: 'manual'
+				source: 'manual',
+				// Приём берётся по времени сообщения: «съел овсянку» в девять
+				// утра — завтрак. Для записи на другой день это всё равно
+				// лучшая догадка, чем её отсутствие.
+				meal: mealForTime(now, context.timezone)
 			} as never
 		]);
 

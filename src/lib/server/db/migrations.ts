@@ -209,5 +209,12 @@ export const MIGRATIONS: Migration[] = [
 			`CREATE INDEX IF NOT EXISTS plan_user_updated_idx ON plan_items (user_id, updated_at)`,
 			`CREATE INDEX IF NOT EXISTS plan_user_date_idx ON plan_items (user_id, date)`
 		]
+	},
+	{
+		// Приём пищи у записи. Колонка добавляется пустой: у всего, что уже
+		// записано, приёма нет, и подставлять его задним числом нельзя —
+		// в интерфейсе такие записи раскладываются по времени создания.
+		name: '0005_food_meal',
+		statements: [`ALTER TABLE food_entries ADD COLUMN meal TEXT`]
 	}
 ];

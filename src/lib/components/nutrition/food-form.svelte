@@ -7,9 +7,11 @@
 		type FoodDraft
 	} from '$lib/services/nutritionService';
 	import FoodPicker from './food-picker.svelte';
+	import MealPicker from './meal-picker.svelte';
 	import type { FoodEntry, FoodReference } from '$lib/types/nutrition';
 	import { telegram } from '$lib/telegram';
 	import { nutritionForGrams } from '$lib/utils/foodScan';
+	import { mealForTime, resolveMeal, type MealType } from '$lib/utils/meals';
 
 	type Props = {
 		/** Запись для правки. Без неё форма создаёт новую. */
@@ -46,6 +48,15 @@
 	let protein = $state(initial ? String(initial.protein) : '');
 	let fat = $state(initial ? String(initial.fat) : '');
 	let carbs = $state(initial ? String(initial.carbs) : '');
+
+	/**
+	 * Приём пищи.
+	 *
+	 * У новой записи предлагается по времени суток, у старой — тот, в котором
+	 * она сейчас показана: у записей, сделанных до появления приёмов, поля нет,
+	 * и в форме должно стоять то же, что человек видит в списке.
+	 */
+	let meal = $state<MealType>(initial ? resolveMeal(initial) : mealForTime());
 
 	let errors = $state<Record<string, string>>({});
 	let submitted = $state(false);
@@ -116,7 +127,8 @@
 			calories: toNumber(calories),
 			protein: toNumber(protein),
 			fat: toNumber(fat),
-			carbs: toNumber(carbs)
+			carbs: toNumber(carbs),
+			meal
 		};
 	}
 
@@ -202,6 +214,10 @@
 	{/if}
 
 	{@render field('name', 'Название', name, (next) => (name = next), 'Овсянка с ягодами', false)}
+
+	<div class="mt-3.5">
+		<MealPicker value={meal} onpick={(next) => (meal = next)} />
+	</div>
 
 	<div class="mt-3.5 grid grid-cols-2 gap-3">
 		{@render field(

@@ -65,7 +65,9 @@ export const foodEntries = sqliteTable(
 		protein: real('protein').notNull(),
 		fat: real('fat').notNull(),
 		carbs: real('carbs').notNull(),
-		source: text('source').notNull()
+		source: text('source').notNull(),
+		/** Приём пищи. Пусто у записей, созданных до его появления. */
+		meal: text('meal')
 	},
 	(table) => [
 		index('food_user_updated_idx').on(table.userId, table.updatedAt),

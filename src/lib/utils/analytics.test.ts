@@ -7,6 +7,7 @@ import {
 	averageMacros,
 	averageOfActive,
 	caloriesByDay,
+	caloriesByMeal,
 	dateRange,
 	dayActivity,
 	expensesByCategory,
@@ -264,5 +265,55 @@ describe('monthGrid', () => {
 
 		expect(cells.filter((cell) => cell.inMonth)).toHaveLength(29);
 		expect(cells.length % 7).toBe(0);
+	});
+});
+
+describe('caloriesByMeal', () => {
+	const meal = (id: string, date: string, mealType: string | undefined, calories: number) =>
+		({
+			id,
+			date,
+			name: 'Еда',
+			calories,
+			protein: 0,
+			fat: 0,
+			carbs: 0,
+			source: 'manual',
+			meal: mealType,
+			createdAt: `${date}T08:00:00.000Z`,
+			updatedAt: `${date}T08:00:00.000Z`
+		}) as never;
+
+	it('считает калории и доли по приёмам', () => {
+		const result = caloriesByMeal(
+			[
+				meal('1', '2026-01-15', 'breakfast', 300),
+				meal('2', '2026-01-15', 'dinner', 700),
+				meal('3', '2026-01-14', 'dinner', 500)
+			],
+			'2026-01-15',
+			7,
+			'UTC'
+		);
+
+		expect(result.map((item) => item.meal)).toEqual(['breakfast', 'dinner']);
+		expect(result[1].calories).toBe(1200);
+		expect(result[0].share).toBeCloseTo(0.2);
+	});
+
+	it('за пределы периода не выходит', () => {
+		const result = caloriesByMeal(
+			[meal('1', '2026-01-01', 'lunch', 900), meal('2', '2026-01-15', 'lunch', 100)],
+			'2026-01-15',
+			7,
+			'UTC'
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0].calories).toBe(100);
+	});
+
+	it('пустые приёмы не возвращает', () => {
+		expect(caloriesByMeal([], '2026-01-15', 7, 'UTC')).toEqual([]);
 	});
 });

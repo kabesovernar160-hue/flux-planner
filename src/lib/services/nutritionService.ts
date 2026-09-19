@@ -1,6 +1,7 @@
 import { plannerStore, type FoodEntryInput } from '$lib/stores/plannerStore.svelte';
 import type { FoodEntry, FoodScanItem } from '$lib/types/nutrition';
 import type { DateKey } from '$lib/utils/date';
+import { isMealType, mealForTime, type MealType } from '$lib/utils/meals';
 import { calculateNutritionSummary, type NutritionSummary } from '$lib/utils/nutrition';
 
 /** Стандартный стакан. */
@@ -22,6 +23,8 @@ export type FoodDraft = {
 	fat: number;
 	carbs: number;
 	source?: FoodEntry['source'];
+	/** Приём пищи. Не указан — подбирается по времени суток. */
+	meal?: MealType;
 	date?: DateKey;
 };
 
@@ -83,6 +86,10 @@ export function addFood(draft: FoodDraft): ServiceResult<FoodEntry> {
 		fat: draft.fat,
 		carbs: draft.carbs,
 		source: draft.source ?? 'manual',
+		// Приём подставляется по времени: спрашивать «завтрак или обед?»
+		// в девять утра — лишний вопрос с очевидным ответом. Поправить
+		// его можно в той же форме.
+		meal: draft.meal ?? mealForTime(),
 		date: draft.date
 	};
 
@@ -105,9 +112,14 @@ export function addFood(draft: FoodDraft): ServiceResult<FoodEntry> {
  */
 export function addScannedFood(
 	items: readonly FoodScanItem[],
-	date?: DateKey
+	date?: DateKey,
+	meal?: MealType
 ): ServiceResult<FoodEntry[]> {
 	if (items.length === 0) return { ok: false, errors: { items: 'Нечего добавлять' } };
+
+	// Приём один на всё блюдо: курица, рис и соус с одной фотографии
+	// съедены за один раз, и раскладывать их по разным приёмам нелепо.
+	const resolvedMeal = meal ?? mealForTime();
 
 	const drafts: FoodDraft[] = items.map((item) => ({
 		name: item.name,
@@ -117,6 +129,7 @@ export function addScannedFood(
 		fat: item.fat,
 		carbs: item.carbs,
 		source: 'ai',
+		meal: resolvedMeal,
 		date
 	}));
 
@@ -137,6 +150,7 @@ export function addScannedFood(
 			fat: draft.fat,
 			carbs: draft.carbs,
 			source: 'ai',
+			meal: draft.meal,
 			date: draft.date
 		})
 	);
@@ -156,7 +170,8 @@ export function updateFood(id: string, patch: Partial<FoodDraft>): ServiceResult
 		calories: patch.calories ?? existing.calories,
 		protein: patch.protein ?? existing.protein,
 		fat: patch.fat ?? existing.fat,
-		carbs: patch.carbs ?? existing.carbs
+		carbs: patch.carbs ?? existing.carbs,
+		meal: isMealType(patch.meal) ? patch.meal : existing.meal
 	};
 
 	const errors = validateFoodDraft(merged);

@@ -3,6 +3,7 @@ import { clearAllData } from '$lib/db/localDb';
 import { resetDriverForTests } from '$lib/db/storage';
 import { plannerStore } from '$lib/stores/plannerStore.svelte';
 import type { FoodScanItem } from '$lib/types/nutrition';
+import { mealForTime } from '$lib/utils/meals';
 import {
 	addFood,
 	addScannedFood,
@@ -247,5 +248,73 @@ describe('getNutritionSummary', () => {
 		expect(summary.totals.calories).toBe(0);
 		expect(Number.isFinite(summary.progress.calories)).toBe(true);
 		expect(summary.progress.calories).toBe(0);
+	});
+});
+
+describe('приёмы пищи', () => {
+	const scanItem = (overrides: Partial<FoodScanItem> = {}): FoodScanItem => ({
+		id: 'scan-1',
+		name: 'Куриная грудка',
+		estimatedGrams: 150,
+		calories: 248,
+		protein: 46.5,
+		fat: 5.4,
+		carbs: 0,
+		per100g: { calories: 165, protein: 31, fat: 3.6, carbs: 0 },
+		nutritionSource: 'database',
+		confidence: 0.85,
+		...overrides
+	});
+
+	it('новой записи приём подставляется по времени суток', () => {
+		const result = addFood(draft());
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		// Спрашивать «завтрак или обед?» в девять утра — лишний вопрос
+		// с очевидным ответом.
+		expect(result.value.meal).toBe(mealForTime());
+	});
+
+	it('явно выбранный приём не переписывается', () => {
+		const result = addFood(draft({ meal: 'snack' }));
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.value.meal).toBe('snack');
+	});
+
+	it('распознанное блюдо целиком попадает в один приём', () => {
+		// Курица, рис и соус с одного снимка съедены за один раз:
+		// раскладывать их по разным приёмам нелепо.
+		const result = addScannedFood(
+			[scanItem({ id: 's1', name: 'Курица' }), scanItem({ id: 's2', name: 'Рис' })],
+			undefined,
+			'dinner'
+		);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.value.map((entry) => entry.meal)).toEqual(['dinner', 'dinner']);
+	});
+
+	it('приём можно перенести правкой записи', () => {
+		const created = addFood(draft({ meal: 'lunch' }));
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		expect(updateFood(created.value.id, { meal: 'dinner' }).ok).toBe(true);
+		expect(getFoodsForDate(plannerStore.currentDate)[0].meal).toBe('dinner');
+	});
+
+	it('правка других полей приём не теряет', () => {
+		const created = addFood(draft({ meal: 'lunch' }));
+		expect(created.ok).toBe(true);
+		if (!created.ok) return;
+
+		updateFood(created.value.id, { calories: 500 });
+
+		expect(getFoodsForDate(plannerStore.currentDate)[0].meal).toBe('lunch');
 	});
 });

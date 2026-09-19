@@ -37,6 +37,28 @@ export function formatDateKey(date: Date = new Date(), timeZone?: string): DateK
 	}
 }
 
+/**
+ * Час суток в часовом поясе пользователя, 0…23.
+ *
+ * Считается через Intl, а не через getHours(): у сервера свой пояс, и «утро»
+ * для человека в Иркутске не совпадает с утром процесса во Франкфурте.
+ */
+export function getHour(date: Date = new Date(), timeZone?: string): number {
+	try {
+		const formatted = new Intl.DateTimeFormat('en-GB', {
+			timeZone: resolveTimeZone(timeZone),
+			hour: '2-digit',
+			hourCycle: 'h23'
+		}).format(date);
+
+		const hour = Number.parseInt(formatted, 10);
+		return Number.isFinite(hour) ? hour : date.getUTCHours();
+	} catch {
+		// Невалидный пояс не должен ронять расчёт: UTC хуже, но работает.
+		return date.getUTCHours();
+	}
+}
+
 export function getToday(timeZone?: string): DateKey {
 	return formatDateKey(new Date(), timeZone);
 }
