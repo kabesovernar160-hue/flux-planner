@@ -331,3 +331,25 @@ export function caloriesByMeal(
 		};
 	});
 }
+
+/**
+ * Конец предыдущего периода такой же длины.
+ *
+ * «7 дней» без сравнения — число в вакууме: 1 800 ккал в среднем это много
+ * или мало, понятно только рядом с прошлой неделей.
+ */
+export function previousEnd(end: DateKey, days: number): DateKey {
+	return addDays(end, -Math.max(1, Math.floor(days)));
+}
+
+/**
+ * Относительное изменение, 0,12 — «на 12 % больше».
+ *
+ * null, когда сравнивать не с чем: от нуля процент не считается, и «рост
+ * на бесконечность» вместо честного «в прошлый период записей не было»
+ * выглядит как ошибка в приложении.
+ */
+export function changeShare(current: number, previous: number): number | null {
+	if (!Number.isFinite(current) || !Number.isFinite(previous) || previous <= 0) return null;
+	return (current - previous) / previous;
+}

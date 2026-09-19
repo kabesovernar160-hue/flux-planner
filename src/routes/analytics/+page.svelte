@@ -15,9 +15,11 @@
 		averageOfActive,
 		caloriesByDay,
 		caloriesByMeal,
+		changeShare,
 		expensesByCategory,
 		habitRateByDay,
 		incomeByDay,
+		previousEnd,
 		spendingByDay,
 		totalOf
 	} from '$lib/utils/analytics';
@@ -59,6 +61,44 @@
 	// дефицит, которого не было.
 	const avgCalories = $derived(averageOfActive(calories));
 	const trackedDays = $derived(calories.filter((day) => day.value > 0).length);
+
+	/**
+	 * Прошлый период такой же длины.
+	 *
+	 * «1 800 ккал в среднем» — число в вакууме: много это или мало, понятно
+	 * только рядом с прошлой неделей. Считается из тех же записей, лишних
+	 * запросов не требует.
+	 */
+	const before = $derived(previousEnd(end, days));
+
+	const caloriesTrend = $derived(
+		changeShare(avgCalories, averageOfActive(caloriesByDay(plannerStore.foodEntries, before, days)))
+	);
+
+	const spendingTrend = $derived(
+		changeShare(
+			totalOf(spending),
+			totalOf(spendingByDay(plannerStore.financeEntries, before, days))
+		)
+	);
+
+	/** Ниже этого порога разница — шум, а не изменение. */
+	const NOISE = 0.03;
+
+	function trendText(change: number | null): string | null {
+		if (change === null) return null;
+		if (Math.abs(change) < NOISE) return `Столько же, сколько в прошлые ${days} дней.`;
+
+		// Рост больше чем вдвое читается разами, а не процентами: «на 464 %»
+		// приходится переводить в уме, «в 5,6 раза» — нет.
+		if (change >= 1) {
+			const times = (1 + change).toFixed(1).replace('.', ',');
+			return `В ${times} раза больше, чем в прошлые ${days} дней.`;
+		}
+
+		const percent = Math.round(Math.abs(change) * 100);
+		return `На ${percent} % ${change > 0 ? 'больше' : 'меньше'}, чем в прошлые ${days} дней.`;
+	}
 
 	const avgSpending = $derived(average(spending));
 	const totalSpending = $derived(totalOf(spending));
@@ -108,6 +148,9 @@
 			</p>
 			<p class="mt-1 text-xs text-muted-foreground">
 				Считается по дням с записями, их {trackedDays} из {days}.
+				{#if trendText(caloriesTrend)}
+					<span class="text-foreground/70">{trendText(caloriesTrend)}</span>
+				{/if}
 			</p>
 
 			<div class="mt-4">
@@ -292,6 +335,9 @@
 			</p>
 			<p class="mt-1 text-xs text-muted-foreground">
 				В среднем {money(Math.round(avgSpending))} в день.
+				{#if trendText(spendingTrend)}
+					<span class="text-foreground/70">{trendText(spendingTrend)}</span>
+				{/if}
 			</p>
 
 			<div class="mt-4">

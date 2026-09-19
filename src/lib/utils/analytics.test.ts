@@ -8,12 +8,14 @@ import {
 	averageOfActive,
 	caloriesByDay,
 	caloriesByMeal,
+	changeShare,
 	dateRange,
 	dayActivity,
 	expensesByCategory,
 	habitRateByDay,
 	incomeByDay,
 	monthGrid,
+	previousEnd,
 	spendingByDay,
 	totalOf
 } from './analytics';
@@ -315,5 +317,23 @@ describe('caloriesByMeal', () => {
 
 	it('пустые приёмы не возвращает', () => {
 		expect(caloriesByMeal([], '2026-01-15', 7, 'UTC')).toEqual([]);
+	});
+});
+
+describe('сравнение периодов', () => {
+	it('предыдущий период заканчивается ровно перед текущим', () => {
+		expect(previousEnd('2026-01-15', 7)).toBe('2026-01-08');
+	});
+
+	it('считает относительное изменение', () => {
+		expect(changeShare(112, 100)).toBeCloseTo(0.12);
+		expect(changeShare(88, 100)).toBeCloseTo(-0.12);
+	});
+
+	it('от нуля процент не считает', () => {
+		// «Рост на бесконечность» вместо честного «сравнивать не с чем»
+		// выглядит как ошибка в приложении.
+		expect(changeShare(500, 0)).toBeNull();
+		expect(changeShare(500, Number.NaN)).toBeNull();
 	});
 });
