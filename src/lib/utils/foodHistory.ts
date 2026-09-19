@@ -102,3 +102,30 @@ export function frequentFoods(entries: FoodEntry[], options: FrequentOptions): F
 		.sort((a, b) => b.count - a.count || b.lastDate.localeCompare(a.lastDate))
 		.slice(0, Math.max(0, limit));
 }
+
+/**
+ * Поиск по своим записям.
+ *
+ * Справочник на полторы сотни продуктов закрывает основу, но не закрывает
+ * «протеиновый батончик такой-то» — а один раз записанное блюдо человек
+ * потом ищет именно по названию. Отдельного списка «мои продукты» для этого
+ * не нужно: история и есть такой список, только его не надо вести руками.
+ */
+export function searchHistory(
+	entries: FoodEntry[],
+	query: string,
+	options: { end: DateKey; days?: number; limit?: number } = { end: '9999-12-31' }
+): FrequentFood[] {
+	const needle = normalize(query);
+	if (needle.length < 2) return [];
+
+	const matched = entries.filter((entry) => normalize(entry.name).includes(needle));
+
+	// Глубина по умолчанию больше, чем у подсказок повтора: искать по
+	// названию человек идёт как раз за тем, что ел давно и не помнит цифр.
+	return frequentFoods(matched, {
+		end: options.end,
+		days: options.days ?? 365,
+		limit: options.limit ?? 4
+	});
+}

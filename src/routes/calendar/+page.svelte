@@ -1,17 +1,18 @@
 <script lang="ts">
-	import { CaretLeft, CaretRight, Trash } from 'phosphor-svelte';
+	import { CaretLeft, CaretRight, Scales, Trash } from 'phosphor-svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import HabitCheckbox from '$lib/components/ui/habit-checkbox.svelte';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import FoodList from '$lib/components/nutrition/food-list.svelte';
 	import { habitIcon } from '$lib/icons/habit-icons';
 	import { CATEGORY_LABELS, deleteTransaction } from '$lib/services/financeService';
+	import { removeWeight } from '$lib/services/weightService';
 	import { ui } from '$lib/state/ui.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { telegram } from '$lib/telegram';
 	import { dayActivity, monthGrid } from '$lib/utils/analytics';
 	import { getToday, type DateKey } from '$lib/utils/date';
-	import { formatMoney, formatNumber } from '$lib/utils/format';
+	import { formatMoney, formatNumber, formatWeight } from '$lib/utils/format';
 	import { scheduledHabits } from '$lib/utils/habitFrequency';
 
 	const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -43,6 +44,8 @@
 	const today = $derived(getToday(plannerStore.doc.user.timezone));
 
 	const cells = $derived(monthGrid(anchor));
+
+	const dayWeight = $derived(plannerStore.getWeight(selected));
 
 	const currency = $derived(plannerStore.doc.settings.currency);
 	const locale = $derived(plannerStore.doc.settings.locale);
@@ -249,6 +252,47 @@
 			</ul>
 		</GlassCard>
 	{/if}
+
+	<GlassCard>
+		<!--
+			Вес правится за любой день, как и всё остальное: опечатку во вчерашнем
+			взвешивании иначе нельзя было бы исправить вовсе — сегодняшняя запись
+			её не заменяет.
+		-->
+		<div class="mb-2 flex items-center gap-2">
+			<Scales size={15} weight="light" class="text-lavender" />
+			<h2 class="flex-1 text-sm font-medium">Вес</h2>
+			{#if dayWeight}
+				<span class="tabular text-sm font-medium">{formatWeight(dayWeight.weightKg)} кг</span>
+			{/if}
+		</div>
+
+		<div class="flex gap-2">
+			<button
+				type="button"
+				onclick={() => ui.openWeightSheet()}
+				class="flex-1 rounded-full border border-line-strong py-2.5 text-xs font-medium
+				       transition-[transform,border-color] duration-500 ease-flux
+				       hover:border-lavender/60 active:scale-[0.98]"
+			>
+				{dayWeight ? 'Изменить' : 'Записать вес'}
+			</button>
+			{#if dayWeight}
+				<button
+					type="button"
+					onclick={() => {
+						telegram.haptic.impact('medium');
+						removeWeight(selected);
+					}}
+					aria-label="Удалить взвешивание"
+					class="grid size-10 shrink-0 place-items-center rounded-full border border-line-strong
+					       text-muted-foreground transition-transform duration-500 ease-flux active:scale-90"
+				>
+					<Trash size={13} weight="light" />
+				</button>
+			{/if}
+		</div>
+	</GlassCard>
 
 	<GlassCard>
 		<h2 class="mb-3 text-sm font-medium">Еда</h2>

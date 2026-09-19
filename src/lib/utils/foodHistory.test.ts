@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FoodEntry } from '$lib/types/nutrition';
-import { frequentFoods } from './foodHistory';
+import { frequentFoods, searchHistory } from './foodHistory';
 
 const entry = (overrides: Partial<FoodEntry> & { date: string; name: string }): FoodEntry => ({
 	id: `${overrides.date}-${overrides.name}`,
@@ -93,5 +93,39 @@ describe('frequentFoods', () => {
 
 	it('на пустой истории отдаёт пустой список', () => {
 		expect(frequentFoods([], { end: '2026-01-15' })).toEqual([]);
+	});
+});
+
+describe('searchHistory', () => {
+	const entries = [
+		entry({ date: '2025-03-10', name: 'Протеиновый батончик', calories: 210 }),
+		entry({ date: '2026-01-14', name: 'Овсянка', calories: 320 }),
+		entry({ date: '2026-01-14', name: 'Борщ мамин', calories: 450 })
+	];
+
+	it('находит своё блюдо по части названия', () => {
+		// Справочник на полторы сотни строк не знает «борщ мамин»,
+		// а человек ищет именно его.
+		const result = searchHistory(entries, 'борщ', { end: '2026-01-15' });
+
+		expect(result.map((food) => food.name)).toEqual(['Борщ мамин']);
+		expect(result[0].calories).toBe(450);
+	});
+
+	it('не ищет по одной букве', () => {
+		// Иначе на первом же символе выпадает половина истории.
+		expect(searchHistory(entries, 'б', { end: '2026-01-15' })).toEqual([]);
+	});
+
+	it('заглядывает дальше, чем подсказки повтора', () => {
+		// За названием в поиск идут как раз тогда, когда ели давно
+		// и не помнят цифр.
+		const result = searchHistory(entries, 'батончик', { end: '2026-01-15' });
+
+		expect(result).toHaveLength(1);
+	});
+
+	it('на пустой запрос ничего не отдаёт', () => {
+		expect(searchHistory(entries, '   ', { end: '2026-01-15' })).toEqual([]);
 	});
 });

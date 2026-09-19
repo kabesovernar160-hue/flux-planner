@@ -285,7 +285,7 @@
 			а подстановка чужих значений поверх правки сбивала бы с толку.
 		-->
 		<div class="mb-4">
-			<FoodPicker onpick={pickReference} />
+			<FoodPicker onpick={pickReference} onrepeat={repeat} />
 		</div>
 	{/if}
 
