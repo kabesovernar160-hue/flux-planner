@@ -300,18 +300,29 @@ interface NutritionProvider {
 
 ## Продакшен
 
+На своём сервере нужен только Docker: приложение и Caddy поднимаются одной
+командой, сертификат Let's Encrypt Caddy получает и продлевает сам.
+
 ```bash
-docker build -t flux-planner .
-docker run -d -p 3000:3000 --env-file .env flux-planner
+cp .env.example .env   # заполнить, включая DOMAIN и ACME_EMAIL
+docker compose up -d --build
+```
+
+Затем — вебхук и профиль бота прямо из контейнера:
+
+```bash
+docker compose exec app node scripts/set-webhook.ts
+docker compose exec app node scripts/bot-setup.ts
 ```
 
 Без Docker — `npm ci && npm run build && ORIGIN=https://домен node build`.
 
 Конфигурация проверяется при старте: приложение либо поднимается с рабочими
 настройками, либо не поднимается и говорит, чего не хватает. База — libSQL:
-локально файл, на хостинге удалённая; схема накатывается миграциями
-автоматически. Живость — `GET /api/health`. Подробности и резервные копии:
-[docs/deployment.md](docs/deployment.md).
+локально файл, на сервере файл на постоянном томе, на хостинге удалённая;
+схема накатывается миграциями автоматически. Живость — `GET /api/health`.
+Резервные копии — `scripts/backup.sh`. Пошаговый выкат, расписание и
+обслуживание: [docs/deployment.md](docs/deployment.md).
 
 ## Стек
 

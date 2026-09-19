@@ -1,0 +1,21 @@
+# HTTPS для Flux Planner.
+#
+# Caddy сам получает и продлевает сертификат Let's Encrypt: ни certbot,
+# ни таймеров обновления здесь нет. Домен и почта приходят из .env
+# через docker compose.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Потолок чуть выше 5 МБ, которые принимает сканер: запрос заметно
+	# больше — это не фотография еды, и до приложения он доходить не должен.
+	request_body {
+		max_size 6MB
+	}
+
+	reverse_proxy app:3000
+}

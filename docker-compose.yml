@@ -1,0 +1,59 @@
+# Развёртывание Flux Planner на своём сервере.
+#
+# Два контейнера: приложение и Caddy перед ним. Caddy берёт на себя
+# сертификат и HTTPS — Telegram открывает Mini App только по https,
+# а выписывать и продлевать сертификат руками ради этого незачем.
+#
+#   docker compose up -d --build
+#
+# Значения берутся из .env рядом с этим файлом. Секреты в образ не попадают:
+# .env закрыт в .dockerignore и подключается на запуске, а не при сборке.
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # База — файл на постоянном томе. На своём сервере с диском это
+      # нормальное развёртывание, но config.ts требует подтвердить решение
+      # явно: на serverless тот же файл исчез бы вместе с контейнером.
+      DATABASE_URL: file:/data/flux-planner.db
+      ALLOW_FILE_DATABASE: 'true'
+      # Node-адаптер сверяет Origin у POST-запросов. Без совпадения
+      # синхронизация, сканер и оплата отвечали бы 403.
+      ORIGIN: https://${DOMAIN:?укажите DOMAIN в .env}
+      # По умолчанию адаптер обрезает тело запроса на 512 КБ, а сканер
+      # принимает фото до 5 МБ. Без этой строки распознавание падало бы
+      # на обычном снимке с телефона — и только в продакшене.
+      BODY_SIZE_LIMIT: 6M
+    volumes:
+      - flux-data:/data
+    # Наружу порт не открыт: в интернет смотрит только Caddy.
+    expose:
+      - '3000'
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      # HTTP/3. Без udp Caddy работает, но медленнее на мобильной сети.
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN:?укажите DOMAIN в .env}
+      ACME_EMAIL: ${ACME_EMAIL:?укажите ACME_EMAIL в .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Сертификаты переживают пересоздание контейнера: без тома Let's Encrypt
+      # выписывал бы их заново на каждый деплой и упёрся бы в лимит.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  flux-data:
+  caddy-data:
+  caddy-config:

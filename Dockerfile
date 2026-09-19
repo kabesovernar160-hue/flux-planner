@@ -25,12 +25,25 @@ ENV NODE_ENV=production
 # Адаптер слушает этот порт; хостинг обычно передаёт свой через переменную.
 ENV PORT=3000
 
+# sqlite3 нужен ради горячей копии базы: «.backup» снимает её на работающем
+# приложении, а простое копирование файла с включённым WAL даёт снимок
+# в несогласованном состоянии — то есть копию, которая не восстановится.
+RUN apt-get update && apt-get install --no-install-recommends -y sqlite3 && rm -rf /var/lib/apt/lists/*
+
+# Каталог базы создаётся заранее и отдаётся пользователю node: пустой том
+# Docker наследует владельца у точки монтирования в образе. Без этого шага
+# том принадлежал бы root, а процесс не от root не смог бы в него писать.
+RUN mkdir -p /data && chown node:node /data
+
 # Не root: процесс, доступный из интернета, не должен иметь прав на всю систему.
 USER node
 
 COPY --from=build --chown=node:node /app/build ./build
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/package.json ./package.json
+# Скрипты бота едут в образ, чтобы вебхук и профиль настраивались на сервере
+# тем же кодом и без установленного там Node.
+COPY --from=build --chown=node:node /app/scripts ./scripts
 
 EXPOSE 3000
 
