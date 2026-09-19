@@ -16,6 +16,8 @@
 		type FinanceEntryType
 	} from '$lib/types/finance';
 	import { telegram } from '$lib/telegram';
+	import { frequentFinance, type FrequentFinance } from '$lib/utils/financeHistory';
+	import { formatMoney } from '$lib/utils/format';
 
 	type Props = {
 		/** Запись для правки. Без неё форма создаёт новую. */
@@ -84,6 +86,29 @@
 		category = next;
 	}
 
+	/**
+	 * Частые траты — для повтора в одно нажатие.
+	 *
+	 * Кофе, метро, обед: три записи в день, каждая из трёх действий. Список
+	 * считается из истории и зависит от выбранного типа — в доходах свои
+	 * повторы. При правке записи он не нужен: сумма уже введена.
+	 */
+	const repeats = $derived(
+		initial
+			? []
+			: frequentFinance(plannerStore.financeEntries, {
+					end: plannerStore.currentDate,
+					type
+				})
+	);
+
+	function repeat(item: FrequentFinance) {
+		telegram.haptic.selection();
+		amount = String(item.amount);
+		category = item.category;
+		note = item.note ?? '';
+	}
+
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
 		submitted = true;
@@ -134,6 +159,30 @@
 			</button>
 		{/each}
 	</div>
+
+	{#if repeats.length > 0}
+		<!-- Повтор выше суммы: чаще всего нужная строка уже здесь. -->
+		<div class="mt-3.5 flex flex-wrap gap-1.5">
+			{#each repeats as item (`${item.category}:${item.note ?? ''}`)}
+				<button
+					type="button"
+					onclick={() => repeat(item)}
+					class="flex items-center gap-1.5 rounded-full border border-line-strong px-3 py-1.5
+					       text-[11px] transition-[transform,border-color] duration-500 ease-flux
+					       hover:border-lavender/60 active:scale-95"
+				>
+					<span class="max-w-28 truncate">{item.note ?? CATEGORY_LABELS[item.category]}</span>
+					<span class="tabular text-muted-foreground">
+						{formatMoney(
+							item.amount,
+							plannerStore.doc.settings.currency,
+							plannerStore.doc.settings.locale
+						)}
+					</span>
+				</button>
+			{/each}
+		</div>
+	{/if}
 
 	<div class="mt-3.5 flex flex-col gap-1.5">
 		<label for="{uid}-amount" class="text-xs text-muted-foreground">Сумма</label>

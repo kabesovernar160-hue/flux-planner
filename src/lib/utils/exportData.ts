@@ -87,3 +87,24 @@ export function toFoodCsv(entries: PlannerState['foodEntries']): string {
 
 	return [header.join(','), ...rows].join('\n');
 }
+
+/**
+ * Таблица взвешиваний.
+ *
+ * Отдельно от еды: в одной таблице у них нет общих колонок, а динамику веса
+ * смотрят как раз в таблице — там она строится графиком в два клика.
+ */
+export function toWeightCsv(entries: PlannerState['weightEntries']): string {
+	const header = ['date', 'weight_kg', 'note'];
+
+	const escape = (value: unknown): string => {
+		const text = value === undefined || value === null ? '' : String(value);
+		return /[",;\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+	};
+
+	const rows = [...entries]
+		.sort((a, b) => a.date.localeCompare(b.date))
+		.map((entry) => [entry.date, entry.weightKg, entry.note ?? ''].map(escape).join(','));
+
+	return [header.join(','), ...rows].join('\n');
+}

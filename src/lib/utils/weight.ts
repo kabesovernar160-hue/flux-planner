@@ -44,3 +44,23 @@ export function validateWeight(weightKg: unknown): Record<string, string> {
 
 	return {};
 }
+
+/**
+ * Сообщение вида «вес 78,4».
+ *
+ * Разбирается правилом, а не моделью: взвешивание — короткая цифра, которую
+ * человек шлёт каждое утро, и гонять ради неё запрос к ИИ значит платить
+ * за то, что надёжнее делает регулярное выражение.
+ *
+ * Возвращает null для всего остального, в том числе для «450 борщ»: там
+ * число — это калории, и перепутать их с килограммами нельзя.
+ */
+const WEIGHT_MESSAGE = /^\s*вес[\s:]+(\d{2,3}(?:[.,]\d{1,2})?)\s*(?:кг)?\s*$/i;
+
+export function parseWeightMessage(text: string): number | null {
+	const match = WEIGHT_MESSAGE.exec(text);
+	if (!match) return null;
+
+	const value = Number(match[1].replace(',', '.'));
+	return isWeightInRange(value) ? roundWeight(value) : null;
+}

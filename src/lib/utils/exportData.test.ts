@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PlannerState } from '$lib/types/planner';
-import { buildExport, exportFileName, toFoodCsv } from './exportData';
+import { buildExport, exportFileName, toFoodCsv, toWeightCsv } from './exportData';
 
 const NOW = '2026-01-15T10:00:00.000Z';
 
@@ -70,5 +70,32 @@ describe('toFoodCsv', () => {
 
 	it('пустой список даёт только заголовок', () => {
 		expect(toFoodCsv([]).split('\n')).toHaveLength(1);
+	});
+});
+
+describe('toWeightCsv', () => {
+	const weight = (date: string, weightKg: number, note?: string) => ({
+		id: date,
+		date,
+		weightKg,
+		note,
+		createdAt: `${date}T08:00:00.000Z`,
+		updatedAt: `${date}T08:00:00.000Z`
+	});
+
+	it('пишет заголовок и строки по возрастанию дат', () => {
+		const csv = toWeightCsv([weight('2026-01-15', 78.4), weight('2026-01-10', 79)]);
+
+		expect(csv.split('\n')).toEqual(['date,weight_kg,note', '2026-01-10,79,', '2026-01-15,78.4,']);
+	});
+
+	it('экранирует запятые в заметке', () => {
+		const csv = toWeightCsv([weight('2026-01-15', 78.4, 'утром, натощак')]);
+
+		expect(csv.split('\n')[1]).toBe('2026-01-15,78.4,"утром, натощак"');
+	});
+
+	it('без записей отдаёт только заголовок', () => {
+		expect(toWeightCsv([])).toBe('date,weight_kg,note');
 	});
 });

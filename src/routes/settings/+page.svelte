@@ -29,7 +29,7 @@
 	import { ui } from '$lib/state/ui.svelte';
 	import { telegram } from '$lib/telegram';
 	import { nowIso, resolveTimeZone } from '$lib/utils/date';
-	import { buildExport, exportFileName, toFoodCsv } from '$lib/utils/exportData';
+	import { buildExport, exportFileName, toFoodCsv, toWeightCsv } from '$lib/utils/exportData';
 	import { GOAL_LABELS } from '$lib/utils/goals';
 	import { formatNumber, formatWeight } from '$lib/utils/format';
 
@@ -294,6 +294,15 @@
 		download(
 			toFoodCsv($state.snapshot(plannerStore.foodEntries)),
 			`flux-planner-food-${now.slice(0, 10)}.csv`,
+			'text/csv;charset=utf-8'
+		);
+	}
+
+	function exportWeightCsv() {
+		const now = nowIso();
+		download(
+			toWeightCsv($state.snapshot(plannerStore.weightEntries)),
+			`flux-planner-weight-${now.slice(0, 10)}.csv`,
 			'text/csv;charset=utf-8'
 		);
 	}
@@ -629,6 +638,17 @@
 				       disabled:pointer-events-none disabled:opacity-40"
 			>
 				CSV с едой
+			</button>
+			<button
+				type="button"
+				onclick={exportWeightCsv}
+				disabled={plannerStore.weightEntries.length === 0}
+				class="flex-1 rounded-full border border-line-strong py-2.5 text-xs font-medium
+				       transition-[transform,border-color] duration-500 ease-flux
+				       hover:border-lavender/60 active:scale-[0.98]
+				       disabled:pointer-events-none disabled:opacity-40"
+			>
+				CSV с весом
 			</button>
 		</div>
 
