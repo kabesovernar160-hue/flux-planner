@@ -1,0 +1,5 @@
+/** Заглушка $app/environment для тестов вне окружения SvelteKit. */
+export const dev = true;
+export const browser = false;
+export const building = false;
+export const version = 'test';

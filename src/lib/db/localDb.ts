@@ -1,0 +1,343 @@
+import type { DailyFinance, FinanceEntry } from '$lib/types/finance';
+import type { Habit, HabitCompletion } from '$lib/types/habit';
+import type { DailyNutrition, FoodEntry } from '$lib/types/nutrition';
+import type { PlanItem } from '$lib/types/plan';
+import type {
+	PlannerDocument,
+	PlannerSettings,
+	PlannerState,
+	PlannerUser
+} from '$lib/types/planner';
+import { SCHEMA_VERSION } from '$lib/types/planner';
+import { nowIso, resolveTimeZone } from '$lib/utils/date';
+import { getDriver, PLANNER_DOC_KEY, STORES, type StoreName } from './storage';
+
+/* ───────────────────────────── Значения по умолчанию ───────────────────────────── */
+
+export function createDefaultSettings(): PlannerSettings {
+	return {
+		calorieGoal: 2100,
+		proteinGoal: 120,
+		fatGoal: 70,
+		carbsGoal: 230,
+		waterGoalMl: 2500,
+		dailyBudget: 3000,
+		currency: 'RUB',
+		locale: 'ru-RU'
+	};
+}
+
+export function createDefaultUser(timezone?: string): PlannerUser {
+	const timestamp = nowIso();
+	return {
+		telegramUserId: null,
+		timezone: resolveTimeZone(timezone),
+		createdAt: timestamp,
+		updatedAt: timestamp
+	};
+}
+
+export function createDefaultDocument(timezone?: string): PlannerDocument {
+	return {
+		schemaVersion: SCHEMA_VERSION,
+		user: createDefaultUser(timezone),
+		settings: createDefaultSettings(),
+		nutrition: {},
+		finance: {}
+	};
+}
+
+export function createDefaultState(timezone?: string): PlannerState {
+	return {
+		...createDefaultDocument(timezone),
+		foodEntries: [],
+		habits: [],
+		habitCompletions: [],
+		financeEntries: [],
+		planItems: []
+	};
+}
+
+/* ───────────────────────────── Проверка формы данных ───────────────────────────── */
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+	return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+	return typeof value === 'string' && value.length > 0;
+}
+
+/**
+ * Записи проверяются поштучно и по отдельности отбрасываются.
+ *
+ * Одна испорченная запись не должна стоить пользователю всей истории:
+ * валидные соседи по хранилищу загружаются как ни в чём не бывало.
+ */
+function sanitizeArray<T>(values: unknown, guard: (value: unknown) => value is T): T[] {
+	if (!Array.isArray(values)) return [];
+	// Удалённые записи отфильтровываются здесь, в одном месте: иначе их пришлось
+	// бы вычитать в каждом производном значении и рано или поздно забыть.
+	return values.filter(
+		(value) => guard(value) && !(value as { deletedAt?: unknown }).deletedAt
+	) as T[];
+}
+
+function isFoodEntry(value: unknown): value is FoodEntry {
+	return (
+		isRecord(value) &&
+		isNonEmptyString(value.id) &&
+		isNonEmptyString(value.date) &&
+		typeof value.name === 'string' &&
+		isFiniteNumber(value.calories) &&
+		isFiniteNumber(value.protein) &&
+		isFiniteNumber(value.fat) &&
+		isFiniteNumber(value.carbs)
+	);
+}
+
+function isHabit(value: unknown): value is Habit {
+	return (
+		isRecord(value) &&
+		isNonEmptyString(value.id) &&
+		isNonEmptyString(value.name) &&
+		typeof value.icon === 'string' &&
+		(value.frequency === 'daily' ||
+			value.frequency === 'weekdays' ||
+			value.frequency === 'custom') &&
+		typeof value.archived === 'boolean'
+	);
+}
+
+function isHabitCompletion(value: unknown): value is HabitCompletion {
+	return (
+		isRecord(value) &&
+		isNonEmptyString(value.id) &&
+		isNonEmptyString(value.habitId) &&
+		isNonEmptyString(value.date) &&
+		typeof value.completed === 'boolean'
+	);
+}
+
+function isPlanItem(value: unknown): value is PlanItem {
+	return (
+		isRecord(value) &&
+		isNonEmptyString(value.id) &&
+		isNonEmptyString(value.date) &&
+		isNonEmptyString(value.title) &&
+		typeof value.done === 'boolean'
+	);
+}
+
+function isFinanceEntry(value: unknown): value is FinanceEntry {
+	return (
+		isRecord(value) &&
+		isNonEmptyString(value.id) &&
+		isNonEmptyString(value.date) &&
+		(value.type === 'expense' || value.type === 'income') &&
+		isFiniteNumber(value.amount) &&
+		isNonEmptyString(value.category)
+	);
+}
+
+function isDailyNutrition(value: unknown): value is DailyNutrition {
+	return (
+		isRecord(value) &&
+		isNonEmptyString(value.date) &&
+		isFiniteNumber(value.calorieGoal) &&
+		isFiniteNumber(value.waterConsumedMl)
+	);
+}
+
+function isDailyFinance(value: unknown): value is DailyFinance {
+	return isRecord(value) && isNonEmptyString(value.date) && isFiniteNumber(value.budget);
+}
+
+function sanitizeDailyMap<T>(
+	value: unknown,
+	guard: (candidate: unknown) => candidate is T
+): Record<string, T> {
+	if (!isRecord(value)) return {};
+	const result: Record<string, T> = {};
+	for (const [key, entry] of Object.entries(value)) {
+		if (guard(entry)) result[key] = entry;
+	}
+	return result;
+}
+
+/* ───────────────────────────── Миграции ───────────────────────────── */
+
+/**
+ * Приведение сохранённого документа к текущей схеме.
+ *
+ * Возвращает null, если документ непригоден — тогда вызывающий код
+ * создаёт состояние по умолчанию вместо падения.
+ */
+export function migrateDocument(raw: unknown): PlannerDocument | null {
+	if (!isRecord(raw)) return null;
+
+	const version = isFiniteNumber(raw.schemaVersion) ? raw.schemaVersion : 0;
+
+	// Документ новее, чем понимает этот клиент: читать его опасно,
+	// поля могли поменять смысл. Безопаснее начать заново.
+	if (version > SCHEMA_VERSION) return null;
+
+	// Версия 0 — данные до введения схемы. Пока таких в проде нет,
+	// поэтому шаг миграции сводится к достройке отсутствующих полей.
+	const defaults = createDefaultDocument();
+
+	const user = isRecord(raw.user) ? raw.user : {};
+	const settings = isRecord(raw.settings) ? raw.settings : {};
+
+	return {
+		schemaVersion: SCHEMA_VERSION,
+		user: {
+			...defaults.user,
+			...user,
+			telegramUserId: typeof user.telegramUserId === 'string' ? user.telegramUserId : null,
+			timezone: isNonEmptyString(user.timezone) ? user.timezone : defaults.user.timezone
+		},
+		settings: { ...defaults.settings, ...settings },
+		nutrition: sanitizeDailyMap(raw.nutrition, isDailyNutrition),
+		finance: sanitizeDailyMap(raw.finance, isDailyFinance)
+	};
+}
+
+/* ───────────────────────────── Репозиторий ───────────────────────────── */
+
+/**
+ * Сортировка по времени создания.
+ *
+ * getAll() в IndexedDB отдаёт записи в порядке первичного ключа, поэтому без
+ * явной сортировки порядок зависел бы от формата id. Разрешение createdAt —
+ * миллисекунда, а сид создаёт шесть привычек внутри одной, поэтому при
+ * равенстве добираем сравнением по id: он сортируем по времени создания.
+ */
+function byCreatedAt<T extends { createdAt: string; id: string }>(items: T[]): T[] {
+	return items.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+}
+
+export async function loadPlannerState(timezone?: string): Promise<PlannerState> {
+	const driver = await getDriver();
+
+	const [rawDoc, foods, habits, completions, finance, plan] = await Promise.all([
+		driver.get<unknown>(STORES.plannerState, PLANNER_DOC_KEY),
+		driver.getAll<unknown>(STORES.foodEntries),
+		driver.getAll<unknown>(STORES.habits),
+		driver.getAll<unknown>(STORES.habitCompletions),
+		driver.getAll<unknown>(STORES.financeEntries),
+		driver.getAll<unknown>(STORES.planItems)
+	]);
+
+	const document = migrateDocument(rawDoc) ?? createDefaultDocument(timezone);
+
+	return {
+		...document,
+		foodEntries: byCreatedAt(sanitizeArray(foods, isFoodEntry)),
+		habits: byCreatedAt(sanitizeArray(habits, isHabit)),
+		habitCompletions: byCreatedAt(sanitizeArray(completions, isHabitCompletion)),
+		financeEntries: byCreatedAt(sanitizeArray(finance, isFinanceEntry)),
+		planItems: byCreatedAt(sanitizeArray(plan, isPlanItem))
+	};
+}
+
+export async function savePlannerDocument(document: PlannerDocument): Promise<void> {
+	const driver = await getDriver();
+	await driver.put(STORES.plannerState, document, PLANNER_DOC_KEY);
+}
+
+/**
+ * Полная перезапись состояния. Используется при сбросе и при первичном
+ * наполнении; обычные правки идут через точечные save-методы ниже,
+ * чтобы добавление одной траты не переписывало всю базу.
+ */
+export async function savePlannerState(state: PlannerState): Promise<void> {
+	const driver = await getDriver();
+	const { foodEntries, habits, habitCompletions, financeEntries, planItems, ...document } = state;
+
+	await savePlannerDocument(document);
+	await Promise.all([
+		driver.putMany(STORES.foodEntries, foodEntries),
+		driver.putMany(STORES.habits, habits),
+		driver.putMany(STORES.habitCompletions, habitCompletions),
+		driver.putMany(STORES.financeEntries, financeEntries),
+		driver.putMany(STORES.planItems, planItems)
+	]);
+}
+
+export async function saveFoodEntry(entry: FoodEntry): Promise<void> {
+	await (await getDriver()).put(STORES.foodEntries, entry);
+}
+
+/**
+ * Мягкое удаление.
+ *
+ * Запись не стирается, а помечается надгробием. Без этого удаление на одном
+ * устройстве неотличимо от «этой записи тут ещё нет», и при следующей
+ * синхронизации второе устройство вернуло бы её обратно.
+ */
+async function tombstone(store: StoreName, id: string): Promise<void> {
+	const driver = await getDriver();
+	const existing = await driver.get<Record<string, unknown>>(store, id);
+	if (!existing) return;
+
+	await driver.put(store, { ...existing, deletedAt: nowIso(), updatedAt: nowIso() });
+}
+
+export async function deleteFoodEntry(id: string): Promise<void> {
+	await tombstone(STORES.foodEntries, id);
+}
+
+export async function saveHabit(habit: Habit): Promise<void> {
+	await (await getDriver()).put(STORES.habits, habit);
+}
+
+export async function deleteHabit(id: string): Promise<void> {
+	await tombstone(STORES.habits, id);
+}
+
+export async function saveHabitCompletion(completion: HabitCompletion): Promise<void> {
+	await (await getDriver()).put(STORES.habitCompletions, completion);
+}
+
+export async function deleteHabitCompletion(id: string): Promise<void> {
+	await tombstone(STORES.habitCompletions, id);
+}
+
+export async function savePlanItem(item: PlanItem): Promise<void> {
+	await (await getDriver()).put(STORES.planItems, item);
+}
+
+export async function deletePlanItem(id: string): Promise<void> {
+	await tombstone(STORES.planItems, id);
+}
+
+export async function saveFinanceEntry(entry: FinanceEntry): Promise<void> {
+	await (await getDriver()).put(STORES.financeEntries, entry);
+}
+
+export async function deleteFinanceEntry(id: string): Promise<void> {
+	await tombstone(STORES.financeEntries, id);
+}
+
+/**
+ * Полная выгрузка таблицы вместе с надгробиями.
+ *
+ * Отдельно от loadPlannerState: приложению удалённые записи не нужны,
+ * а синхронизации нужны именно они — иначе удаление не доедет до сервера.
+ */
+export async function loadRawForSync<T>(store: StoreName): Promise<T[]> {
+	return (await getDriver()).getAll<T>(store);
+}
+
+export async function clearAllData(): Promise<void> {
+	await (await getDriver()).clearAll();
+}
+
+export async function getStorageKind(): Promise<'indexeddb' | 'memory'> {
+	return (await getDriver()).kind;
+}

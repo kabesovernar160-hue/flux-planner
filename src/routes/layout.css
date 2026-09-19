@@ -1,0 +1,254 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@fontsource-variable/geist';
+
+/* Тема зафиксирована тёмной: Mini App не переключает режим.
+   Вариант dark: оставлен рабочим, чтобы компоненты shadcn-svelte
+   вели себя предсказуемо. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+	color-scheme: dark;
+
+	/* ─────────────────────────────────────────────────────────────
+	   СЫРАЯ ПАЛИТРА FLUX
+	   Значения в OKLCH, исходный HEX — в комментарии.
+	   OKLCH выбран ради предсказуемого осветления/затемнения
+	   и корректного смешивания при прозрачности.
+	   ───────────────────────────────────────────────────────────── */
+	--fx-void: oklch(0.1605 0.0063 285.67); /* #0D0D10  фон */
+	--fx-surface: oklch(0.2029 0.0119 285.29); /* #16161C  карточка */
+	--fx-surface-2: oklch(0.2301 0.0154 285.13); /* #1C1C24  приподнятая поверхность */
+	--fx-line: oklch(0.2883 0.0145 285.46); /* #2A2A32  граница */
+	--fx-line-strong: oklch(0.3528 0.019 285.39); /* #3A3A45  граница в фокусе */
+
+	--fx-lavender: oklch(0.7022 0.1527 293.82); /* #A58AF4  акцент */
+	--fx-lavender-hi: oklch(0.7606 0.1228 295.07); /* #B7A1F7  hover */
+	--fx-lavender-lo: oklch(0.6285 0.1759 292.4); /* #8E6FE8  press */
+
+	--fx-text: oklch(1 0 0); /* #FFFFFF  основной текст */
+	--fx-text-dim: oklch(0.7089 0.0144 286.03); /* #A0A0AA  вторичный текст */
+
+	/* ─────────────────────────────────────────────────────────────
+	   СЕМАНТИЧЕСКИЕ ТОКЕНЫ shadcn-svelte
+	   ВНИМАНИЕ: в словаре shadcn --accent это НЕ брендовый акцент,
+	   а фон наведения/выделения. Лавандовый бренд-цвет живёт
+	   в --primary. Не перепутать при добавлении компонентов.
+	   ───────────────────────────────────────────────────────────── */
+	--radius: 0.875rem;
+
+	--background: var(--fx-void);
+	--foreground: var(--fx-text);
+
+	--card: var(--fx-surface);
+	--card-foreground: var(--fx-text);
+
+	--popover: var(--fx-surface-2);
+	--popover-foreground: var(--fx-text);
+
+	/* Тёмный текст на лаванде: белый даёт 2.78:1 и проваливает WCAG AA.
+	   Тёмный — 6.97:1. Не менять на белый. */
+	--primary: var(--fx-lavender);
+	--primary-foreground: var(--fx-void);
+
+	--secondary: var(--fx-surface-2);
+	--secondary-foreground: var(--fx-text);
+
+	--muted: var(--fx-surface-2);
+	--muted-foreground: var(--fx-text-dim);
+
+	--accent: var(--fx-surface-2);
+	--accent-foreground: var(--fx-text);
+
+	--destructive: oklch(0.6625 0.1926 22.29); /* #F2555A */
+	--destructive-foreground: var(--fx-void);
+	--success: oklch(0.7797 0.1536 161.64); /* #3ED598 */
+	--success-foreground: var(--fx-void);
+
+	--border: var(--fx-line);
+	--input: var(--fx-line);
+	--ring: var(--fx-lavender);
+
+	--chart-1: var(--fx-lavender);
+	--chart-2: oklch(0.6885 0.1219 258.9);
+	--chart-3: oklch(0.7797 0.1536 161.64);
+	--chart-4: oklch(0.7686 0.1647 70.08);
+	--chart-5: oklch(0.6625 0.1926 22.29);
+
+	/* ─────────────────────────────────────────────────────────────
+	   СТЕКЛО
+	   Тени тонированы в цвет фона: чистый чёрный на тёмной теме
+	   читается как грязь, а не как глубина.
+	   ───────────────────────────────────────────────────────────── */
+	--fx-glass-tint: oklch(0.2029 0.0119 285.29 / 0.72);
+	--fx-glass-tint-solid: oklch(0.2029 0.0119 285.29 / 0.96);
+	--fx-glass-hairline: oklch(1 0 0 / 0.08);
+	--fx-glass-highlight: oklch(1 0 0 / 0.06);
+	--fx-glass-blur: 20px;
+
+	--fx-shadow-flat:
+		0 1px 2px oklch(0.12 0.008 286 / 0.5), 0 6px 20px -14px oklch(0.08 0.01 286 / 0.9);
+	--fx-shadow-lift:
+		0 1px 2px oklch(0.12 0.008 286 / 0.5), 0 18px 40px -20px oklch(0.06 0.02 286 / 0.95);
+	--fx-shadow-accent: 0 12px 32px -16px oklch(0.7022 0.1527 293.82 / 0.45);
+
+	/* Одна кривая на весь проект. linear и ease-in-out не используются. */
+	--fx-ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+	/* ─────────────────────────────────────────────────────────────
+	   ГЕОМЕТРИЯ ОКНА TELEGRAM
+	   Переменные --tg-* выставляет сам клиент Telegram.
+	   Фолбэки нужны, чтобы приложение открывалось и в браузере.
+	   ───────────────────────────────────────────────────────────── */
+	--fx-vh: var(--tg-viewport-stable-height, 100dvh);
+	--fx-safe-top: calc(
+		var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px)
+	);
+	--fx-safe-bottom: calc(
+		var(--tg-safe-area-inset-bottom, 0px) + var(--tg-content-safe-area-inset-bottom, 0px)
+	);
+	--fx-safe-left: var(--tg-safe-area-inset-left, 0px);
+	--fx-safe-right: var(--tg-safe-area-inset-right, 0px);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   МОСТ В TAILWIND
+   @theme inline превращает токены в утилиты: bg-surface, ease-flux,
+   rounded-card и т.д. В Tailwind v4 это заменяет tailwind.config.js.
+   ───────────────────────────────────────────────────────────────── */
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-chart-1: var(--chart-1);
+	--color-chart-2: var(--chart-2);
+	--color-chart-3: var(--chart-3);
+	--color-chart-4: var(--chart-4);
+	--color-chart-5: var(--chart-5);
+
+	/* Прямой доступ к сырой палитре: bg-surface, border-line, text-lavender */
+	--color-void: var(--fx-void);
+	--color-surface: var(--fx-surface);
+	--color-surface-2: var(--fx-surface-2);
+	--color-line: var(--fx-line);
+	--color-line-strong: var(--fx-line-strong);
+	--color-lavender: var(--fx-lavender);
+	--color-lavender-hi: var(--fx-lavender-hi);
+	--color-lavender-lo: var(--fx-lavender-lo);
+
+	--font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+	/* Единая шкала скруглений. Смешивать радиусы в проекте нельзя. */
+	--radius-sm: calc(var(--radius) - 6px);
+	--radius-md: calc(var(--radius) - 3px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 6px);
+	--radius-card: 1.5rem;
+	--radius-shell: 1.75rem;
+
+	--ease-flux: var(--fx-ease);
+
+	--shadow-flat: var(--fx-shadow-flat);
+	--shadow-lift: var(--fx-shadow-lift);
+	--shadow-accent: var(--fx-shadow-accent);
+}
+
+@layer base {
+	* {
+		border-color: var(--border);
+	}
+
+	html {
+		background-color: var(--background);
+		-webkit-text-size-adjust: 100%;
+	}
+
+	body {
+		min-height: var(--fx-vh);
+		/* Фон намеренно задан только на html: body остаётся прозрачным,
+		   иначе он перекрыл бы фоновый слой с градиентами, лежащий на z-index -10. */
+		color: var(--foreground);
+		font-family: var(--font-sans);
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+
+		/* Внутри Telegram страница не должна тянуться и перехватывать
+		   жест закрытия окна свайпом вниз. */
+		overscroll-behavior: none;
+		-webkit-tap-highlight-color: transparent;
+
+		/* Тап по подписи не должен выделять текст: на телефоне это сразу
+		   выдаёт веб-страницу вместо нативного приложения, а долгое
+		   нажатие вызывает системное меню копирования поверх интерфейса. */
+		-webkit-user-select: none;
+		user-select: none;
+	}
+
+	/* Выделение возвращается там, где оно осмысленно: поля ввода и
+	   значения, которые пользователь захочет скопировать (суммы, коды). */
+	input,
+	textarea,
+	[data-selectable] {
+		-webkit-user-select: text;
+		user-select: text;
+	}
+
+	/* Нативное синее выделение выбивается из палитры. */
+	::selection {
+		background-color: oklch(0.7022 0.1527 293.82 / 0.28);
+		color: var(--fx-text);
+	}
+
+	/* Кольцо фокуса лавандовое: 6.47:1 к карточке, выше порога 3:1 для UI. */
+	:focus-visible {
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
+	}
+
+	/* В Mini App скроллбар всегда выглядит инородно. */
+	::-webkit-scrollbar {
+		width: 0;
+		height: 0;
+	}
+
+	* {
+		scrollbar-width: none;
+	}
+
+	/* Цифры в планировщике должны быть одинаковой ширины, иначе
+	   таймеры и счётчики дёргаются при смене значения. */
+	.tabular {
+		font-variant-numeric: tabular-nums;
+	}
+}
+
+/* Обязательное уважение к prefers-reduced-motion.
+   Анимации не ускоряются, а выключаются полностью. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}

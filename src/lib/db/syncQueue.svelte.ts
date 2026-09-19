@@ -1,0 +1,232 @@
+import { loadRawForSync } from './localDb';
+import { getDriver, STORES, type StoreName } from './storage';
+import { plannerStore } from '$lib/stores/plannerStore.svelte';
+import { telegram } from '$lib/telegram';
+import { nowIso } from '$lib/utils/date';
+
+export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'error';
+
+type Collection = 'food' | 'habits' | 'completions' | 'finance' | 'plan';
+
+const STORE_BY_COLLECTION: Record<Collection, StoreName> = {
+	food: STORES.foodEntries,
+	habits: STORES.habits,
+	completions: STORES.habitCompletions,
+	finance: STORES.financeEntries,
+	plan: STORES.planItems
+};
+
+const WATERMARK_KEY = 'flux-planner:sync-watermark';
+
+/** Ступени повтора. Последняя не повторяется бесконечно — цикл конечен. */
+const BACKOFF_MS = [2_000, 8_000, 30_000, 120_000];
+
+interface Watermark {
+	/** Отметка сервера из последнего успешного pull. */
+	pulledAt: string | null;
+	/** Момент последнего успешного push: всё, что новее, ещё не отправлено. */
+	pushedAt: string | null;
+}
+
+function readWatermark(): Watermark {
+	try {
+		const raw = localStorage.getItem(WATERMARK_KEY);
+		if (!raw) return { pulledAt: null, pushedAt: null };
+
+		const parsed = JSON.parse(raw) as Partial<Watermark>;
+		return {
+			pulledAt: typeof parsed.pulledAt === 'string' ? parsed.pulledAt : null,
+			pushedAt: typeof parsed.pushedAt === 'string' ? parsed.pushedAt : null
+		};
+	} catch {
+		// Приватный режим или испорченное значение: работаем как при первом запуске.
+		return { pulledAt: null, pushedAt: null };
+	}
+}
+
+function writeWatermark(watermark: Watermark): void {
+	try {
+		localStorage.setItem(WATERMARK_KEY, JSON.stringify(watermark));
+	} catch {
+		// Не судьба — следующая синхронизация просто заберёт больше данных.
+	}
+}
+
+/**
+ * Очередь синхронизации.
+ *
+ * Отдельного журнала изменений нет намеренно. Каждая запись несёт updatedAt,
+ * поэтому «что ещё не отправлено» вычисляется как «всё, что новее водяного
+ * знака». Журнал пришлось бы держать в согласии с данными, и потеря одной
+ * его записи означала бы потерю изменения навсегда.
+ */
+class SyncQueue {
+	status = $state<SyncStatus>('idle');
+	lastSyncedAt = $state<string | null>(null);
+	lastError = $state<string | null>(null);
+
+	/** Есть непереданные изменения. Ставится мутациями, снимается после push. */
+	pending = $state(false);
+
+	#attempt = 0;
+	#timer: ReturnType<typeof setTimeout> | null = null;
+	#running: Promise<void> | null = null;
+
+	/**
+	 * Пометить, что появились изменения.
+	 *
+	 * Само изменение уже лежит в IndexedDB — здесь только планируется отправка,
+	 * с небольшой задержкой, чтобы серия правок ушла одним пакетом.
+	 */
+	queueChange(): void {
+		this.pending = true;
+		this.#schedule(1_500);
+	}
+
+	#schedule(delay: number): void {
+		if (this.#timer !== null) clearTimeout(this.#timer);
+		this.#timer = setTimeout(() => void this.syncPendingChanges(), delay);
+	}
+
+	dispose(): void {
+		if (this.#timer !== null) {
+			clearTimeout(this.#timer);
+			this.#timer = null;
+		}
+	}
+
+	/** Синхронизировать, если есть что. Повторный вызов присоединяется к текущей попытке. */
+	syncPendingChanges(): Promise<void> {
+		this.#running ??= this.#run().finally(() => {
+			this.#running = null;
+		});
+		return this.#running;
+	}
+
+	/** Синхронизировать немедленно, не дожидаясь задержки. */
+	syncNow(): Promise<void> {
+		this.dispose();
+		return this.syncPendingChanges();
+	}
+
+	getSyncStatus(): { status: SyncStatus; lastSyncedAt: string | null; pending: boolean } {
+		return { status: this.status, lastSyncedAt: this.lastSyncedAt, pending: this.pending };
+	}
+
+	async #collectChanges(since: string | null): Promise<Record<Collection, unknown[]>> {
+		const changes = {} as Record<Collection, unknown[]>;
+
+		for (const [collection, store] of Object.entries(STORE_BY_COLLECTION) as [
+			Collection,
+			StoreName
+		][]) {
+			// Надгробия тоже уезжают: без них удаление не доедет до сервера.
+			const rows = await loadRawForSync<{ updatedAt?: string }>(store);
+			changes[collection] = since
+				? rows.filter((row) => typeof row.updatedAt === 'string' && row.updatedAt > since)
+				: rows;
+		}
+
+		return changes;
+	}
+
+	async #run(): Promise<void> {
+		if (!telegram.isEmbedded || !telegram.initData) {
+			// Вне Telegram синхронизировать нечем: подписи нет, сервер откажет.
+			// Данные остаются локально — это штатный режим, а не ошибка.
+			this.status = 'idle';
+			return;
+		}
+
+		if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+			this.status = 'offline';
+			this.#scheduleRetry();
+			return;
+		}
+
+		this.status = 'syncing';
+		this.lastError = null;
+
+		const headers = {
+			'content-type': 'application/json',
+			'x-telegram-init-data': telegram.initData
+		};
+
+		try {
+			const watermark = readWatermark();
+
+			// Сначала отдаём своё, потом забираем чужое: так изменение,
+			// сделанное только что, не будет затёрто более старой серверной
+			// версией той же записи.
+			const changes = await this.#collectChanges(watermark.pushedAt);
+			const pushedAt = nowIso();
+
+			const pushResponse = await fetch('/api/sync/push', {
+				method: 'POST',
+				headers,
+				body: JSON.stringify({
+					changes,
+					settings: plannerStore.doc.settings,
+					settingsUpdatedAt: plannerStore.doc.user.updatedAt
+				})
+			});
+
+			if (!pushResponse.ok) throw new Error(`push ${pushResponse.status}`);
+
+			const pullUrl = watermark.pulledAt
+				? `/api/sync/pull?since=${encodeURIComponent(watermark.pulledAt)}`
+				: '/api/sync/pull';
+
+			const pullResponse = await fetch(pullUrl, { headers });
+			if (!pullResponse.ok) throw new Error(`pull ${pullResponse.status}`);
+
+			const payload = (await pullResponse.json()) as {
+				changes: Partial<Record<Collection, { id: string }[]>>;
+				serverTime: string;
+			};
+
+			await this.#applyIncoming(payload.changes);
+
+			writeWatermark({ pulledAt: payload.serverTime, pushedAt });
+			this.lastSyncedAt = payload.serverTime;
+			this.pending = false;
+			this.status = 'idle';
+			this.#attempt = 0;
+
+			// Перечитываем состояние: пришедшие записи должны попасть в интерфейс.
+			await plannerStore.rehydrate();
+		} catch (error) {
+			this.lastError = error instanceof Error ? error.message : 'Не удалось синхронизировать';
+			this.status = 'error';
+			this.#scheduleRetry();
+		}
+	}
+
+	async #applyIncoming(changes: Partial<Record<Collection, { id: string }[]>>): Promise<void> {
+		const driver = await getDriver();
+
+		for (const [collection, rows] of Object.entries(changes) as [Collection, { id: string }[]][]) {
+			if (!Array.isArray(rows) || rows.length === 0) continue;
+			await driver.putMany(STORE_BY_COLLECTION[collection], rows);
+		}
+	}
+
+	/**
+	 * Повтор с растущей паузой.
+	 *
+	 * Число попыток конечно: бесконечный ретрай при лежащем сервере съедает
+	 * батарею и трафик, а пользователю не помогает. После последней ступени
+	 * синхронизация ждёт следующего изменения или явного syncNow.
+	 */
+	#scheduleRetry(): void {
+		if (this.#attempt >= BACKOFF_MS.length) {
+			this.#attempt = 0;
+			return;
+		}
+
+		this.#schedule(BACKOFF_MS[this.#attempt]);
+		this.#attempt += 1;
+	}
+}
+
+export const syncQueue = new SyncQueue();
