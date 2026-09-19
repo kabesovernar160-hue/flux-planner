@@ -2,7 +2,7 @@ import type { Db } from '../db/client';
 import { loadDaySnapshot, loadPlannerSettings } from '../db/queries';
 import type { UserRow } from '../db/schema';
 import { sendMessage } from '../telegram/botApi';
-import { getToday } from '$lib/utils/date';
+import { getHour, getToday } from '$lib/utils/date';
 import { calculateFinanceSummary } from '$lib/utils/finance';
 import { scheduledHabits } from '$lib/utils/habitFrequency';
 import { calculateNutritionSummary } from '$lib/utils/nutrition';
@@ -230,23 +230,59 @@ export async function sendBudgetWarning(
 	return true;
 }
 
+export interface RunOptions {
+	/**
+	 * Местный час получателя, в который уместно писать.
+	 *
+	 * Планировщик один на всех, а часовые пояса у людей разные: рассылка,
+	 * отправленная «в восемь вечера» по времени сервера, приходит кому-то
+	 * в полдень, а кому-то в три ночи. С этим параметром планировщик
+	 * дёргается раз в час, а сообщение получают только те, у кого сейчас
+	 * нужное время.
+	 *
+	 * Без него рассылка уходит всем сразу — так вели себя прежние
+	 * расписания, и ломать их молча нельзя.
+	 */
+	localHour?: number;
+	now?: Date;
+}
+
+export interface RunResult {
+	sent: number;
+	skipped: number;
+	failed: number;
+}
+
 /**
- * Обход всех пользователей для ежедневной рассылки.
+ * Пора ли писать этому человеку.
  *
- * Ошибка отправки одному не должна останавливать остальных: заблокировавший
- * бота пользователь не повод лишить сводки всех прочих.
+ * Отдельная функция, потому что это единственное решение в рассылке, которое
+ * можно проверить без сети: всё остальное там — обход списка и отправка.
  */
-export async function runDailyNotifications(
-	db: Db,
-	users: UserRow[]
-): Promise<{ sent: number; skipped: number; failed: number }> {
+export function isLocalHour(timezone: string, localHour: number | undefined, now: Date): boolean {
+	return localHour === undefined || getHour(now, timezone) === localHour;
+}
+
+async function runForUsers(
+	users: UserRow[],
+	options: RunOptions,
+	send: (user: UserRow) => Promise<boolean>
+): Promise<RunResult> {
+	const now = options.now ?? new Date();
 	let sent = 0;
 	let skipped = 0;
 	let failed = 0;
 
 	for (const user of users) {
+		// Ошибка отправки одному не должна останавливать остальных:
+		// заблокировавший бота пользователь не повод лишить сводки всех прочих.
 		try {
-			const delivered = await sendDailySummary(db, user);
+			if (!isLocalHour(user.timezone, options.localHour, now)) {
+				skipped += 1;
+				continue;
+			}
+
+			const delivered = await send(user);
 			if (delivered) sent += 1;
 			else skipped += 1;
 		} catch (error) {
@@ -256,4 +292,27 @@ export async function runDailyNotifications(
 	}
 
 	return { sent, skipped, failed };
+}
+
+/** Итоги дня: что съедено, выпито, сделано и потрачено. */
+export async function runDailyNotifications(
+	db: Db,
+	users: UserRow[],
+	options: RunOptions = {}
+): Promise<RunResult> {
+	return runForUsers(users, options, (user) => sendDailySummary(db, user));
+}
+
+/**
+ * Напоминание о незакрытых привычках.
+ *
+ * Отдельным заходом, а не строкой в итогах дня: напоминание полезно днём,
+ * когда что-то ещё можно успеть, а итоги — вечером, когда день закрыт.
+ */
+export async function runHabitReminders(
+	db: Db,
+	users: UserRow[],
+	options: RunOptions = {}
+): Promise<RunResult> {
+	return runForUsers(users, options, (user) => sendHabitReminder(db, user));
 }

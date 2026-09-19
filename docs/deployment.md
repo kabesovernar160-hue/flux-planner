@@ -168,9 +168,17 @@ docker compose exec app node scripts/bot-setup.ts
 (`crontab -e`):
 
 ```
-0 20 * * * curl -fsS -X POST https://ваш-домен/api/cron/daily -H "Authorization: Bearer СЕКРЕТ" > /dev/null
+0 * * * * curl -fsS -X POST "https://ваш-домен/api/cron/daily?hour=20" -H "Authorization: Bearer СЕКРЕТ" > /dev/null
+0 * * * * curl -fsS -X POST "https://ваш-домен/api/cron/daily?kind=habits&hour=12" -H "Authorization: Bearer СЕКРЕТ" > /dev/null
 30 4 * * * cd /opt/flux-planner && ./scripts/backup.sh >> backups/backup.log 2>&1
 ```
+
+Планировщик дёргается **ежечасно**, а `hour` — это местный час получателя:
+сообщение получают только те, у кого сейчас это время. Иначе «восемь вечера»
+по времени сервера приходило бы кому-то в полдень, а кому-то в три ночи.
+
+`kind=habits` — дневное напоминание о незакрытых привычках, `kind` по
+умолчанию — итоги дня. Без `hour` рассылка уходит всем сразу, как раньше.
 
 ### Обновление и обслуживание
 
@@ -259,9 +267,15 @@ Workers — любым, кто умеет дёрнуть URL по расписа
 протухшие счётчики ограничителя частоты.
 
 ```bash
-0 20 * * * curl -fsS -X POST https://ваш-домен/api/cron/daily \
+0 * * * * curl -fsS -X POST "https://ваш-домен/api/cron/daily?hour=20" \
   -H "Authorization: Bearer $CRON_SECRET" > /dev/null
 ```
+
+Параметры: `hour` — **местный час получателя**, планировщик при этом
+вызывается ежечасно и пишет только тем, у кого сейчас это время;
+`kind=habits` — напоминание о незакрытых привычках вместо итогов дня.
+Без `hour` сообщение уходит всем сразу, независимо от их часового пояса —
+так работали прежние расписания.
 
 ## Масштабирование
 

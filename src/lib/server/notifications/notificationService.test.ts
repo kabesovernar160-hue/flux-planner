@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createTestDb, type Db } from '../db/client';
 import { createRepositories, type Repositories } from '../db/repositories';
 import type { UserRow } from '../db/schema';
-import { buildDailySummary, dailySummaryEnabled, readSummaryGoals } from './notificationService';
+import {
+	buildDailySummary,
+	dailySummaryEnabled,
+	isLocalHour,
+	readSummaryGoals
+} from './notificationService';
 
 const DATE = '2026-01-15';
 let db: Db;
@@ -278,5 +283,27 @@ describe('buildDailySummary', () => {
 
 		expect(summary).toContain('Вода: 1,5 из 2,0 л');
 		expect(summary).toContain('Калории: 200 из 1900');
+	});
+});
+
+describe('isLocalHour', () => {
+	const now = new Date('2026-01-15T13:00:00.000Z');
+
+	it('без указанного часа пишет всем', () => {
+		// Так вели себя прежние расписания, и менять их поведение молча нельзя.
+		expect(isLocalHour('UTC', undefined, now)).toBe(true);
+		expect(isLocalHour('Asia/Irkutsk', undefined, now)).toBe(true);
+	});
+
+	it('сравнивает местное время получателя, а не время сервера', () => {
+		// 13:00 UTC — это 21:00 в Иркутске (UTC+8): вечерняя рассылка уходит
+		// ему, а не тому, у кого сейчас середина дня.
+		expect(isLocalHour('Asia/Irkutsk', 21, now)).toBe(true);
+		expect(isLocalHour('UTC', 21, now)).toBe(false);
+		expect(isLocalHour('UTC', 13, now)).toBe(true);
+	});
+
+	it('на битом поясе не падает', () => {
+		expect(isLocalHour('Марс/Олимп', 13, now)).toBe(true);
 	});
 });
