@@ -7,6 +7,7 @@
 		CloudCheck,
 		CloudSlash,
 		DownloadSimple,
+		UploadSimple,
 		Drop,
 		ForkKnife,
 		PaperPlaneTilt,
@@ -23,6 +24,7 @@
 	import { session } from '$lib/state/session.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { deleteAccount } from '$lib/services/accountService';
+	import { importFromFile } from '$lib/services/importService';
 	import { setWeightGoal } from '$lib/services/weightService';
 	import { ui } from '$lib/state/ui.svelte';
 	import { telegram } from '$lib/telegram';
@@ -222,6 +224,46 @@
 
 		// Освобождаем сразу: объектный URL живёт до конца сессии страницы.
 		setTimeout(() => URL.revokeObjectURL(url), 1000);
+		telegram.haptic.notification('success');
+	}
+
+	/**
+	 * Восстановление из файла.
+	 *
+	 * Записи сливаются, а не заменяются: файл вчерашний, а сегодняшние правки
+	 * терять нельзя. Итог показывается числами — «добавлено 128» проверяемо,
+	 * а «готово» нет.
+	 */
+	let importing = $state(false);
+	let importMessage = $state<string | null>(null);
+	let importFailed = $state(false);
+
+	async function handleImport(event: Event & { currentTarget: HTMLInputElement }) {
+		const file = event.currentTarget.files?.[0];
+		// Значение сбрасывается сразу: иначе повторный выбор того же файла
+		// не вызовет change и человек решит, что кнопка сломалась.
+		event.currentTarget.value = '';
+		if (!file) return;
+
+		importing = true;
+		importMessage = null;
+
+		const result = await importFromFile(file);
+		importing = false;
+		importFailed = !result.ok;
+
+		if (!result.ok) {
+			importMessage = Object.values(result.errors)[0] ?? 'Не удалось прочитать файл';
+			telegram.haptic.notification('error');
+			return;
+		}
+
+		const parts = [`добавлено ${result.value.added}`];
+		if (result.value.updated > 0) parts.push(`обновлено ${result.value.updated}`);
+		if (result.value.skipped > 0) parts.push(`пропущено ${result.value.skipped}`);
+		if (result.value.settingsApplied) parts.push('цели перенесены');
+
+		importMessage = `Готово: ${parts.join(', ')}.`;
 		telegram.haptic.notification('success');
 	}
 
@@ -559,11 +601,12 @@
 	<GlassCard>
 		<h2 class="mb-1 flex items-center gap-2 text-sm font-medium">
 			<DownloadSimple size={15} weight="light" class="text-lavender" />
-			Выгрузка данных
+			Выгрузка и восстановление
 		</h2>
 		<p class="mb-3 text-xs leading-relaxed text-muted-foreground">
 			Записи можно забрать в любой момент: JSON — полный снимок, CSV — таблица о еде для Excel или
-			Google Таблиц.
+			Google Таблиц. Снимок принимается обратно: записи сливаются по времени изменения, свежее
+			побеждает.
 		</p>
 
 		<div class="flex gap-2">
@@ -588,6 +631,33 @@
 				CSV с едой
 			</button>
 		</div>
+
+		<label
+			class="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-full
+			       border border-line-strong py-2.5 text-xs font-medium
+			       transition-[transform,border-color] duration-500 ease-flux
+			       hover:border-lavender/60 active:scale-[0.98]"
+		>
+			<UploadSimple size={13} weight="light" class="text-lavender" />
+			{importing ? 'Читаем файл…' : 'Восстановить из JSON'}
+			<input
+				type="file"
+				accept="application/json,.json"
+				onchange={handleImport}
+				disabled={importing}
+				class="sr-only"
+			/>
+		</label>
+
+		{#if importMessage}
+			<p
+				class="mt-2 text-xs leading-relaxed {importFailed
+					? 'text-destructive'
+					: 'text-muted-foreground'}"
+			>
+				{importMessage}
+			</p>
+		{/if}
 	</GlassCard>
 
 	<GlassCard>

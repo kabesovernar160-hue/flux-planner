@@ -435,6 +435,36 @@ export async function loadRawForSync<T>(store: StoreName): Promise<T[]> {
 	return (await getDriver()).getAll<T>(store);
 }
 
+/**
+ * Пакетная запись при импорте.
+ *
+ * По одной транзакции на запись превращает восстановление годовой истории
+ * в тысячу обращений к диску. Здесь на каждую коллекцию приходится одна.
+ */
+export async function saveImportedEntries(entries: {
+	foodEntries?: FoodEntry[];
+	habits?: Habit[];
+	habitCompletions?: HabitCompletion[];
+	financeEntries?: FinanceEntry[];
+	planItems?: PlanItem[];
+	weightEntries?: WeightEntry[];
+}): Promise<void> {
+	const driver = await getDriver();
+
+	const pairs: [StoreName, unknown[] | undefined][] = [
+		[STORES.foodEntries, entries.foodEntries],
+		[STORES.habits, entries.habits],
+		[STORES.habitCompletions, entries.habitCompletions],
+		[STORES.financeEntries, entries.financeEntries],
+		[STORES.planItems, entries.planItems],
+		[STORES.weightEntries, entries.weightEntries]
+	];
+
+	for (const [store, values] of pairs) {
+		if (values && values.length > 0) await driver.putMany(store, values);
+	}
+}
+
 /* ───────────────────────────── Записи дня для синхронизации ───────────────────────────── */
 
 /**

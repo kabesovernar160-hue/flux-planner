@@ -42,6 +42,13 @@ export type PlanItemInput = Omit<PlanItem, 'id' | 'createdAt' | 'updatedAt' | 'd
 	done?: boolean;
 };
 
+export interface ImportSummary {
+	added: number;
+	updated: number;
+	/** Пропущено: испорченные записи и те, что старше уже имеющихся. */
+	skipped: number;
+}
+
 export type HabitInput = {
 	name: string;
 	icon: string;
@@ -447,6 +454,116 @@ export class PlannerStore {
 		nutrition.waterConsumedMl = Math.max(0, nutrition.waterConsumedMl - ml);
 		this.#touchDay(nutrition);
 		this.#saveDoc();
+	}
+
+	/* ───────────────── Импорт ───────────────── */
+
+	/**
+	 * Приём записей из файла выгрузки.
+	 *
+	 * Побеждает более свежая версия — то же правило, по которому сливает
+	 * синхронизация. Иначе восстановление из вчерашнего файла откатывало бы
+	 * сегодняшние правки, а человек был бы уверен, что «просто вернул данные».
+	 *
+	 * Идентификаторы сохраняются: запись, приехавшая из файла, — это та же
+	 * запись, а не её копия. С новыми идентификаторами повторный импорт
+	 * одного и того же файла удваивал бы весь дневник.
+	 */
+	importRecords(payload: {
+		foodEntries?: unknown[];
+		habits?: unknown[];
+		habitCompletions?: unknown[];
+		financeEntries?: unknown[];
+		planItems?: unknown[];
+		weightEntries?: unknown[];
+		nutrition?: Record<string, unknown>;
+		finance?: Record<string, unknown>;
+	}): ImportSummary {
+		const summary: ImportSummary = { added: 0, updated: 0, skipped: 0 };
+
+		const merge = <T extends { id: string; updatedAt: string }>(
+			target: T[],
+			incoming: unknown[] | undefined
+		): T[] => {
+			const accepted: T[] = [];
+			if (!incoming) return accepted;
+
+			const byId = new Map(target.map((item) => [item.id, item]));
+
+			for (const raw of incoming) {
+				const candidate = raw as Partial<T>;
+				if (typeof candidate?.id !== 'string' || typeof candidate.updatedAt !== 'string') {
+					summary.skipped += 1;
+					continue;
+				}
+
+				const existing = byId.get(candidate.id);
+
+				if (existing) {
+					if (existing.updatedAt >= candidate.updatedAt) {
+						summary.skipped += 1;
+						continue;
+					}
+
+					Object.assign(existing, candidate);
+					accepted.push($state.snapshot(existing) as T);
+					summary.updated += 1;
+					continue;
+				}
+
+				const item = candidate as T;
+				target.push(item);
+				byId.set(item.id, item);
+				accepted.push(item);
+				summary.added += 1;
+			}
+
+			return accepted;
+		};
+
+		const mergeDays = <T extends { date: string; updatedAt: string }>(
+			target: Record<string, T>,
+			incoming: Record<string, unknown> | undefined
+		): void => {
+			if (!incoming) return;
+
+			for (const [date, raw] of Object.entries(incoming)) {
+				const candidate = raw as Partial<T>;
+				if (typeof candidate?.updatedAt !== 'string') {
+					summary.skipped += 1;
+					continue;
+				}
+
+				const existing = target[date];
+				if (existing && existing.updatedAt >= candidate.updatedAt) {
+					summary.skipped += 1;
+					continue;
+				}
+
+				target[date] = { ...(candidate as T), date };
+				if (existing) summary.updated += 1;
+				else summary.added += 1;
+			}
+		};
+
+		const accepted = {
+			foodEntries: merge(this.foodEntries, payload.foodEntries),
+			habits: merge(this.habits, payload.habits),
+			habitCompletions: merge(this.habitCompletions, payload.habitCompletions),
+			financeEntries: merge(this.financeEntries, payload.financeEntries),
+			planItems: merge(this.planItems, payload.planItems),
+			weightEntries: merge(this.weightEntries, payload.weightEntries)
+		};
+
+		mergeDays(this.doc.nutrition, payload.nutrition);
+		mergeDays(this.doc.finance, payload.finance);
+
+		this.weightEntries.sort((a, b) => a.date.localeCompare(b.date));
+
+		this.#persist(() => db.saveImportedEntries(accepted));
+		this.#saveDoc();
+
+		return summary;
 	}
 
 	/* ───────────────── Вес ───────────────── */
