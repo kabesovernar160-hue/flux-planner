@@ -1,4 +1,4 @@
-import { loadRawForSync } from './localDb';
+import { loadDayRecordsForSync, loadRawForSync, mergeDayRecordsFromSync } from './localDb';
 import { getDriver, STORES, type StoreName } from './storage';
 import { plannerStore } from '$lib/stores/plannerStore.svelte';
 import { telegram } from '$lib/telegram';
@@ -6,15 +6,33 @@ import { nowIso } from '$lib/utils/date';
 
 export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'error';
 
-type Collection = 'food' | 'habits' | 'completions' | 'finance' | 'plan';
+/** Коллекции-таблицы: каждая лежит в своём хранилище IndexedDB. */
+type EntryCollection = 'food' | 'habits' | 'completions' | 'finance' | 'plan';
 
-const STORE_BY_COLLECTION: Record<Collection, StoreName> = {
+/**
+ * Коллекции-дни: цели и бюджет дня.
+ *
+ * В интерфейсе это часть документа, а не список записей, но синхронизация
+ * не должна об этом знать: без них вода и цели дня остаются на устройстве,
+ * а вечерняя сводка в чате рассказывает про чужие числа.
+ */
+type DayCollection = 'nutritionDays' | 'financeDays';
+
+type Collection = EntryCollection | DayCollection;
+
+const STORE_BY_COLLECTION: Record<EntryCollection, StoreName> = {
 	food: STORES.foodEntries,
 	habits: STORES.habits,
 	completions: STORES.habitCompletions,
 	finance: STORES.financeEntries,
 	plan: STORES.planItems
 };
+
+const DAY_COLLECTIONS: DayCollection[] = ['nutritionDays', 'financeDays'];
+
+function isDayCollection(collection: string): collection is DayCollection {
+	return collection === 'nutritionDays' || collection === 'financeDays';
+}
 
 const WATERMARK_KEY = 'flux-planner:sync-watermark';
 
@@ -116,15 +134,21 @@ class SyncQueue {
 	async #collectChanges(since: string | null): Promise<Record<Collection, unknown[]>> {
 		const changes = {} as Record<Collection, unknown[]>;
 
+		const changedSince = (rows: { updatedAt?: string }[]) =>
+			since
+				? rows.filter((row) => typeof row.updatedAt === 'string' && row.updatedAt > since)
+				: rows;
+
 		for (const [collection, store] of Object.entries(STORE_BY_COLLECTION) as [
-			Collection,
+			EntryCollection,
 			StoreName
 		][]) {
 			// Надгробия тоже уезжают: без них удаление не доедет до сервера.
-			const rows = await loadRawForSync<{ updatedAt?: string }>(store);
-			changes[collection] = since
-				? rows.filter((row) => typeof row.updatedAt === 'string' && row.updatedAt > since)
-				: rows;
+			changes[collection] = changedSince(await loadRawForSync<{ updatedAt?: string }>(store));
+		}
+
+		for (const collection of DAY_COLLECTIONS) {
+			changes[collection] = changedSince(await loadDayRecordsForSync(collection));
 		}
 
 		return changes;
@@ -207,7 +231,19 @@ class SyncQueue {
 
 		for (const [collection, rows] of Object.entries(changes) as [Collection, { id: string }[]][]) {
 			if (!Array.isArray(rows) || rows.length === 0) continue;
-			await driver.putMany(STORE_BY_COLLECTION[collection], rows);
+
+			if (isDayCollection(collection)) {
+				await mergeDayRecordsFromSync(collection, rows);
+				continue;
+			}
+
+			const store = STORE_BY_COLLECTION[collection];
+			// Коллекция, которой этот клиент ещё не знает, пропускается молча.
+			// Обращение к хранилищу с именем undefined уронило бы всю
+			// синхронизацию из-за одного нового поля в протоколе.
+			if (!store) continue;
+
+			await driver.putMany(store, rows);
 		}
 	}
 

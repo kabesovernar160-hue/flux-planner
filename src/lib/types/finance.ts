@@ -1,3 +1,5 @@
+import type { SyncMeta } from './sync';
+
 export type FinanceEntryType = 'expense' | 'income';
 
 export const EXPENSE_CATEGORIES = [
@@ -70,3 +72,6 @@ export interface DailyFinance {
 	date: string;
 	budget: number;
 }
+
+/** Бюджет дня в хранилище: в синхронизации он ходит такой же строкой, как трата. */
+export type DailyFinanceRecord = DailyFinance & SyncMeta;

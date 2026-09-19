@@ -229,6 +229,74 @@ describe('состояние планировщика', () => {
 	});
 });
 
+describe('записи дня', () => {
+	const nutritionDay = (id: string, overrides: Record<string, unknown> = {}): SyncRow =>
+		({
+			id,
+			createdAt: '2026-01-15T08:00:00.000Z',
+			updatedAt: '2026-01-15T08:00:00.000Z',
+			deletedAt: null,
+			date: '2026-01-15',
+			calorieGoal: 2000,
+			proteinGoal: 120,
+			fatGoal: 70,
+			carbsGoal: 200,
+			waterGoalMl: 2500,
+			waterConsumedMl: 250,
+			...overrides
+		}) as unknown as SyncRow;
+
+	it('два устройства с разными идентификаторами сливаются в один день', async () => {
+		// Устройства создают запись дня офлайн, каждое со своим случайным id.
+		// Слияние по id упёрлось бы в уникальный индекс (user_id, date)
+		// и уронило бы весь пакет.
+		await repositories.nutritionDays.upsertMany(ALICE, [nutritionDay('device-a')]);
+		await repositories.nutritionDays.upsertMany(ALICE, [
+			nutritionDay('device-b', { updatedAt: '2026-01-15T10:00:00.000Z', waterConsumedMl: 1500 })
+		]);
+
+		const rows = (await repositories.nutritionDays.pullSince(ALICE, null)) as unknown as {
+			id: string;
+			waterConsumedMl: number;
+		}[];
+
+		expect(rows).toHaveLength(1);
+		// Идентификатор остаётся за первой записью: второй пакет — это правка
+		// того же дня, а не новая запись.
+		expect(rows[0].id).toBe('device-a');
+		expect(rows[0].waterConsumedMl).toBe(1500);
+	});
+
+	it('отставшая правка дня не откатывает свежую', async () => {
+		await repositories.nutritionDays.upsertMany(ALICE, [
+			nutritionDay('device-a', { updatedAt: '2026-01-15T12:00:00.000Z', waterConsumedMl: 2000 })
+		]);
+		await repositories.nutritionDays.upsertMany(ALICE, [
+			nutritionDay('device-b', { updatedAt: '2026-01-15T09:00:00.000Z', waterConsumedMl: 250 })
+		]);
+
+		const rows = (await repositories.nutritionDays.pullSince(ALICE, null)) as unknown as {
+			waterConsumedMl: number;
+		}[];
+
+		expect(rows[0].waterConsumedMl).toBe(2000);
+	});
+
+	it('один и тот же день у разных пользователей не смешивается', async () => {
+		await repositories.nutritionDays.upsertMany(ALICE, [nutritionDay('a-day')]);
+		await repositories.nutritionDays.upsertMany(BOB, [
+			nutritionDay('b-day', { waterConsumedMl: 750 })
+		]);
+
+		const alice = (await repositories.nutritionDays.pullSince(ALICE, null)) as unknown as {
+			waterConsumedMl: number;
+		}[];
+
+		expect(alice).toHaveLength(1);
+		expect(alice[0].waterConsumedMl).toBe(250);
+	});
+});
+
 describe('пустые пакеты', () => {
 	it('не вызывают ошибок', async () => {
 		expect(await repositories.food.upsertMany(ALICE, [])).toBe(0);

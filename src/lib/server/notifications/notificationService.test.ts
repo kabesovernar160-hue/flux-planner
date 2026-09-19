@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createTestDb, type Db } from '../db/client';
 import { createRepositories, type Repositories } from '../db/repositories';
 import type { UserRow } from '../db/schema';
-import { buildDailySummary, dailySummaryEnabled } from './notificationService';
+import { buildDailySummary, dailySummaryEnabled, readSummaryGoals } from './notificationService';
 
 const DATE = '2026-01-15';
 let db: Db;
@@ -46,6 +46,29 @@ describe('dailySummaryEnabled', () => {
 	it('не падает на чужой форме настроек', () => {
 		expect(dailySummaryEnabled('строка')).toBe(true);
 		expect(dailySummaryEnabled({ notifications: 'да' })).toBe(true);
+	});
+});
+
+describe('readSummaryGoals', () => {
+	it('берёт цели из настроек пользователя', () => {
+		const goals = readSummaryGoals({ calorieGoal: 1700, dailyBudget: 1000 });
+
+		expect(goals.calorieGoal).toBe(1700);
+		expect(goals.dailyBudget).toBe(1000);
+	});
+
+	it('на отсутствующее или испорченное поле подставляет значение по умолчанию', () => {
+		// Ноль и строка — не цель, а сломанная настройка: делить на них нельзя.
+		const goals = readSummaryGoals({ calorieGoal: 0, waterGoalMl: 'много', fatGoal: 60 });
+
+		expect(goals.calorieGoal).toBe(2100);
+		expect(goals.waterGoalMl).toBe(2500);
+		expect(goals.fatGoal).toBe(60);
+	});
+
+	it('не падает на чужой форме настроек', () => {
+		expect(readSummaryGoals(null).calorieGoal).toBe(2100);
+		expect(readSummaryGoals('строка').calorieGoal).toBe(2100);
 	});
 });
 
@@ -161,5 +184,74 @@ describe('buildDailySummary', () => {
 		]);
 
 		expect((await buildDailySummary(db, user, DATE)).text).toContain('Калории: 0 из 2100');
+	});
+
+	it('цель и лимит берутся из настроек, а не из общих констант', async () => {
+		// Записи дня у человека может не быть — он просто ничего не менял
+		// в целях конкретного дня. Раньше сводка в этом случае рассказывала
+		// про 2100 ккал и 3000 ₽ тому, у кого в приложении стоит другое.
+		await repositories.planner.save({
+			userId: user.id,
+			schemaVersion: 4,
+			settings: { calorieGoal: 1700, dailyBudget: 1000 },
+			updatedAt: '2026-01-15T08:00:00.000Z'
+		});
+
+		await repositories.food.upsertMany(user.id, [
+			{
+				id: 'f-goal',
+				...stamps,
+				date: DATE,
+				name: 'Овсянка',
+				calories: 300,
+				protein: 10,
+				fat: 5,
+				carbs: 50,
+				source: 'manual'
+			} as never
+		]);
+
+		const summary = normalize((await buildDailySummary(db, user, DATE)).text);
+
+		expect(summary).toContain('Калории: 300 из 1700');
+		expect(summary).toContain('из 1 000 ₽');
+	});
+
+	it('выпитая вода из синхронизированной записи дня попадает в сводку', async () => {
+		// Записи дня приезжают с устройства коллекцией nutritionDays.
+		// Пока клиент их не слал, бот писал «Вода: 0,0 из 2,5 л» любому,
+		// сколько бы стаканов человек ни отметил.
+		await repositories.nutritionDays.upsertMany(user.id, [
+			{
+				id: 'n-1',
+				...stamps,
+				date: DATE,
+				calorieGoal: 1900,
+				proteinGoal: 120,
+				fatGoal: 70,
+				carbsGoal: 200,
+				waterGoalMl: 2000,
+				waterConsumedMl: 1500
+			} as never
+		]);
+
+		await repositories.food.upsertMany(user.id, [
+			{
+				id: 'f-water',
+				...stamps,
+				date: DATE,
+				name: 'Суп',
+				calories: 200,
+				protein: 8,
+				fat: 6,
+				carbs: 20,
+				source: 'manual'
+			} as never
+		]);
+
+		const summary = (await buildDailySummary(db, user, DATE)).text;
+
+		expect(summary).toContain('Вода: 1,5 из 2,0 л');
+		expect(summary).toContain('Калории: 200 из 1900');
 	});
 });

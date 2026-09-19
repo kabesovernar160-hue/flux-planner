@@ -1,3 +1,5 @@
+import type { SyncMeta } from './sync';
+
 /** Источник записи о еде: ручной ввод или распознавание по фото. */
 export type FoodSource = 'manual' | 'ai';
 
@@ -40,6 +42,15 @@ export interface DailyNutrition {
 	waterGoalMl: number;
 	waterConsumedMl: number;
 }
+
+/**
+ * Цели дня в хранилище.
+ *
+ * В документе они лежат под ключом-датой, а в синхронизации ходят строками —
+ * отсюда служебные поля. Расчётам нужны только цели, поэтому они принимают
+ * DailyNutrition и ничего не знают про идентификаторы.
+ */
+export type DailyNutritionRecord = DailyNutrition & SyncMeta;
 
 /**
  * Пищевая ценность на 100 граммов продукта.

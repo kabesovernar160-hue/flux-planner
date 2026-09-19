@@ -1,7 +1,7 @@
 import type { ProfileInput } from '$lib/utils/goals';
-import type { DailyFinance, FinanceEntry } from './finance';
+import type { DailyFinanceRecord, FinanceEntry } from './finance';
 import type { Habit, HabitCompletion } from './habit';
-import type { DailyNutrition, FoodEntry } from './nutrition';
+import type { DailyNutritionRecord, FoodEntry } from './nutrition';
 import type { PlanItem } from './plan';
 
 /**
@@ -10,7 +10,7 @@ import type { PlanItem } from './plan';
  * Увеличивать при любом несовместимом изменении формы данных и добавлять
  * шаг в migrate() в $lib/db/localDb.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export interface PlannerUser {
 	/** Приходит из валидированного initData. До авторизации — null. */
@@ -89,9 +89,9 @@ export interface PlannerState {
 	settings: PlannerSettings;
 
 	/** Цели по дням, ключ — YYYY-MM-DD. */
-	nutrition: Record<string, DailyNutrition>;
+	nutrition: Record<string, DailyNutritionRecord>;
 	/** Бюджеты по дням, ключ — YYYY-MM-DD. */
-	finance: Record<string, DailyFinance>;
+	finance: Record<string, DailyFinanceRecord>;
 
 	foodEntries: FoodEntry[];
 	habits: Habit[];

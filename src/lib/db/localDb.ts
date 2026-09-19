@@ -1,6 +1,6 @@
-import type { DailyFinance, FinanceEntry } from '$lib/types/finance';
+import type { DailyFinanceRecord, FinanceEntry } from '$lib/types/finance';
 import type { Habit, HabitCompletion } from '$lib/types/habit';
-import type { DailyNutrition, FoodEntry } from '$lib/types/nutrition';
+import type { DailyNutritionRecord, FoodEntry } from '$lib/types/nutrition';
 import type { PlanItem } from '$lib/types/plan';
 import type {
 	PlannerDocument,
@@ -9,7 +9,9 @@ import type {
 	PlannerUser
 } from '$lib/types/planner';
 import { SCHEMA_VERSION } from '$lib/types/planner';
+import type { SyncMeta } from '$lib/types/sync';
 import { nowIso, resolveTimeZone } from '$lib/utils/date';
+import { createId } from '$lib/utils/id';
 import { getDriver, PLANNER_DOC_KEY, STORES, type StoreName } from './storage';
 
 /* ───────────────────────────── Значения по умолчанию ───────────────────────────── */
@@ -144,7 +146,7 @@ function isFinanceEntry(value: unknown): value is FinanceEntry {
 	);
 }
 
-function isDailyNutrition(value: unknown): value is DailyNutrition {
+function isDailyNutrition(value: unknown): value is DailyNutritionRecord {
 	return (
 		isRecord(value) &&
 		isNonEmptyString(value.date) &&
@@ -153,18 +155,40 @@ function isDailyNutrition(value: unknown): value is DailyNutrition {
 	);
 }
 
-function isDailyFinance(value: unknown): value is DailyFinance {
+function isDailyFinance(value: unknown): value is DailyFinanceRecord {
 	return isRecord(value) && isNonEmptyString(value.date) && isFiniteNumber(value.budget);
+}
+
+/**
+ * Достройка служебных полей записи дня.
+ *
+ * Цели и бюджет дня появились раньше, чем их синхронизация, и в уже
+ * сохранённых документах идентификатора и отметок времени нет. Без них
+ * запись не уедет на сервер, поэтому они проставляются при чтении —
+ * ровно один раз, дальше живут вместе с записью.
+ */
+function withSyncMeta<T extends { date: string }>(record: T): T & SyncMeta {
+	const existing = record as Partial<SyncMeta> & T;
+	const timestamp = nowIso();
+
+	return {
+		...record,
+		id: isNonEmptyString(existing.id) ? existing.id : createId(),
+		createdAt: isNonEmptyString(existing.createdAt) ? existing.createdAt : timestamp,
+		updatedAt: isNonEmptyString(existing.updatedAt) ? existing.updatedAt : timestamp,
+		deletedAt: existing.deletedAt ?? null
+	};
 }
 
 function sanitizeDailyMap<T>(
 	value: unknown,
-	guard: (candidate: unknown) => candidate is T
+	guard: (candidate: unknown) => candidate is T,
+	normalize: (entry: T) => T
 ): Record<string, T> {
 	if (!isRecord(value)) return {};
 	const result: Record<string, T> = {};
 	for (const [key, entry] of Object.entries(value)) {
-		if (guard(entry)) result[key] = entry;
+		if (guard(entry)) result[key] = normalize(entry);
 	}
 	return result;
 }
@@ -202,9 +226,24 @@ export function migrateDocument(raw: unknown): PlannerDocument | null {
 			timezone: isNonEmptyString(user.timezone) ? user.timezone : defaults.user.timezone
 		},
 		settings: { ...defaults.settings, ...settings },
-		nutrition: sanitizeDailyMap(raw.nutrition, isDailyNutrition),
-		finance: sanitizeDailyMap(raw.finance, isDailyFinance)
+		nutrition: sanitizeDailyMap(raw.nutrition, isDailyNutrition, withSyncMeta),
+		finance: sanitizeDailyMap(raw.finance, isDailyFinance, withSyncMeta)
 	};
+}
+
+function hasDayRecordsWithoutMeta(raw: unknown): boolean {
+	if (!isRecord(raw)) return false;
+
+	for (const field of ['nutrition', 'finance'] as const) {
+		const map = raw[field];
+		if (!isRecord(map)) continue;
+
+		for (const entry of Object.values(map)) {
+			if (!isRecord(entry) || !isNonEmptyString(entry.id)) return true;
+		}
+	}
+
+	return false;
 }
 
 /* ───────────────────────────── Репозиторий ───────────────────────────── */
@@ -234,6 +273,13 @@ export async function loadPlannerState(timezone?: string): Promise<PlannerState>
 	]);
 
 	const document = migrateDocument(rawDoc) ?? createDefaultDocument(timezone);
+
+	// Достроенные служебные поля записываются обратно сразу: иначе каждое
+	// чтение выдавало бы записи дня с новыми идентификаторами, и синхронизация
+	// отправляла бы один и тот же день под разными ключами.
+	if (hasDayRecordsWithoutMeta(rawDoc)) {
+		await savePlannerDocument(document);
+	}
 
 	return {
 		...document,
@@ -332,6 +378,77 @@ export async function deleteFinanceEntry(id: string): Promise<void> {
  */
 export async function loadRawForSync<T>(store: StoreName): Promise<T[]> {
 	return (await getDriver()).getAll<T>(store);
+}
+
+/* ───────────────────────────── Записи дня для синхронизации ───────────────────────────── */
+
+/**
+ * Цели и бюджет дня живут внутри документа под ключом-датой, а в протоколе
+ * ходят обычными строками. Перевод из одного в другое собран здесь: очередь
+ * синхронизации не должна знать, как устроено локальное хранилище.
+ */
+export type DayCollection = 'nutritionDays' | 'financeDays';
+
+export async function loadDayRecordsForSync(
+	collection: DayCollection
+): Promise<(SyncMeta & { date: string })[]> {
+	const driver = await getDriver();
+	const document = migrateDocument(await driver.get<unknown>(STORES.plannerState, PLANNER_DOC_KEY));
+	if (!document) return [];
+
+	return Object.values(
+		collection === 'nutritionDays' ? document.nutrition : document.finance
+	) as (SyncMeta & { date: string })[];
+}
+
+function mergeDayRows<T extends { date: string }>(
+	target: Record<string, T & SyncMeta>,
+	rows: unknown[],
+	guard: (value: unknown) => value is T
+): boolean {
+	let changed = false;
+
+	for (const row of rows) {
+		if (!guard(row)) continue;
+
+		const incoming = withSyncMeta(row);
+		const existing = target[incoming.date];
+
+		// Побеждает последняя правка — то же правило, по которому сливает сервер.
+		if (existing && existing.updatedAt >= incoming.updatedAt) continue;
+
+		if (incoming.deletedAt) {
+			// Дни не удаляют, но если надгробие пришло — уважаем его,
+			// иначе запись воскресала бы при каждой синхронизации.
+			delete target[incoming.date];
+		} else {
+			target[incoming.date] = incoming;
+		}
+
+		changed = true;
+	}
+
+	return changed;
+}
+
+/** Приём записей дня с сервера. Документ переписывается только при изменениях. */
+export async function mergeDayRecordsFromSync(
+	collection: DayCollection,
+	rows: unknown[]
+): Promise<void> {
+	if (rows.length === 0) return;
+
+	const driver = await getDriver();
+	const document =
+		migrateDocument(await driver.get<unknown>(STORES.plannerState, PLANNER_DOC_KEY)) ??
+		createDefaultDocument();
+
+	const changed =
+		collection === 'nutritionDays'
+			? mergeDayRows(document.nutrition, rows, isDailyNutrition)
+			: mergeDayRows(document.finance, rows, isDailyFinance);
+
+	if (changed) await savePlannerDocument(document);
 }
 
 export async function clearAllData(): Promise<void> {

@@ -45,7 +45,19 @@ function createSyncRepository<T extends SyncRow>(
 		id: never;
 		userId: never;
 		updatedAt: never;
-	}
+	},
+	options: {
+		/**
+		 * Слияние по паре «пользователь + день», а не по идентификатору.
+		 *
+		 * Нужно таблицам, где день существует в единственном экземпляре:
+		 * цели и бюджет дня. Два устройства, создавшие запись одного дня
+		 * офлайн, приходят с разными случайными идентификаторами, и слияние
+		 * по id упёрлось бы в уникальный индекс (user_id, date) — то есть
+		 * уронило бы весь пакет вместо того, чтобы соединить две правки.
+		 */
+		conflictOnUserDate?: boolean;
+	} = {}
 ): SyncRepository<T> {
 	// Типы Drizzle не выражают «любая таблица с этими колонками», поэтому
 	// доступ к колонкам идёт через приведение. Границы таблиц заданы
@@ -54,8 +66,11 @@ function createSyncRepository<T extends SyncRow>(
 		id: never;
 		userId: never;
 		updatedAt: never;
+		date: never;
 	};
 	const anyTable = table as never;
+
+	const conflictTarget = options.conflictOnUserDate ? [columns.userId, columns.date] : columns.id;
 
 	return {
 		name,
@@ -98,7 +113,7 @@ function createSyncRepository<T extends SyncRow>(
 						.insert(anyTable)
 						.values(values as never)
 						.onConflictDoUpdate({
-							target: columns.id,
+							target: conflictTarget,
 							set: updatable as never,
 							// Последняя запись побеждает: обновляем только если
 							// пришедшая версия новее сохранённой. Без этого условия
@@ -270,8 +285,12 @@ export function createRepositories(db: Db): Repositories {
 		habits: createSyncRepository(db, 'habits', habits as never),
 		completions: createSyncRepository(db, 'habitCompletions', habitCompletions as never),
 		finance: createSyncRepository(db, 'financeEntries', financeEntries as never),
-		nutritionDays: createSyncRepository(db, 'dailyNutrition', dailyNutrition as never),
-		financeDays: createSyncRepository(db, 'dailyFinance', dailyFinance as never),
+		nutritionDays: createSyncRepository(db, 'dailyNutrition', dailyNutrition as never, {
+			conflictOnUserDate: true
+		}),
+		financeDays: createSyncRepository(db, 'dailyFinance', dailyFinance as never, {
+			conflictOnUserDate: true
+		}),
 		plan: createSyncRepository(db, 'planItems', planItems as never),
 		pendingScans: pendingScanRepository
 	};

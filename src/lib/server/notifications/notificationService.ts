@@ -15,6 +15,13 @@ import { calculateNutritionSummary } from '$lib/utils/nutrition';
  * с тем, что человек видит на экране.
  */
 
+/**
+ * Запасные цели.
+ *
+ * Те же числа, что у нового пользователя в приложении. Нужны только когда
+ * человек ещё ничего не настраивал: во всех остальных случаях цели берутся
+ * из его настроек.
+ */
 const DEFAULTS = {
 	calorieGoal: 2100,
 	proteinGoal: 120,
@@ -23,6 +30,41 @@ const DEFAULTS = {
 	waterGoalMl: 2500,
 	dailyBudget: 3000
 };
+
+export type SummaryGoals = typeof DEFAULTS;
+
+/**
+ * Цели пользователя из его настроек.
+ *
+ * Настройки приходят JSON-блобом: форму задаёт клиент, и сервер обязан
+ * пережить любую. Каждое поле берётся по отдельности — половина настроек
+ * лучше, чем откат на общие константы целиком.
+ *
+ * Без этого бот писал «из 2100 ккал» и «лимит 3000 ₽» человеку, у которого
+ * в приложении стоят совсем другие числа: сводка расходилась с экраном,
+ * а доверие к ней — с ней самой.
+ */
+export function readSummaryGoals(settings: unknown): SummaryGoals {
+	if (typeof settings !== 'object' || settings === null) return DEFAULTS;
+
+	const source = settings as Record<string, unknown>;
+
+	const pick = (key: keyof SummaryGoals): number => {
+		const value = source[key];
+		// Ноль и отрицательные значения отбрасываются: делить на них нельзя,
+		// а «цель 0 ккал» означает не цель, а испорченную настройку.
+		return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : DEFAULTS[key];
+	};
+
+	return {
+		calorieGoal: pick('calorieGoal'),
+		proteinGoal: pick('proteinGoal'),
+		fatGoal: pick('fatGoal'),
+		carbsGoal: pick('carbsGoal'),
+		waterGoalMl: pick('waterGoalMl'),
+		dailyBudget: pick('dailyBudget')
+	};
+}
 
 function formatMl(ml: number): string {
 	return (ml / 1000).toFixed(1).replace('.', ',');
@@ -46,17 +88,24 @@ export interface DailySummary {
 export async function buildDailySummary(
 	db: Db,
 	user: UserRow,
-	date = getToday(user.timezone)
+	date = getToday(user.timezone),
+	/** Настройки, если вызывающий их уже прочитал: рассылка не читает строку дважды. */
+	settings?: unknown
 ): Promise<DailySummary> {
-	const snapshot = await loadDaySnapshot(db, user.id, date);
+	const [snapshot, resolvedSettings] = await Promise.all([
+		loadDaySnapshot(db, user.id, date),
+		settings === undefined ? loadPlannerSettings(db, user.id) : Promise.resolve(settings)
+	]);
+
+	const goals = readSummaryGoals(resolvedSettings);
 
 	const nutrition = snapshot.nutrition ?? {
 		date,
-		calorieGoal: DEFAULTS.calorieGoal,
-		proteinGoal: DEFAULTS.proteinGoal,
-		fatGoal: DEFAULTS.fatGoal,
-		carbsGoal: DEFAULTS.carbsGoal,
-		waterGoalMl: DEFAULTS.waterGoalMl,
+		calorieGoal: goals.calorieGoal,
+		proteinGoal: goals.proteinGoal,
+		fatGoal: goals.fatGoal,
+		carbsGoal: goals.carbsGoal,
+		waterGoalMl: goals.waterGoalMl,
 		waterConsumedMl: 0
 	};
 
@@ -64,7 +113,7 @@ export async function buildDailySummary(
 	const finance = calculateFinanceSummary(
 		snapshot.finance,
 		date,
-		snapshot.budget?.budget ?? DEFAULTS.dailyBudget
+		snapshot.budget?.budget ?? goals.dailyBudget
 	);
 
 	const planned = scheduledHabits(snapshot.habits, date);
@@ -112,9 +161,10 @@ export function dailySummaryEnabled(settings: unknown): boolean {
 export async function sendDailySummary(db: Db, user: UserRow, date?: string): Promise<boolean> {
 	// Отключённые уведомления проверяются до сборки сводки: незачем читать
 	// день целиком, чтобы потом ничего не отправить.
-	if (!dailySummaryEnabled(await loadPlannerSettings(db, user.id))) return false;
+	const settings = await loadPlannerSettings(db, user.id);
+	if (!dailySummaryEnabled(settings)) return false;
 
-	const summary = await buildDailySummary(db, user, date);
+	const summary = await buildDailySummary(db, user, date, settings);
 
 	// Пустой день не тревожим: сводка из одних нулей — это спам,
 	// а не полезное напоминание.

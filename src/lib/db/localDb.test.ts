@@ -4,7 +4,9 @@ import {
 	clearAllData,
 	createDefaultDocument,
 	getStorageKind,
+	loadDayRecordsForSync,
 	loadPlannerState,
+	mergeDayRecordsFromSync,
 	migrateDocument,
 	saveFinanceEntry,
 	saveFoodEntry,
@@ -212,5 +214,127 @@ describe('запись и чтение', () => {
 		expect(state.habitCompletions).toHaveLength(1);
 		expect(state.financeEntries).toHaveLength(1);
 		expect(state.financeEntries[0].amount).toBe(920);
+	});
+});
+
+describe('записи дня в синхронизации', () => {
+	const nutritionDay = (overrides: Record<string, unknown> = {}) => ({
+		date: '2026-01-15',
+		calorieGoal: 2000,
+		proteinGoal: 100,
+		fatGoal: 60,
+		carbsGoal: 200,
+		waterGoalMl: 2000,
+		waterConsumedMl: 500,
+		...overrides
+	});
+
+	it('старой записи дня достраиваются служебные поля', () => {
+		// Цели дня появились раньше своей синхронизации: в уже сохранённых
+		// документах идентификатора и отметок времени нет, а без них
+		// запись никогда не уедет на сервер.
+		const migrated = migrateDocument({
+			schemaVersion: SCHEMA_VERSION,
+			nutrition: { '2026-01-15': nutritionDay() }
+		});
+
+		const day = migrated?.nutrition['2026-01-15'];
+
+		expect(day?.id.length).toBeGreaterThan(0);
+		expect(day?.createdAt.length).toBeGreaterThan(0);
+		expect(day?.updatedAt.length).toBeGreaterThan(0);
+	});
+
+	it('достроенные поля записываются обратно и не меняются от чтения к чтению', async () => {
+		const driver = await getDriver();
+		await driver.put(
+			STORES.plannerState,
+			{ schemaVersion: SCHEMA_VERSION, nutrition: { '2026-01-15': nutritionDay() } },
+			PLANNER_DOC_KEY
+		);
+
+		const first = await loadPlannerState();
+		const second = await loadPlannerState();
+
+		// Иначе один и тот же день уезжал бы на сервер под новым
+		// идентификатором после каждого запуска приложения.
+		expect(second.nutrition['2026-01-15'].id).toBe(first.nutrition['2026-01-15'].id);
+	});
+
+	it('отдаёт записи дня для отправки', async () => {
+		await savePlannerDocument({
+			...createDefaultDocument(),
+			nutrition: {
+				'2026-01-15': {
+					...nutritionDay(),
+					id: 'n1',
+					createdAt: '2026-01-15T08:00:00.000Z',
+					updatedAt: '2026-01-15T08:00:00.000Z',
+					deletedAt: null
+				}
+			}
+		});
+
+		const rows = await loadDayRecordsForSync('nutritionDays');
+
+		expect(rows).toHaveLength(1);
+		expect(rows[0].id).toBe('n1');
+	});
+
+	it('принимает более свежую запись дня и отклоняет отставшую', async () => {
+		await savePlannerDocument({
+			...createDefaultDocument(),
+			nutrition: {
+				'2026-01-15': {
+					...nutritionDay({ waterConsumedMl: 500 }),
+					id: 'n1',
+					createdAt: '2026-01-15T08:00:00.000Z',
+					updatedAt: '2026-01-15T10:00:00.000Z',
+					deletedAt: null
+				}
+			}
+		});
+
+		await mergeDayRecordsFromSync('nutritionDays', [
+			{
+				...nutritionDay({ waterConsumedMl: 250 }),
+				id: 'n1',
+				createdAt: '2026-01-15T08:00:00.000Z',
+				updatedAt: '2026-01-15T09:00:00.000Z'
+			}
+		]);
+
+		expect((await loadPlannerState()).nutrition['2026-01-15'].waterConsumedMl).toBe(500);
+
+		await mergeDayRecordsFromSync('nutritionDays', [
+			{
+				...nutritionDay({ waterConsumedMl: 1750 }),
+				id: 'n1',
+				createdAt: '2026-01-15T08:00:00.000Z',
+				updatedAt: '2026-01-15T12:00:00.000Z'
+			}
+		]);
+
+		expect((await loadPlannerState()).nutrition['2026-01-15'].waterConsumedMl).toBe(1750);
+	});
+
+	it('день, созданный на сервере, появляется локально', async () => {
+		await mergeDayRecordsFromSync('financeDays', [
+			{
+				id: 'fd1',
+				date: '2026-01-16',
+				budget: 1500,
+				createdAt: '2026-01-16T08:00:00.000Z',
+				updatedAt: '2026-01-16T08:00:00.000Z'
+			}
+		]);
+
+		expect((await loadPlannerState()).finance['2026-01-16'].budget).toBe(1500);
+	});
+
+	it('битая строка с сервера не ломает документ', async () => {
+		await mergeDayRecordsFromSync('nutritionDays', [{ date: '2026-01-15' }, null, 'строка']);
+
+		expect((await loadPlannerState()).nutrition['2026-01-15']).toBeUndefined();
 	});
 });

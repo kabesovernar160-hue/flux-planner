@@ -1,7 +1,12 @@
 import * as db from '$lib/db/localDb';
-import type { DailyFinance, FinanceCategory, FinanceEntry } from '$lib/types/finance';
+import type {
+	DailyFinance,
+	DailyFinanceRecord,
+	FinanceCategory,
+	FinanceEntry
+} from '$lib/types/finance';
 import type { Habit, HabitCompletion, HabitFrequency } from '$lib/types/habit';
-import type { DailyNutrition, FoodEntry } from '$lib/types/nutrition';
+import type { DailyNutrition, DailyNutritionRecord, FoodEntry } from '$lib/types/nutrition';
 import type { PlanItem } from '$lib/types/plan';
 import type {
 	PlannerDocument,
@@ -275,12 +280,17 @@ export class PlannerStore {
 	/* ───────────────── Питание ───────────────── */
 
 	/** Запись целей дня, создаётся по требованию из настроек. */
-	#ensureNutrition(date: DateKey): DailyNutrition {
+	#ensureNutrition(date: DateKey): DailyNutritionRecord {
 		const existing = this.doc.nutrition[date];
 		if (existing) return existing;
 
 		const { settings } = this.doc;
-		const created: DailyNutrition = {
+		const timestamp = nowIso();
+		const created: DailyNutritionRecord = {
+			id: createId(),
+			createdAt: timestamp,
+			updatedAt: timestamp,
+			deletedAt: null,
 			date,
 			calorieGoal: settings.calorieGoal,
 			proteinGoal: settings.proteinGoal,
@@ -368,9 +378,22 @@ export class PlannerStore {
 		this.#persist(() => db.deletePlanItem(id));
 	}
 
+	/**
+	 * Отметка правки записи дня.
+	 *
+	 * Без неё изменение цели или выпитой воды не попадёт в пакет
+	 * синхронизации: очередь отбирает записи по updatedAt, а не по факту
+	 * сохранения документа.
+	 */
+	#touchDay(record: { updatedAt: string }): void {
+		record.updatedAt = nowIso();
+	}
+
 	setCalorieGoal(goal: number, date: DateKey = this.currentDate): void {
 		if (!Number.isFinite(goal) || goal < 0) return;
-		this.#ensureNutrition(date).calorieGoal = goal;
+		const nutrition = this.#ensureNutrition(date);
+		nutrition.calorieGoal = goal;
+		this.#touchDay(nutrition);
 		this.#saveDoc();
 	}
 
@@ -393,12 +416,15 @@ export class PlannerStore {
 			}
 		}
 
+		this.#touchDay(nutrition);
 		this.#saveDoc();
 	}
 
 	setWaterGoal(goalMl: number, date: DateKey = this.currentDate): void {
 		if (!Number.isFinite(goalMl) || goalMl < 0) return;
-		this.#ensureNutrition(date).waterGoalMl = goalMl;
+		const nutrition = this.#ensureNutrition(date);
+		nutrition.waterGoalMl = goalMl;
+		this.#touchDay(nutrition);
 		this.#saveDoc();
 	}
 
@@ -406,6 +432,7 @@ export class PlannerStore {
 		if (!Number.isFinite(ml) || ml <= 0) return;
 		const nutrition = this.#ensureNutrition(date);
 		nutrition.waterConsumedMl += ml;
+		this.#touchDay(nutrition);
 		this.#saveDoc();
 	}
 
@@ -414,6 +441,7 @@ export class PlannerStore {
 		const nutrition = this.#ensureNutrition(date);
 		// Отрицательный объём выпитого бессмыслен.
 		nutrition.waterConsumedMl = Math.max(0, nutrition.waterConsumedMl - ml);
+		this.#touchDay(nutrition);
 		this.#saveDoc();
 	}
 
@@ -527,11 +555,20 @@ export class PlannerStore {
 
 	/* ───────────────── Финансы ───────────────── */
 
-	#ensureFinance(date: DateKey): DailyFinance {
+	#ensureFinance(date: DateKey): DailyFinanceRecord {
 		const existing = this.doc.finance[date];
 		if (existing) return existing;
 
-		const created: DailyFinance = { date, budget: this.doc.settings.dailyBudget };
+		const timestamp = nowIso();
+		const created: DailyFinanceRecord = {
+			id: createId(),
+			createdAt: timestamp,
+			updatedAt: timestamp,
+			deletedAt: null,
+			date,
+			budget: this.doc.settings.dailyBudget
+		};
+
 		this.doc.finance[date] = created;
 		return created;
 	}
@@ -569,7 +606,9 @@ export class PlannerStore {
 
 	setDailyBudget(budget: number, date: DateKey = this.currentDate): void {
 		if (!Number.isFinite(budget) || budget < 0) return;
-		this.#ensureFinance(date).budget = budget;
+		const finance = this.#ensureFinance(date);
+		finance.budget = budget;
+		this.#touchDay(finance);
 		this.#saveDoc();
 	}
 
