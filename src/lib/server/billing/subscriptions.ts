@@ -36,6 +36,22 @@ export async function getEntitlement(
 	);
 }
 
+/**
+ * Строка подписки как она есть.
+ *
+ * getEntitlement отвечает на вопрос «что человеку доступно», а здесь нужен
+ * идентификатор платежа: без него нечего отменять.
+ */
+export async function getSubscriptionRow(db: Db, userId: string) {
+	const [row] = await db
+		.select()
+		.from(subscriptions)
+		.where(eq(subscriptions.userId, userId))
+		.limit(1);
+
+	return row ?? null;
+}
+
 export interface ActivationInput {
 	userId: string;
 	plan: PlanId;

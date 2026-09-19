@@ -7,6 +7,9 @@ import {
 	isValidMiniAppUrl,
 	miniAppKeyboard,
 	OPEN_APP_BUTTON,
+	SUBSCRIPTION_CANCEL_FAILED_TEXT,
+	SUBSCRIPTION_NONE_TEXT,
+	subscriptionCancelledText,
 	WELCOME_TEXT
 } from './botMessages';
 
@@ -131,5 +134,34 @@ describe('formatSavedMessage', () => {
 
 		expect(text).toContain('Куриная грудка, Рис отварной');
 		expect(text).toContain('508 ккал');
+	});
+});
+
+describe('отмена подписки', () => {
+	it('объясняет, что оплаченный период остаётся', () => {
+		// Иначе человек придёт в поддержку за возвратом за собственную отмену.
+		const text = subscriptionCancelledText('2026-02-14T00:00:00.000Z');
+
+		expect(text).toContain('Автопродление отключено');
+		expect(text).toContain('14 февраля');
+		expect(text).toContain('не сгорает');
+	});
+
+	it('без даты не выдумывает её', () => {
+		const text = subscriptionCancelledText(null);
+
+		expect(text).toContain('не сгорает');
+		expect(text).not.toContain('до ');
+	});
+
+	it('на отсутствие подписки отвечает без упрёка', () => {
+		expect(SUBSCRIPTION_NONE_TEXT).toContain('Активной подписки нет');
+		expect(SUBSCRIPTION_NONE_TEXT).toContain('бесплатном тарифе');
+	});
+
+	it('при неудаче показывает путь в настройках Telegram', () => {
+		// Врать про успех нельзя: деньги спишутся снова.
+		expect(SUBSCRIPTION_CANCEL_FAILED_TEXT).toContain('Не получилось');
+		expect(SUBSCRIPTION_CANCEL_FAILED_TEXT).toContain('Подписки');
 	});
 });

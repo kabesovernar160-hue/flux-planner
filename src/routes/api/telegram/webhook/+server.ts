@@ -9,12 +9,17 @@ import { logServerError } from '$lib/server/errors';
 import {
 	answerCallbackQuery,
 	answerPreCheckoutQuery,
+	cancelStarSubscription,
 	downloadFile,
 	editMessageReplyMarkup,
 	getFilePath,
 	sendMessage
 } from '$lib/server/telegram/botApi';
-import { activateSubscription, revokeSubscription } from '$lib/server/billing/subscriptions';
+import {
+	activateSubscription,
+	getSubscriptionRow,
+	revokeSubscription
+} from '$lib/server/billing/subscriptions';
 import { resolveIntentProvider } from '$lib/server/ai/intentProvider';
 import {
 	applyIntent,
@@ -33,6 +38,9 @@ import {
 	isValidMiniAppUrl,
 	miniAppKeyboard,
 	NO_FOOD_TEXT,
+	SUBSCRIPTION_CANCEL_FAILED_TEXT,
+	SUBSCRIPTION_NONE_TEXT,
+	subscriptionCancelledText,
 	WELCOME_TEXT
 } from '$lib/server/telegram/botMessages';
 import type { FoodScanResult } from '$lib/types/nutrition';
@@ -335,10 +343,12 @@ async function handleSuccessfulPayment(
 
 	if (!payment || !chargeId) return;
 
-	const payload = parsePaymentPayload(payment.invoice_payload);
-	const plan = payload?.plan === 'pro' ? 'pro' : 'pro';
+	// Payload пришёл от нас, но подпись под ним никто не ставил: как
+	// удостоверение он не годится. Платный тариф всё равно один, поэтому
+	// начисляется он, а payload остаётся в журнале платежей как есть.
+	const plan = 'pro';
 
-	const { userId, repositories } = await resolveUser(String(fromId), message.from);
+	const { userId } = await resolveUser(String(fromId), message.from);
 
 	// Срок из Telegram точнее: он привязан к самому списанию и учитывает
 	// автопродление. Свой расчёт — запасной вариант.
@@ -354,8 +364,6 @@ async function handleSuccessfulPayment(
 		payload: payment.invoice_payload ?? '',
 		expiresAt
 	});
-
-	void repositories;
 
 	// Повторную доставку того же обновления не подтверждаем второй раз:
 	// человек не должен получать два сообщения об одной оплате.
@@ -501,6 +509,38 @@ async function saveWeight(
 	await sendMessage(chatId, `Записал вес: ${formatWeight(rounded)} кг.`);
 }
 
+/**
+ * Отмена автопродления по слову «отмена».
+ *
+ * Сообщение об оплате обещает эту возможность, и обещание надо исполнять.
+ * Доступ при этом не отбирается: человек заплатил за месяц — месяц у него
+ * есть, даже если он передумал на второй день.
+ */
+async function cancelSubscription(userId: string, telegramUserId: string, chatId: number) {
+	const subscription = await getSubscriptionRow(await getReadyDb(), userId);
+	const active =
+		subscription?.status === 'active' &&
+		subscription.expiresAt !== null &&
+		new Date(subscription.expiresAt).getTime() > Date.now();
+
+	if (!active || !subscription?.chargeId) {
+		await sendMessage(chatId, SUBSCRIPTION_NONE_TEXT);
+		return;
+	}
+
+	try {
+		await cancelStarSubscription(telegramUserId, subscription.chargeId);
+	} catch (error) {
+		// Врать про успех нельзя: деньги спишутся снова, и человек узнает
+		// об этом из уведомления банка, а не от нас.
+		logServerError('telegram/cancel-subscription', error);
+		await sendMessage(chatId, SUBSCRIPTION_CANCEL_FAILED_TEXT);
+		return;
+	}
+
+	await sendMessage(chatId, subscriptionCancelledText(subscription.expiresAt));
+}
+
 async function handleMessage(message: TelegramMessage, chatId: number, fromId: number) {
 	// Платежи приходят обычными сообщениями и должны обрабатываться
 	// до разбора текста: у них его просто нет.
@@ -532,6 +572,13 @@ async function handleMessage(message: TelegramMessage, chatId: number, fromId: n
 
 	if (message.photo?.length) {
 		await handlePhoto(message, chatId, userId, repositories);
+		return;
+	}
+
+	// Отмена подписки: короткое слово, которое бот сам предложил написать.
+	// Разбирать его моделью незачем.
+	if (/^\s*отмена\s*$|^\s*отменить подписку\s*$/i.test(text)) {
+		await cancelSubscription(userId, String(fromId), chatId);
 		return;
 	}
 

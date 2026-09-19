@@ -35,6 +35,42 @@ export const APP_URL_MISSING_TEXT = [
 	'Администратору: задайте TELEGRAM_MINI_APP_URL — публичный адрес Flux Planner по HTTPS.'
 ].join('\n');
 
+/**
+ * Ответы на просьбу отменить подписку.
+ *
+ * Бот обещает в сообщении об оплате: «напишите сюда „отмена“». Обещание
+ * должно исполняться — и объяснять, что именно произошло: отмена
+ * автопродления не отбирает оплаченный месяц, и человек должен это знать,
+ * иначе он придёт в поддержку за возвратом за собственную отмену.
+ */
+export const SUBSCRIPTION_NONE_TEXT = [
+	'Активной подписки нет — платить не за что.',
+	'',
+	'Распознавание по фото работает и на бесплатном тарифе, просто реже.'
+].join('\n');
+
+export function subscriptionCancelledText(expiresAt: string | null): string {
+	const until = expiresAt
+		? new Date(expiresAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+		: null;
+
+	return [
+		'Автопродление отключено.',
+		'',
+		until
+			? `Pro останется до ${until} — оплаченный период не сгорает.`
+			: 'Оплаченный период не сгорает.',
+		'Вернуть подписку можно в приложении в любой момент.'
+	].join('\n');
+}
+
+/** Отмена не прошла: врать про успех нельзя — деньги спишутся снова. */
+export const SUBSCRIPTION_CANCEL_FAILED_TEXT = [
+	'Не получилось отключить автопродление.',
+	'',
+	'Это можно сделать в Telegram: Настройки → Мои звёзды → Подписки.'
+].join('\n');
+
 export interface InlineKeyboard {
 	inline_keyboard: { text: string; web_app?: { url: string }; callback_data?: string }[][];
 }

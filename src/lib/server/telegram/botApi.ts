@@ -139,6 +139,27 @@ export async function refundStarPayment(
 }
 
 /**
+ * Отключение автопродления подписки.
+ *
+ * Не возврат и не отзыв доступа: списания прекращаются, а оплаченный период
+ * дорабатывает до конца. Человек заплатил за месяц — месяц у него есть,
+ * даже если он передумал на второй день.
+ *
+ * Работает только для платежей-подписок; на разовый платёж Telegram ответит
+ * ошибкой, и вызывающий код должен это пережить.
+ */
+export async function cancelStarSubscription(
+	telegramUserId: number | string,
+	chargeId: string
+): Promise<void> {
+	await call('editUserStarSubscription', {
+		user_id: Number(telegramUserId),
+		telegram_payment_charge_id: chargeId,
+		is_canceled: true
+	});
+}
+
+/**
  * Ответ на нажатие инлайн-кнопки.
  *
  * Отправить его обязательно: пока ответа нет, клиент держит на кнопке
