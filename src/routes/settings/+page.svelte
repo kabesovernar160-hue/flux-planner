@@ -22,6 +22,7 @@
 	import { syncQueue } from '$lib/db/syncQueue.svelte';
 	import { session } from '$lib/state/session.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
+	import { deleteAccount } from '$lib/services/accountService';
 	import { setWeightGoal } from '$lib/services/weightService';
 	import { ui } from '$lib/state/ui.svelte';
 	import { telegram } from '$lib/telegram';
@@ -132,6 +133,46 @@
 	// а системный confirm() в WebView Telegram выглядит чужеродно.
 	let confirmingReset = $state(false);
 	let resetTimer: ReturnType<typeof setTimeout> | null = null;
+
+	/**
+	 * Удаление учётной записи — в два нажатия и с отдельным текстом.
+	 *
+	 * Оно необратимо и, в отличие от сброса, стирает данные и на сервере.
+	 * Одна кнопка рядом с «Стереть локальные данные» неизбежно была бы нажата
+	 * не та.
+	 */
+	let confirmingDelete = $state(false);
+	let deleting = $state(false);
+	let deleteError = $state<string | null>(null);
+	let deleted = $state(false);
+	let deleteTimer: ReturnType<typeof setTimeout> | null = null;
+
+	async function askDelete() {
+		telegram.haptic.impact('medium');
+		deleteError = null;
+
+		if (!confirmingDelete) {
+			confirmingDelete = true;
+			if (deleteTimer) clearTimeout(deleteTimer);
+			deleteTimer = setTimeout(() => (confirmingDelete = false), 5000);
+			return;
+		}
+
+		confirmingDelete = false;
+		deleting = true;
+
+		const result = await deleteAccount();
+		deleting = false;
+
+		if (!result.ok) {
+			deleteError = Object.values(result.errors)[0] ?? 'Не удалось удалить данные';
+			telegram.haptic.notification('error');
+			return;
+		}
+
+		deleted = true;
+		telegram.haptic.notification('success');
+	}
 
 	function askReset() {
 		telegram.haptic.impact('medium');
@@ -569,6 +610,46 @@
 		>
 			{confirmingReset ? 'Нажмите ещё раз, чтобы стереть' : 'Стереть локальные данные'}
 		</button>
+
+		<div class="mt-4 border-t border-line/70 pt-3">
+			<p class="mb-2 text-xs leading-relaxed text-muted-foreground">
+				{#if deleted}
+					Учётная запись удалена. Записи стёрты и здесь, и на сервере; данные о платежах сохранены —
+					этого требует закон.
+				{:else}
+					Удаление учётной записи стирает записи и на сервере. Отменить это нельзя.
+					{#if !session.isAuthenticated}
+						Работает внутри Telegram: сервер отвечает только по подписи.
+					{/if}
+				{/if}
+			</p>
+
+			{#if deleteError}
+				<p class="mb-2 text-xs leading-relaxed text-destructive">{deleteError}</p>
+			{/if}
+
+			{#if !deleted}
+				<button
+					type="button"
+					onclick={askDelete}
+					disabled={deleting || !session.isAuthenticated}
+					class="w-full rounded-full border py-2.5 text-xs font-medium
+					       transition-[transform,color,border-color] duration-500 ease-flux
+					       active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40
+					       {confirmingDelete
+						? 'border-destructive bg-destructive/10 text-destructive'
+						: 'border-line-strong text-muted-foreground'}"
+				>
+					{#if deleting}
+						Удаляем…
+					{:else if confirmingDelete}
+						Нажмите ещё раз — это необратимо
+					{:else}
+						Удалить учётную запись
+					{/if}
+				</button>
+			{/if}
+		</div>
 	</GlassCard>
 
 	<footer class="pb-1 text-center text-xs text-muted-foreground">

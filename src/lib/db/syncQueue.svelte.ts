@@ -119,6 +119,25 @@ class SyncQueue {
 		}
 	}
 
+	/**
+	 * Забыть, что и когда синхронизировалось.
+	 *
+	 * Нужно после удаления учётной записи: с прежними водяными знаками
+	 * следующий обмен решил бы, что всё давно отправлено, и не заметил бы,
+	 * что на устройстве теперь пусто.
+	 */
+	forget(): void {
+		try {
+			localStorage.removeItem(WATERMARK_KEY);
+		} catch {
+			// Приватный режим: знаков там и не было.
+		}
+
+		this.lastSyncedAt = null;
+		this.pending = false;
+		this.status = 'idle';
+	}
+
 	/** Синхронизировать, если есть что. Повторный вызов присоединяется к текущей попытке. */
 	syncPendingChanges(): Promise<void> {
 		this.#running ??= this.#run().finally(() => {

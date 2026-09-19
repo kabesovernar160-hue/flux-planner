@@ -64,6 +64,7 @@ daily_finance     + date, budget
 | POST  | `/api/telegram/webhook`  | Входящие сообщения бота |
 | POST  | `/api/telegram/notify`   | Уведомление самому себе |
 | POST  | `/api/cron/daily`        | Ежедневная рассылка     |
+| POST  | `/api/account/delete`    | Удаление своих данных   |
 | GET   | `/api/health`            | Живость для мониторинга |
 
 Все эндпоинты, кроме вебхука и крона, требуют подписи Telegram в заголовке
