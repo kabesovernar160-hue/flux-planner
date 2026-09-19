@@ -2,6 +2,8 @@ import { json } from '@sveltejs/kit';
 import { PLANS, SUBSCRIPTION_PERIOD_SECONDS } from '$lib/billing/plans';
 import { AuthError, requireUser } from '$lib/server/auth/session';
 import { apiError, logServerError } from '$lib/server/errors';
+import { getEntitlement } from '$lib/server/billing/subscriptions';
+import { getReadyDb } from '$lib/server/db/client';
 import { checkRateLimit } from '$lib/server/rateLimit';
 import { createInvoiceLink } from '$lib/server/telegram/botApi';
 import type { RequestHandler } from './$types';
@@ -24,6 +26,14 @@ export const POST: RequestHandler = async ({ request }) => {
 		const limit = await checkRateLimit(`invoice:${user.id}`, 10, 60_000);
 		if (!limit.allowed) {
 			return apiError('RATE_LIMITED', 'Слишком часто. Подождите немного', 429);
+		}
+
+		// Вторая подписка поверх активной означала бы два списания в месяц
+		// вместо одного. Кнопка на экране и так прячется, но экран мог быть
+		// открыт со вчера, а счёт выписывает сервер.
+		const entitlement = await getEntitlement(await getReadyDb(), user.id);
+		if (entitlement.status === 'active') {
+			return apiError('ALREADY_ACTIVE', 'Подписка уже активна', 409);
 		}
 
 		const plan = PLANS.pro;

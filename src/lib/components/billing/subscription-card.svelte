@@ -83,7 +83,7 @@
 			<p class="text-sm leading-relaxed text-muted-foreground">
 				{#if expiresLabel}
 					Подписка действует до {expiresLabel} и продлевается автоматически. Отменить можно в настройках
-					Telegram: «Настройки → Звёзды и подписки».
+					Telegram или написав боту «отмена» — оплаченный период при этом останется.
 				{:else}
 					Подписка активна.
 				{/if}
