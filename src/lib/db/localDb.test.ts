@@ -8,6 +8,7 @@ import {
 	loadDayRecordsForSync,
 	loadPlannerState,
 	mergeDayRecordsFromSync,
+	mergeSettingsFromSync,
 	migrateDocument,
 	saveFinanceEntry,
 	saveFoodEntry,
@@ -396,5 +397,61 @@ describe('дневник веса', () => {
 		const state = await loadPlannerState();
 
 		expect(state.weightEntries.map((entry) => entry.date)).toEqual(['2026-01-10', '2026-01-15']);
+	});
+});
+
+describe('настройки в синхронизации', () => {
+	it('старому документу отметка достраивается от записи пользователя', () => {
+		const migrated = migrateDocument({
+			schemaVersion: SCHEMA_VERSION,
+			user: { updatedAt: '2026-01-10T08:00:00.000Z' },
+			settings: { calorieGoal: 1700 }
+		});
+
+		expect(migrated?.settingsUpdatedAt).toBe('2026-01-10T08:00:00.000Z');
+	});
+
+	it('более свежие настройки с сервера принимаются', async () => {
+		await savePlannerDocument({
+			...createDefaultDocument(),
+			settings: { ...createDefaultDocument().settings, calorieGoal: 2100 },
+			settingsUpdatedAt: '2026-01-15T08:00:00.000Z'
+		});
+
+		const applied = await mergeSettingsFromSync({ calorieGoal: 1700 }, '2026-01-15T10:00:00.000Z');
+
+		expect(applied).toBe(true);
+		expect((await loadPlannerState()).settings.calorieGoal).toBe(1700);
+	});
+
+	it('отставшие настройки не откатывают свежие', async () => {
+		// Иначе планшет, неделю пролежавший в ящике, вернул бы прошлые цели.
+		await savePlannerDocument({
+			...createDefaultDocument(),
+			settings: { ...createDefaultDocument().settings, calorieGoal: 1700 },
+			settingsUpdatedAt: '2026-01-15T10:00:00.000Z'
+		});
+
+		const applied = await mergeSettingsFromSync({ calorieGoal: 2100 }, '2026-01-15T08:00:00.000Z');
+
+		expect(applied).toBe(false);
+		expect((await loadPlannerState()).settings.calorieGoal).toBe(1700);
+	});
+
+	it('мусор вместо настроек игнорируется', async () => {
+		expect(await mergeSettingsFromSync('строка', '2026-02-01T08:00:00.000Z')).toBe(false);
+		expect(await mergeSettingsFromSync({ calorieGoal: 1700 }, '')).toBe(false);
+	});
+
+	it('недостающие поля добираются значениями по умолчанию', async () => {
+		// Настройки приходят от другого клиента, и его версия может быть
+		// старше: отсутствующее поле должно стать умолчанием, а не undefined.
+		await mergeSettingsFromSync({ calorieGoal: 1700 }, '2099-01-01T00:00:00.000Z');
+
+		const settings = (await loadPlannerState()).settings;
+
+		expect(settings.calorieGoal).toBe(1700);
+		expect(settings.waterGoalMl).toBeGreaterThan(0);
+		expect(settings.currency.length).toBeGreaterThan(0);
 	});
 });

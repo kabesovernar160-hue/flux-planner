@@ -83,6 +83,38 @@ const habit = (id: string, name: string, updatedAt = '2026-01-15T10:00:00.000Z')
 		archived: false
 	}) as unknown as SyncRow;
 
+/** То, что делает push с настройками: они не коллекция, а документ. */
+async function pushSettings(userId: string, settings: unknown, updatedAt: string) {
+	await repositories.planner.save({ userId, schemaVersion: 4, settings, updatedAt });
+}
+
+describe('настройки между устройствами', () => {
+	it('правка целей доезжает до второго устройства', async () => {
+		const user = await authenticate(5151, 'Алиса');
+
+		await pushSettings(user.id, { calorieGoal: 2100 }, '2026-01-15T08:00:00.000Z');
+		await pushSettings(user.id, { calorieGoal: 1700 }, '2026-01-15T10:00:00.000Z');
+
+		const state = await repositories.planner.get(user.id);
+
+		// Пока клиент слал отметку записи пользователя вместо отметки
+		// настроек, второй save отвергался: время не двигалось, а условие
+		// слияния требует строго более свежего.
+		expect((state?.settings as { calorieGoal: number }).calorieGoal).toBe(1700);
+		expect(state?.updatedAt).toBe('2026-01-15T10:00:00.000Z');
+	});
+
+	it('отставшая версия настроек не откатывает свежую', async () => {
+		const user = await authenticate(5252, 'Боб');
+
+		await pushSettings(user.id, { calorieGoal: 1700 }, '2026-01-15T10:00:00.000Z');
+		await pushSettings(user.id, { calorieGoal: 2100 }, '2026-01-15T08:00:00.000Z');
+
+		const state = await repositories.planner.get(user.id);
+		expect((state?.settings as { calorieGoal: number }).calorieGoal).toBe(1700);
+	});
+});
+
 describe('сквозной сценарий синхронизации', () => {
 	it('привычка, созданная на одном устройстве, приезжает на второе', async () => {
 		const user = await authenticate(4242, 'Алиса');

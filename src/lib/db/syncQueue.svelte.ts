@@ -2,7 +2,8 @@ import {
 	dedupeWeightEntries,
 	loadDayRecordsForSync,
 	loadRawForSync,
-	mergeDayRecordsFromSync
+	mergeDayRecordsFromSync,
+	mergeSettingsFromSync
 } from './localDb';
 import { getDriver, STORES, type StoreName } from './storage';
 import { plannerStore } from '$lib/stores/plannerStore.svelte';
@@ -216,7 +217,7 @@ class SyncQueue {
 				body: JSON.stringify({
 					changes,
 					settings: plannerStore.doc.settings,
-					settingsUpdatedAt: plannerStore.doc.user.updatedAt
+					settingsUpdatedAt: plannerStore.doc.settingsUpdatedAt
 				})
 			});
 
@@ -232,9 +233,17 @@ class SyncQueue {
 			const payload = (await pullResponse.json()) as {
 				changes: Partial<Record<Collection, { id: string }[]>>;
 				serverTime: string;
+				settings?: unknown;
+				settingsUpdatedAt?: string | null;
 			};
 
 			await this.#applyIncoming(payload.changes);
+
+			// Настройки приезжают целиком, а не построчно: у документа нет
+			// слияния по записям, побеждает более свежая версия.
+			if (payload.settingsUpdatedAt) {
+				await mergeSettingsFromSync(payload.settings, payload.settingsUpdatedAt);
+			}
 
 			writeWatermark({ pulledAt: payload.serverTime, pushedAt });
 			this.lastSyncedAt = payload.serverTime;

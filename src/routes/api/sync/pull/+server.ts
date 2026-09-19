@@ -43,7 +43,8 @@ export const GET: RequestHandler = async ({ request, url, getClientAddress }) =>
 			changes,
 			serverTime,
 			schemaVersion: state?.schemaVersion ?? SCHEMA_VERSION,
-			settings: state?.settings ?? null
+			settings: state?.settings ?? null,
+			settingsUpdatedAt: state?.updatedAt ?? null
 		};
 
 		return json(response);

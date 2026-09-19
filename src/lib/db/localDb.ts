@@ -45,6 +45,7 @@ export function createDefaultDocument(timezone?: string): PlannerDocument {
 		schemaVersion: SCHEMA_VERSION,
 		user: createDefaultUser(timezone),
 		settings: createDefaultSettings(),
+		settingsUpdatedAt: nowIso(),
 		nutrition: {},
 		finance: {}
 	};
@@ -238,6 +239,13 @@ export function migrateDocument(raw: unknown): PlannerDocument | null {
 			timezone: isNonEmptyString(user.timezone) ? user.timezone : defaults.user.timezone
 		},
 		settings: { ...defaults.settings, ...settings },
+		// У документов, сохранённых до появления отметки, берётся время записи
+		// пользователя: это ближайшее известное «когда настройки были такими».
+		settingsUpdatedAt: isNonEmptyString(raw.settingsUpdatedAt)
+			? raw.settingsUpdatedAt
+			: isNonEmptyString(user.updatedAt)
+				? user.updatedAt
+				: defaults.settingsUpdatedAt,
 		nutrition: sanitizeDailyMap(raw.nutrition, isDailyNutrition, withSyncMeta),
 		finance: sanitizeDailyMap(raw.finance, isDailyFinance, withSyncMeta)
 	};
@@ -566,6 +574,34 @@ export async function dedupeWeightEntries(): Promise<void> {
 	}
 
 	for (const id of extra) await driver.delete(STORES.weightEntries, id);
+}
+
+/**
+ * Приём настроек с сервера.
+ *
+ * Настройки — единственный документ, а не коллекция: построчного слияния
+ * у них нет, побеждает более свежая версия целиком. Без этого приёма цели,
+ * изменённые на телефоне, не появлялись на планшете никогда: отправлялись
+ * они исправно, а обратно не читались.
+ */
+export async function mergeSettingsFromSync(
+	settings: unknown,
+	updatedAt: string
+): Promise<boolean> {
+	if (!isRecord(settings) || !isNonEmptyString(updatedAt)) return false;
+
+	const driver = await getDriver();
+	const document =
+		migrateDocument(await driver.get<unknown>(STORES.plannerState, PLANNER_DOC_KEY)) ??
+		createDefaultDocument();
+
+	if (updatedAt <= document.settingsUpdatedAt) return false;
+
+	document.settings = { ...createDefaultSettings(), ...settings };
+	document.settingsUpdatedAt = updatedAt;
+
+	await savePlannerDocument(document);
+	return true;
 }
 
 export async function clearAllData(): Promise<void> {

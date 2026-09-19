@@ -274,6 +274,7 @@
 				schemaVersion: plannerStore.doc.schemaVersion,
 				user: plannerStore.doc.user,
 				settings: $state.snapshot(plannerStore.doc.settings),
+				settingsUpdatedAt: plannerStore.doc.settingsUpdatedAt,
 				nutrition: $state.snapshot(plannerStore.doc.nutrition),
 				finance: $state.snapshot(plannerStore.doc.finance),
 				foodEntries: $state.snapshot(plannerStore.foodEntries),

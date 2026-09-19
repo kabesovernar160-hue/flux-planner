@@ -97,6 +97,16 @@ export interface PlannerState {
 	user: PlannerUser;
 	settings: PlannerSettings;
 
+	/**
+	 * Когда настройки менялись в последний раз.
+	 *
+	 * Отдельно от user.updatedAt: настройки и запись пользователя меняются
+	 * в разные моменты, а синхронизация решает по этой отметке, чья версия
+	 * свежее. Пока здесь стояло время записи пользователя, сервер отвергал
+	 * все правки целей после первой отправки — их отметка не двигалась.
+	 */
+	settingsUpdatedAt: string;
+
 	/** Цели по дням, ключ — YYYY-MM-DD. */
 	nutrition: Record<string, DailyNutritionRecord>;
 	/** Бюджеты по дням, ключ — YYYY-MM-DD. */

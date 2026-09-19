@@ -51,15 +51,20 @@ function readKind(value: string | null): 'summary' | 'habits' | 'budget' {
 /**
  * Местный час получателя.
  *
- * Пустое значение означает «всем сразу» — так работали прежние расписания,
- * и менять их поведение молча нельзя. С часом планировщик дёргается
- * ежечасно, а сообщение получают только те, у кого сейчас нужное время.
+ * Отсутствие параметра означает «всем сразу» — так работали прежние
+ * расписания, и менять их поведение молча нельзя. С часом планировщик
+ * дёргается ежечасно, а сообщение получают только те, у кого сейчас
+ * нужное время.
+ *
+ * Опечатка в часе не должна превращаться в рассылку всем подряд: «hour=8pm»
+ * в crontab обнаружился бы не раньше, чем люди получат сводку среди ночи,
+ * поэтому такой вызов отклоняется с ошибкой.
  */
-function readHour(value: string | null): number | undefined {
+function readHour(value: string | null): number | undefined | 'invalid' {
 	if (value === null) return undefined;
 
-	const hour = Number.parseInt(value, 10);
-	return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : undefined;
+	const hour = Number(value);
+	return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : 'invalid';
 }
 
 export const POST: RequestHandler = async ({ request, url }) => {
@@ -81,6 +86,10 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		const kind = readKind(url.searchParams.get('kind'));
 		const localHour = readHour(url.searchParams.get('hour'));
+
+		if (localHour === 'invalid') {
+			return apiError('BAD_HOUR', 'Параметр hour должен быть числом от 0 до 23', 400);
+		}
 
 		const result =
 			kind === 'habits'

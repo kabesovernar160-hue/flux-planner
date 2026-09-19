@@ -111,6 +111,7 @@ export class PlannerStore {
 			schemaVersion: state.schemaVersion,
 			user: state.user,
 			settings: state.settings,
+			settingsUpdatedAt: state.settingsUpdatedAt,
 			nutrition: state.nutrition,
 			finance: state.finance
 		};
@@ -273,6 +274,9 @@ export class PlannerStore {
 
 	updateSettings(patch: Partial<PlannerSettings>): void {
 		this.doc.settings = { ...this.doc.settings, ...patch };
+		// Отметка нужна синхронизации: по ней сервер решает, чья версия
+		// настроек свежее. Без неё правки целей молча не доезжали.
+		this.doc.settingsUpdatedAt = nowIso();
 		this.#saveDoc();
 	}
 

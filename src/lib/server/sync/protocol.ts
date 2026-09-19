@@ -27,6 +27,13 @@ export interface PullResponse {
 	serverTime: string;
 	schemaVersion: number;
 	settings: unknown;
+	/**
+	 * Когда настройки менялись в последний раз.
+	 *
+	 * Без неё клиент не мог решить, чья версия свежее, и настройки ездили
+	 * только в одну сторону: на сервер.
+	 */
+	settingsUpdatedAt: string | null;
 }
 
 export interface PushResponse {
