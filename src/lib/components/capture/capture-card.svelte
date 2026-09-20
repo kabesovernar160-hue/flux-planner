@@ -198,7 +198,11 @@
 					3. Метод POST, заголовок <span class="text-foreground">Authorization</span> со значением
 					<span class="text-foreground">Bearer ключ</span>.
 				</li>
-				<li>4. Тело запроса — «Текст», в него подставьте результат первого действия.</li>
+				<li>
+					4. Тело запроса — <span class="text-foreground">JSON</span>, одно поле
+					<span class="text-foreground">text</span>, в него подставьте результат первого действия.
+					Тело «Текст» не подойдёт: такой запрос сервер отбивает как межсайтовый.
+				</li>
 				<li>5. В конце — «Показать результат», чтобы видеть подтверждение.</li>
 			</ol>
 
