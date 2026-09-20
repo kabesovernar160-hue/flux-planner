@@ -5,6 +5,7 @@ import {
 	createDefaultDocument,
 	getStorageKind,
 	dedupeWeightEntries,
+	hasStoredDocument,
 	loadDayRecordsForSync,
 	loadPlannerState,
 	mergeDayRecordsFromSync,
@@ -15,7 +16,8 @@ import {
 	saveHabit,
 	saveHabitCompletion,
 	savePlannerDocument,
-	saveWeightEntry
+	saveWeightEntry,
+	SETTINGS_NEVER_SAVED
 } from './localDb';
 import { getDriver, PLANNER_DOC_KEY, resetDriverForTests, STORES } from './storage';
 import { createId } from '$lib/utils/id';
@@ -401,6 +403,36 @@ describe('дневник веса', () => {
 });
 
 describe('настройки в синхронизации', () => {
+	it('нетронутые настройки помечены началом эпохи', () => {
+		// Значения по умолчанию — это не правка человека, а «мы о нём ничего
+		// не знаем». С отметкой «сейчас» пустое устройство затирало ими
+		// анкету на сервере, и человек снова видел приветствие.
+		expect(createDefaultDocument().settingsUpdatedAt).toBe(SETTINGS_NEVER_SAVED);
+	});
+
+	it('любые настройки с сервера сильнее нетронутых умолчаний', async () => {
+		await savePlannerDocument(createDefaultDocument());
+
+		const applied = await mergeSettingsFromSync(
+			{ calorieGoal: 1700, onboardedAt: '2026-01-10T08:00:00.000Z' },
+			'2026-01-10T08:00:00.000Z'
+		);
+
+		expect(applied).toBe(true);
+
+		const state = await loadPlannerState();
+		expect(state.settings.calorieGoal).toBe(1700);
+		expect(state.settings.onboardedAt).toBe('2026-01-10T08:00:00.000Z');
+	});
+
+	it('пустое хранилище видно синхронизации', async () => {
+		expect(await hasStoredDocument()).toBe(false);
+
+		await savePlannerDocument(createDefaultDocument());
+
+		expect(await hasStoredDocument()).toBe(true);
+	});
+
 	it('старому документу отметка достраивается от записи пользователя', () => {
 		const migrated = migrateDocument({
 			schemaVersion: SCHEMA_VERSION,

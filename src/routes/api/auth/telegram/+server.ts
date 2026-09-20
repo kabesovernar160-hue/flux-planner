@@ -21,7 +21,12 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	}
 
 	try {
-		const { user } = await requireUser(request);
+		const { user, repositories } = await requireUser(request);
+
+		// Настройки отдаются прямо здесь, вместе с входом.
+		// Ждать первой синхронизации нельзя: до неё приложение видит пустые
+		// настройки и встречает знакомого человека приветствием для новичка.
+		const state = await repositories.planner.get(user.id);
 
 		// Наружу отдаём только то, что клиент и так о себе знает.
 		// Внутренний идентификатор тоже безопасен: он не даёт доступа
@@ -33,7 +38,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 				firstName: user.firstName,
 				username: user.username,
 				timezone: user.timezone
-			}
+			},
+			state: state ? { settings: state.settings, settingsUpdatedAt: state.updatedAt } : null
 		});
 	} catch (error) {
 		if (error instanceof AuthError) {

@@ -1,9 +1,11 @@
 import {
 	dedupeWeightEntries,
+	hasStoredDocument,
 	loadDayRecordsForSync,
 	loadRawForSync,
 	mergeDayRecordsFromSync,
-	mergeSettingsFromSync
+	mergeSettingsFromSync,
+	SETTINGS_NEVER_SAVED
 } from './localDb';
 import { getDriver, STORES, type StoreName } from './storage';
 import { plannerStore } from '$lib/stores/plannerStore.svelte';
@@ -205,10 +207,17 @@ class SyncQueue {
 		try {
 			const watermark = readWatermark();
 
+			// Хранилище устройства пустое — значит, своего у нас нет: ни данных,
+			// ни права на водяной знак. Знак живёт в localStorage и переживает
+			// чистку IndexedDB по отдельности, а с ним сервер отдал бы только
+			// «изменения с тех пор», то есть ничего, и человек остался бы
+			// с пустым приложением при полной базе на сервере.
+			const fresh = !(await hasStoredDocument());
+
 			// Сначала отдаём своё, потом забираем чужое: так изменение,
 			// сделанное только что, не будет затёрто более старой серверной
 			// версией той же записи.
-			const changes = await this.#collectChanges(watermark.pushedAt);
+			const changes = await this.#collectChanges(fresh ? null : watermark.pushedAt);
 			const pushedAt = nowIso();
 
 			const pushResponse = await fetch('/api/sync/push', {
@@ -216,16 +225,24 @@ class SyncQueue {
 				headers,
 				body: JSON.stringify({
 					changes,
-					settings: plannerStore.doc.settings,
-					settingsUpdatedAt: plannerStore.doc.settingsUpdatedAt
+					// Нетронутые настройки не отправляются вовсе. Иначе значения
+					// по умолчанию с пустого устройства выглядели бы на сервере
+					// как свежая правка и стирали бы анкету и цели.
+					...(plannerStore.doc.settingsUpdatedAt === SETTINGS_NEVER_SAVED
+						? {}
+						: {
+								settings: plannerStore.doc.settings,
+								settingsUpdatedAt: plannerStore.doc.settingsUpdatedAt
+							})
 				})
 			});
 
 			if (!pushResponse.ok) throw new Error(`push ${pushResponse.status}`);
 
-			const pullUrl = watermark.pulledAt
-				? `/api/sync/pull?since=${encodeURIComponent(watermark.pulledAt)}`
-				: '/api/sync/pull';
+			const pullUrl =
+				watermark.pulledAt && !fresh
+					? `/api/sync/pull?since=${encodeURIComponent(watermark.pulledAt)}`
+					: '/api/sync/pull';
 
 			const pullResponse = await fetch(pullUrl, { headers });
 			if (!pullResponse.ok) throw new Error(`pull ${pullResponse.status}`);

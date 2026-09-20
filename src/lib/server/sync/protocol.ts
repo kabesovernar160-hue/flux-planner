@@ -100,6 +100,36 @@ export function parsePushPayload(body: unknown): ParsedPush {
 	return { ok: true, payload };
 }
 
+/**
+ * Поля настроек, которые не исчезают.
+ *
+ * Пройденный первый запуск и заполненная анкета — события, а не мнения:
+ * отменить их нельзя, в приложении нет такого действия. Поэтому пакет без них
+ * означает не «человек передумал», а «устройство ещё не знает» — например,
+ * Telegram почистил хранилище или человек открыл приложение с другого
+ * телефона. Такой пакет не должен стирать то, что уже известно о человеке.
+ */
+const STICKY_SETTINGS_KEYS = ['onboardedAt', 'profile'] as const;
+
+/**
+ * Слияние настроек при отправке на сервер.
+ *
+ * Правило прежнее — побеждает версия целиком, — но поля выше добираются
+ * из сохранённых, если в пакете их нет. Иначе достаточно одного старого
+ * клиента с пустым хранилищем, чтобы человек снова стал новичком.
+ */
+export function mergePlannerSettings(stored: unknown, incoming: unknown): unknown {
+	if (!isRecord(incoming) || !isRecord(stored)) return incoming;
+
+	const merged: Record<string, unknown> = { ...incoming };
+
+	for (const key of STICKY_SETTINGS_KEYS) {
+		if (merged[key] === undefined && stored[key] !== undefined) merged[key] = stored[key];
+	}
+
+	return merged;
+}
+
 const REPOSITORY_BY_COLLECTION: Record<SyncCollection, keyof Repositories> = {
 	food: 'food',
 	habits: 'habits',

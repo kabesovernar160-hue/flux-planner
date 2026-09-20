@@ -1,3 +1,4 @@
+import { mergeSettingsFromSync } from '$lib/db/localDb';
 import { plannerStore } from '$lib/stores/plannerStore.svelte';
 import { telegram } from '$lib/telegram';
 import { authHeaders } from '$lib/telegram/auth';
@@ -28,6 +29,16 @@ class SessionState {
 	user = $state<SessionUser | null>(null);
 	error = $state<string | null>(null);
 
+	/**
+	 * Известно ли, что сервер помнит об этом человеке.
+	 *
+	 * Вне Telegram — сразу: спрашивать некого, других устройств нет.
+	 * Внутри — только после ответа сервера, даже если ответ «ничего нет».
+	 * До этого момента приложение не вправе считать человека новичком:
+	 * пустое локальное хранилище значит лишь то, что Telegram его почистил.
+	 */
+	profileKnown = $state(false);
+
 	/** Можно ли обращаться к серверным возможностям: сканеру и синхронизации. */
 	get isAuthenticated(): boolean {
 		return this.status === 'authenticated';
@@ -57,6 +68,7 @@ class SessionState {
 	async #run(): Promise<void> {
 		if (!telegram.isEmbedded || !telegram.initData) {
 			this.status = 'local';
+			this.profileKnown = true;
 			return;
 		}
 
@@ -76,9 +88,15 @@ class SessionState {
 				return;
 			}
 
-			const payload = (await response.json()) as { user: SessionUser };
+			const payload = (await response.json()) as {
+				user: SessionUser;
+				state?: { settings: unknown; settingsUpdatedAt: string | null } | null;
+			};
 			this.user = payload.user;
 			this.status = 'authenticated';
+
+			await this.#restoreSettings(payload.state);
+			this.profileKnown = true;
 
 			// Идентификатор из проверенного ответа сервера, а не из initDataUnsafe.
 			const patch = {
@@ -103,6 +121,32 @@ class SessionState {
 			// доступны, а вход повторится при следующем открытии.
 			this.error = 'Нет связи с сервером';
 			this.status = 'error';
+		}
+	}
+
+	/**
+	 * Настройки с сервера — в локальное хранилище.
+	 *
+	 * Победитель определяется той же отметкой времени, что и в синхронизации:
+	 * серверная версия применяется, только если она свежее здешней. Нетронутые
+	 * значения по умолчанию помечены началом эпохи и проигрывают всегда —
+	 * ровно этого и хотим на устройстве с почищенным хранилищем.
+	 *
+	 * Гидратация дожидается намеренно: она читает хранилище, и запись до её
+	 * окончания оказалась бы затёрта прочитанным ранее снимком.
+	 */
+	async #restoreSettings(
+		state: { settings: unknown; settingsUpdatedAt: string | null } | null | undefined
+	): Promise<void> {
+		if (!state?.settingsUpdatedAt) return;
+
+		try {
+			await plannerStore.initialize();
+			if (await mergeSettingsFromSync(state.settings, state.settingsUpdatedAt)) {
+				await plannerStore.rehydrate();
+			}
+		} catch {
+			// Хранилище недоступно: настройки приедут при первой синхронизации.
 		}
 	}
 }

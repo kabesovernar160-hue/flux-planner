@@ -17,6 +17,18 @@ import { getDriver, PLANNER_DOC_KEY, STORES, type StoreName } from './storage';
 
 /* ───────────────────────────── Значения по умолчанию ───────────────────────────── */
 
+/**
+ * Отметка настроек, которых ещё никто не трогал.
+ *
+ * Начало эпохи, а не текущее время. Настройки по умолчанию — это не правка
+ * пользователя, а «мы о нём пока ничего не знаем», и в споре с любой
+ * сохранённой версией они обязаны проигрывать. Пока здесь стояло nowIso(),
+ * первый же запуск с пустым хранилищем отправлял на сервер свежие пустые
+ * настройки с самой новой отметкой и затирал анкету и цели: человек заходил
+ * в бота и снова видел приветствие.
+ */
+export const SETTINGS_NEVER_SAVED = '1970-01-01T00:00:00.000Z';
+
 export function createDefaultSettings(): PlannerSettings {
 	return {
 		calorieGoal: 2100,
@@ -45,7 +57,7 @@ export function createDefaultDocument(timezone?: string): PlannerDocument {
 		schemaVersion: SCHEMA_VERSION,
 		user: createDefaultUser(timezone),
 		settings: createDefaultSettings(),
-		settingsUpdatedAt: nowIso(),
+		settingsUpdatedAt: SETTINGS_NEVER_SAVED,
 		nutrition: {},
 		finance: {}
 	};
@@ -606,6 +618,23 @@ export async function mergeSettingsFromSync(
 
 export async function clearAllData(): Promise<void> {
 	await (await getDriver()).clearAll();
+}
+
+/**
+ * Есть ли на устройстве сохранённый документ.
+ *
+ * Нужно синхронизации, чтобы отличить «данные уже здесь» от «хранилище пустое».
+ * Пустое — это не только первый запуск: Telegram чистит хранилище webview,
+ * и тогда всё нажитое надо забрать с сервера заново, а не решить по водяному
+ * знаку в localStorage, что новых изменений нет.
+ */
+export async function hasStoredDocument(): Promise<boolean> {
+	try {
+		return (await (await getDriver()).get(STORES.plannerState, PLANNER_DOC_KEY)) !== undefined;
+	} catch {
+		// Хранилище нечитаемо — считаем, что своего у нас нет.
+		return false;
+	}
 }
 
 export async function getStorageKind(): Promise<'indexeddb' | 'memory'> {

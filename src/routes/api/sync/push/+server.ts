@@ -3,6 +3,7 @@ import { AuthError, requireUser } from '$lib/server/auth/session';
 import { apiError, logServerError } from '$lib/server/errors';
 import { checkRateLimit } from '$lib/server/rateLimit';
 import {
+	mergePlannerSettings,
 	parsePushPayload,
 	repositoryFor,
 	SYNC_COLLECTIONS,
@@ -51,10 +52,12 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		const settingsUpdatedAt = (body as { settingsUpdatedAt?: unknown }).settingsUpdatedAt;
 
 		if (settings !== undefined && typeof settingsUpdatedAt === 'string') {
+			const stored = await repositories.planner.get(user.id);
+
 			await repositories.planner.save({
 				userId: user.id,
 				schemaVersion: SCHEMA_VERSION,
-				settings,
+				settings: mergePlannerSettings(stored?.settings, settings),
 				updatedAt: settingsUpdatedAt
 			});
 		}

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isSyncRow, MAX_ROWS_PER_COLLECTION, parsePushPayload } from './protocol';
+import {
+	isSyncRow,
+	MAX_ROWS_PER_COLLECTION,
+	mergePlannerSettings,
+	parsePushPayload
+} from './protocol';
 
 const row = (overrides: Record<string, unknown> = {}) => ({
 	id: 'a1',
@@ -81,5 +86,38 @@ describe('parsePushPayload', () => {
 	it('пустой пакет допустим', () => {
 		const parsed = parsePushPayload({ changes: {} });
 		expect(parsed.ok && Object.keys(parsed.payload)).toEqual([]);
+	});
+});
+
+describe('mergePlannerSettings', () => {
+	const stored = {
+		calorieGoal: 2460,
+		onboardedAt: '2026-01-10T08:00:00.000Z',
+		profile: { sex: 'male', age: 30 }
+	};
+
+	it('пришедшие настройки побеждают целиком', () => {
+		const merged = mergePlannerSettings(stored, {
+			calorieGoal: 1700,
+			onboardedAt: '2026-02-01T08:00:00.000Z'
+		}) as Record<string, unknown>;
+
+		expect(merged.calorieGoal).toBe(1700);
+		expect(merged.onboardedAt).toBe('2026-02-01T08:00:00.000Z');
+	});
+
+	it('пройденный первый запуск и анкета не стираются', () => {
+		// Устройство с почищенным хранилищем присылает настройки без них.
+		// Это «ещё не знаю», а не «человек передумал».
+		const merged = mergePlannerSettings(stored, { calorieGoal: 2100 }) as Record<string, unknown>;
+
+		expect(merged.onboardedAt).toBe('2026-01-10T08:00:00.000Z');
+		expect(merged.profile).toEqual(stored.profile);
+		expect(merged.calorieGoal).toBe(2100);
+	});
+
+	it('без сохранённых настроек отдаёт пришедшие как есть', () => {
+		expect(mergePlannerSettings(null, { calorieGoal: 2100 })).toEqual({ calorieGoal: 2100 });
+		expect(mergePlannerSettings(undefined, 'мусор')).toBe('мусор');
 	});
 });
