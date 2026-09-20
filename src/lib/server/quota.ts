@@ -1,4 +1,4 @@
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, sql } from 'drizzle-orm';
 import type { PlanLimits } from '$lib/billing/plans';
 import { msUntilNextMidnight } from '$lib/utils/date';
 import { getReadyDb, type Db } from './db/client';
@@ -57,6 +57,39 @@ export async function consumeScanQuota(
 			resetsAt: new Date(now.getTime() + windowMs).toISOString()
 		}
 	};
+}
+
+/**
+ * Возврат списанной попытки.
+ *
+ * Квота списывается до обращения к провайдеру — иначе пришлось бы принять
+ * пять мегабайт, чтобы потом отказать. Но если распознавание не состоялось,
+ * попытка обязана вернуться: на бесплатном тарифе их три в сутки, и два сбоя
+ * провайдера оставили бы человека с одной, хотя он не получил ничего.
+ *
+ * Возврат идёт только в живое окно: протухшее уже обнулилось само, и правка
+ * там означала бы уход счётчика в минус на следующие сутки.
+ */
+export async function refundScanQuota(
+	userId: string,
+	options: { db?: Db; now?: Date } = {}
+): Promise<void> {
+	const now = options.now ?? new Date();
+
+	try {
+		const db = options.db ?? (await getReadyDb());
+
+		await db
+			.update(rateLimits)
+			.set({ count: sql`MAX(0, ${rateLimits.count} - 1)` })
+			.where(
+				and(eq(rateLimits.key, quotaKey(userId, 'scan')), gt(rateLimits.resetAt, now.getTime()))
+			);
+	} catch (error) {
+		// Не вернули — человек потерял одну попытку из трёх. Неприятно,
+		// но падать на этом нельзя: ответ об ошибке он получить обязан.
+		console.error('[quota] не удалось вернуть попытку', error);
+	}
 }
 
 /**

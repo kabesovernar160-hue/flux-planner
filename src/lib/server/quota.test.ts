@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { PLANS } from '$lib/billing/plans';
 import { createTestDb, type Db } from './db/client';
-import { consumeScanQuota, peekScanQuota } from './quota';
+import { consumeScanQuota, peekScanQuota, refundScanQuota } from './quota';
 
 let db: Db;
 
@@ -78,5 +78,50 @@ describe('peekScanQuota', () => {
 
 		expect(state.remaining).toBe(PLANS.free.limits.scansPerDay);
 		expect(state.used).toBe(0);
+	});
+});
+
+describe('refundScanQuota', () => {
+	it('возвращает попытку, если распознавание не состоялось', async () => {
+		await consumeScanQuota(USER, PLANS.free.limits, { db, now: NOW });
+		await consumeScanQuota(USER, PLANS.free.limits, { db, now: NOW });
+
+		await refundScanQuota(USER, { db, now: NOW });
+
+		const state = await peekScanQuota(USER, PLANS.free.limits, { db, now: NOW });
+		expect(state.used).toBe(1);
+		expect(state.remaining).toBe(PLANS.free.limits.scansPerDay - 1);
+	});
+
+	it('исчерпанная квота снова пускает после возврата', async () => {
+		// Два сбоя провайдера подряд не должны съедать день бесплатного тарифа.
+		for (let attempt = 0; attempt < PLANS.free.limits.scansPerDay; attempt += 1) {
+			await consumeScanQuota(USER, PLANS.free.limits, { db, now: NOW });
+		}
+
+		await refundScanQuota(USER, { db, now: NOW });
+
+		expect((await consumeScanQuota(USER, PLANS.free.limits, { db, now: NOW })).allowed).toBe(true);
+	});
+
+	it('не уводит счётчик в минус', async () => {
+		await refundScanQuota(USER, { db, now: NOW });
+		await refundScanQuota(USER, { db, now: NOW });
+
+		const state = await peekScanQuota(USER, PLANS.free.limits, { db, now: NOW });
+		expect(state.used).toBe(0);
+		expect(state.remaining).toBe(PLANS.free.limits.scansPerDay);
+	});
+
+	it('не трогает протухшее окно', async () => {
+		// Сутки прошли, счётчик и так обнулится сам: правка там ушла бы
+		// в минус уже на следующий день.
+		await consumeScanQuota(USER, PLANS.free.limits, { db, now: NOW });
+
+		const nextDay = new Date(NOW.getTime() + 36 * 60 * 60 * 1000);
+		await refundScanQuota(USER, { db, now: nextDay });
+
+		const state = await peekScanQuota(USER, PLANS.free.limits, { db, now: NOW });
+		expect(state.used).toBe(1);
 	});
 });

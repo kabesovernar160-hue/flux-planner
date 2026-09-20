@@ -5,7 +5,7 @@ import { AiError } from '$lib/server/ai/types';
 import { AuthError, requireUser } from '$lib/server/auth/session';
 import { getEntitlement } from '$lib/server/billing/subscriptions';
 import { getReadyDb } from '$lib/server/db/client';
-import { consumeScanQuota } from '$lib/server/quota';
+import { consumeScanQuota, refundScanQuota } from '$lib/server/quota';
 import { apiError, logServerError } from '$lib/server/errors';
 import { checkRateLimit } from '$lib/server/rateLimit';
 import type { RequestHandler } from './$types';
@@ -62,6 +62,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	const anonymous = await checkRateLimit(`analyze:ip:${address}`, ANONYMOUS_LIMIT, RATE_WINDOW_MS);
 	if (!anonymous.allowed) return rateLimited(anonymous.retryAfterSeconds);
 
+	/** Чья попытка списана и ещё не отработана. null — возвращать нечего. */
+	let scanned: string | null = null;
+
 	try {
 		// Пользователь берётся из проверенной подписи initData. Ничему,
 		// что клиент сообщил о себе в теле запроса, доверять нельзя.
@@ -94,21 +97,33 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			);
 		}
 
+		// Дальше любая неудача обязана вернуть списанную попытку: человек
+		// платит за распознавание, а не за попытку его запросить.
+		scanned = user.id;
+
 		let form: FormData;
 		try {
 			form = await request.formData();
 		} catch {
 			// Тело не multipart или оборвалось на полпути.
+			await refundScanQuota(user.id, { db });
 			return apiError('INVALID_REQUEST', 'Ожидается форма с полем image', 400);
 		}
 
 		const image = await readImage(form.get('image'));
 		const result = await runFoodScan(image);
 
+		// Распознавание состоялось — попытка потрачена по назначению.
+		scanned = null;
+
 		// Остаток возвращается вместе с результатом: сканер показывает его
 		// сразу, без отдельного запроса за статусом.
 		return json({ result, quota: quota.state, plan: entitlement.plan });
 	} catch (error) {
+		// Провайдер не ответил, снимок не прочитался, упало что-то своё —
+		// человек остался без блюда в дневнике, и попытка возвращается.
+		if (scanned) await refundScanQuota(scanned);
+
 		if (error instanceof AuthError) {
 			return apiError(error.code, error.message, error.status);
 		}
