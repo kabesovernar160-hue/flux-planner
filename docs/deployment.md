@@ -204,6 +204,87 @@ ORIGIN=https://ваш-домен node build
 `node build` — обычный Node-сервер, который живёт за любым обратным прокси
 (nginx, Caddy, Traefik). TLS и HTTP/2 — задача прокси.
 
+## Vercel и Turso
+
+Вариант без своего сервера: постоянный адрес по https, бесплатный для отладки.
+Сборка выбирается сама — на Vercel собирается серверлес-версия, локально
+и в Docker остаётся обычный Node-процесс (`selectAdapter` в `vite.config.ts`).
+
+**Про тариф честно.** Hobby у Vercel запрещает коммерческое использование,
+а приложение продаёт Pro за звёзды. Для работающего продукта это Vercel Pro
+(20 $ в месяц) против 4–5 € за VPS, где всё то же поднимается одной командой.
+Как постоянный адрес для тестов вместо умирающего туннеля — подходит.
+
+### 1. База
+
+Файловая база на Vercel невозможна: файловая система там пропадает вместе
+с функцией. Нужна удалённая libSQL — Turso:
+
+```bash
+turso auth signup
+turso db create flux-planner
+turso db show flux-planner --url        # DATABASE_URL
+turso db tokens create flux-planner     # DATABASE_AUTH_TOKEN
+```
+
+Код менять не нужно: драйвер один и тот же, отличается только адрес.
+На сборке Vercel `@libsql/client` подменяется веб-версией — она ходит
+по HTTP и не тянет за собой нативный бинарник под платформу.
+
+### 2. Переменные окружения
+
+В проекте Vercel (Settings → Environment Variables):
+
+| Переменная                | Значение                      |
+| ------------------------- | ----------------------------- |
+| `TELEGRAM_BOT_TOKEN`      | токен бота                    |
+| `TELEGRAM_MINI_APP_URL`   | `https://<проект>.vercel.app` |
+| `TELEGRAM_WEBHOOK_SECRET` | длинная случайная строка      |
+| `APP_URL`                 | `https://<проект>.vercel.app` |
+| `AI_API_KEY`              | ключ Anthropic                |
+| `DATABASE_URL`            | `libsql://…` из Turso         |
+| `DATABASE_AUTH_TOKEN`     | токен из Turso                |
+| `CRON_SECRET`             | секрет расписания             |
+
+`ORIGIN` и `PORT` не нужны: адаптер берёт адрес из заголовков запроса.
+`ALLOW_FILE_DATABASE` не задавать — файловая база здесь означает потерю данных.
+
+### 3. Выкат
+
+```bash
+npm i -g vercel
+vercel login
+vercel --prod
+```
+
+Сборка идёт на стороне Vercel, на Linux. Локальная `VERCEL=1 npm run build`
+на Windows падает с `EPERM: symlink` — это ограничение прав Windows,
+а не ошибка приложения: адаптер связывает одинаковые функции симлинками.
+
+### 4. Бот и расписание
+
+```bash
+APP_URL=https://<проект>.vercel.app npm run bot:webhook
+TELEGRAM_MINI_APP_URL=https://<проект>.vercel.app npm run bot:setup
+```
+
+Расписание описано в `vercel.json`. Планировщик Vercel умеет только GET,
+поэтому у эндпоинта рассылки есть и GET-обработчик; секрет Vercel
+подставляет в заголовок `Authorization` сам, если задан `CRON_SECRET`.
+
+На Hobby расписание запускается **раз в сутки**, а рассылка по местному
+времени получателя требует ежечасного вызова. Варианты: Vercel Pro, либо
+внешний планировщик (cron-job.org, GitHub Actions), дёргающий
+`https://<проект>.vercel.app/api/cron/daily?hour=20` каждый час
+с заголовком `Authorization: Bearer <CRON_SECRET>`.
+
+### Чего не будет
+
+Миграции применяются при первом обращении к базе в каждом холодном старте —
+они идемпотентны, но добавляют один запрос к задержке. Долгие операции
+(распознавание фото) ограничены временем функции: в коде стоит
+`maxDuration: 60`, больше Hobby не даёт.
+
 ## Проверка живости
 
 `GET /api/health` отвечает `200 {"status":"ok"}` или `503`, если база недоступна

@@ -53,6 +53,15 @@ import type { RequestHandler } from './$types';
 
 export const prerender = false;
 
+/**
+ * Потолок времени функции на Vercel.
+ *
+ * В вебхук приходят фотографии: их разбор идёт к провайдеру распознавания
+ * и занимает те же десятки секунд, что и в приложении. На собственном
+ * сервере параметр игнорируется.
+ */
+export const config = { maxDuration: 60 };
+
 const SECRET_HEADER = 'x-telegram-bot-api-secret-token';
 
 /**

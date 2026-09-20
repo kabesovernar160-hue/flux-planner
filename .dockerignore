@@ -9,3 +9,5 @@ build
 *.db-shm
 docs
 tests
+.vercel
+vercel.json

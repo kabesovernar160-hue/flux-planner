@@ -67,7 +67,7 @@ function readHour(value: string | null): number | undefined | 'invalid' {
 	return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : 'invalid';
 }
 
-export const POST: RequestHandler = async ({ request, url }) => {
+const run: RequestHandler = async ({ request, url }) => {
 	const expected = env.CRON_SECRET?.trim();
 	if (!expected) return apiError('NOT_CONFIGURED', 'Планировщик не настроен', 500);
 
@@ -108,3 +108,15 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		return apiError('INTERNAL', 'Рассылка не выполнена', 500);
 	}
 };
+
+export const POST = run;
+
+/**
+ * Тот же обработчик на GET.
+ *
+ * Планировщик Vercel умеет только GET-запросы, а рассылка — действие,
+ * и по правилам HTTP ему место в POST. Выбор между «теоретически верным
+ * методом» и «работающим расписанием» решён в пользу расписания: эндпоинт
+ * в любом случае закрыт секретом, без него он ничего не делает.
+ */
+export const GET = run;
