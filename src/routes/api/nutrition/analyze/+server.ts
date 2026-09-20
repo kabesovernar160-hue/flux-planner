@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { runFoodScan } from '$lib/server/ai';
 import { readImage } from '$lib/server/ai/image';
-import { AiError } from '$lib/server/ai/types';
+import { AiError, shouldRefundScan } from '$lib/server/ai/types';
 import { AuthError, requireUser } from '$lib/server/auth/session';
 import { getEntitlement } from '$lib/server/billing/subscriptions';
 import { getReadyDb } from '$lib/server/db/client';
@@ -122,7 +122,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	} catch (error) {
 		// Провайдер не ответил, снимок не прочитался, упало что-то своё —
 		// человек остался без блюда в дневнике, и попытка возвращается.
-		if (scanned) await refundScanQuota(scanned);
+		// Кроме «это не еда»: там модель ответила, и вызов уже оплачен.
+		if (scanned && shouldRefundScan(error)) await refundScanQuota(scanned);
 
 		if (error instanceof AuthError) {
 			return apiError(error.code, error.message, error.status);
