@@ -218,10 +218,15 @@ ORIGIN=https://ваш-домен node build
 ### 1. База
 
 Файловая база на Vercel невозможна: файловая система там пропадает вместе
-с функцией. Нужна удалённая libSQL — Turso:
+с функцией. Нужна удалённая libSQL — Turso.
+
+Через сайт (проще на Windows, где CLI Turso живёт только под WSL):
+[turso.tech](https://turso.tech) → Create Database → на странице базы
+скопировать **Database URL** (`libsql://…`) и создать **Auth Token**.
+
+Через CLI, если он уже есть:
 
 ```bash
-turso auth signup
 turso db create flux-planner
 turso db show flux-planner --url        # DATABASE_URL
 turso db tokens create flux-planner     # DATABASE_AUTH_TOKEN
@@ -252,9 +257,16 @@ turso db tokens create flux-planner     # DATABASE_AUTH_TOKEN
 ### 3. Выкат
 
 ```bash
-npm i -g vercel
 vercel login
 vercel --prod
+```
+
+Первый `vercel --prod` спросит про привязку каталога к проекту — отвечать
+можно по умолчанию. Переменные окружения задаются до выката, иначе первая
+же сборка поднимется без токена бота и упадёт проверкой конфигурации:
+
+```bash
+vercel env add TELEGRAM_BOT_TOKEN production
 ```
 
 Сборка идёт на стороне Vercel, на Linux. Локальная `VERCEL=1 npm run build`
