@@ -1,9 +1,12 @@
 import { json } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import { resolveIntentProvider } from '$lib/server/ai/intentProvider';
 import { applyIntent, describeApplied } from '$lib/server/assistant/applyIntent';
 import { findUserByCaptureToken } from '$lib/server/capture/tokens';
 import { getReadyDb } from '$lib/server/db/client';
 import { createRepositories } from '$lib/server/db/repositories';
+import { sendMessage } from '$lib/server/telegram/botApi';
+import { miniAppKeyboard } from '$lib/server/telegram/botMessages';
 import { apiError, logServerError } from '$lib/server/errors';
 import { checkRateLimit } from '$lib/server/rateLimit';
 import { parseWeightMessage } from '$lib/utils/weight';
@@ -40,6 +43,28 @@ const MAX_TEXT_LENGTH = 400;
  */
 const RATE_LIMIT = 30;
 const RATE_WINDOW_MS = 60_000;
+
+/**
+ * Эхо записи в чат с ботом.
+ *
+ * Надиктованное телефоном не видно нигде, пока человек не откроет приложение,
+ * — а распознавание речи ошибается: «полтора» становится «пол-литра», «такси»
+ * — «такты». Поэтому в чат уходит и то, что записано, и то, что услышано:
+ * чат оказывается лентой быстрых записей, по которой видно, что произошло,
+ * и откуда одной кнопкой открывается приложение.
+ *
+ * Молчаливо и необязательно: не ушло сообщение — запись всё равно сделана,
+ * и подтверждение человек уже увидел в уведомлении команды.
+ */
+async function echoToChat(telegramUserId: string, recorded: string, heard: string): Promise<void> {
+	try {
+		await sendMessage(telegramUserId, `${recorded}\n\nУслышал: «${heard}»`, {
+			replyMarkup: miniAppKeyboard(env.TELEGRAM_MINI_APP_URL?.trim() || undefined)
+		});
+	} catch (error) {
+		logServerError('capture/echo', error);
+	}
+}
 
 function readToken(request: Request, url: URL): string {
 	const header = request.headers.get('authorization') ?? '';
@@ -119,7 +144,10 @@ export const POST: RequestHandler = async ({ request, url, getClientAddress }) =
 				} as never
 			]);
 
-			return json({ ok: true, message: `Записал вес: ${weightKg} кг` });
+			const recordedWeight = `Записал вес: ${weightKg} кг`;
+			await echoToChat(user.telegramUserId, recordedWeight, text);
+
+			return json({ ok: true, message: recordedWeight });
 		}
 
 		const intent = await resolveIntentProvider().parseIntent(text);
@@ -138,7 +166,10 @@ export const POST: RequestHandler = async ({ request, url, getClientAddress }) =
 			);
 		}
 
-		return json({ ok: true, message: `Записал. ${describeApplied(applied)}` });
+		const recorded = `Записал. ${describeApplied(applied)}`;
+		await echoToChat(user.telegramUserId, recorded, text);
+
+		return json({ ok: true, message: recorded });
 	} catch (error) {
 		logServerError('capture', error);
 		return apiError('INTERNAL', 'Не удалось записать', 500);
