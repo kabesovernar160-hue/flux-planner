@@ -60,7 +60,7 @@ export const PLANS: Record<PlanId, Plan> = {
 	pro: {
 		id: 'pro',
 		title: 'Pro',
-		stars: 150,
+		stars: 100,
 		limits: {
 			// Не «безлимит»: обещать безграничное распознавание нельзя,
 			// потому что каждый вызов стоит денег, а честный потолок
