@@ -236,6 +236,22 @@ turso db tokens create flux-planner     # DATABASE_AUTH_TOKEN
 На сборке Vercel `@libsql/client` подменяется веб-версией — она ходит
 по HTTP и не тянет за собой нативный бинарник под платформу.
 
+#### Перенос уже накопленного
+
+Отладочный файл рядом с проектом — тоже чья-то база: в ней лежат записи людей,
+которые пользовались ботом через туннель. Переезд не должен начинаться
+с «все заводят дневник заново»:
+
+```bash
+TARGET_DATABASE_URL=libsql://… TARGET_DATABASE_AUTH_TOKEN=… npm run db:migrate
+```
+
+Источник по умолчанию — `DATABASE_URL` из `.env`, то есть тот самый файл.
+Перенос идемпотентен: строки переписываются по первичному ключу, и повторный
+запуск догоняет изменившееся, а не удваивает данные. Скрипт работает и в другую
+сторону — с прода в файл перед рискованной правкой. Не переносятся только
+`pending_scans` и `rate_limits`: первые живут минуты, вторые обнулятся сами.
+
 ### 2. Переменные окружения
 
 В проекте Vercel (Settings → Environment Variables):
@@ -289,6 +305,29 @@ TELEGRAM_MINI_APP_URL=https://<проект>.vercel.app npm run bot:setup
 внешний планировщик (cron-job.org, GitHub Actions), дёргающий
 `https://<проект>.vercel.app/api/cron/daily?hour=20` каждый час
 с заголовком `Authorization: Bearer <CRON_SECRET>`.
+
+#### Ежечасный вызов бесплатно
+
+**cron-job.org** — аккаунт, без карты. Create cronjob:
+
+- URL: `https://<проект>.vercel.app/api/cron/daily?hour=20`
+- Schedule: every hour at minute 5 (ровно в ноль там час пик и очередь)
+- Advanced → Headers: `Authorization: Bearer <CRON_SECRET>`
+
+Проверить можно этой же командой — ответ приходит сразу, без ожидания часа:
+
+```bash
+curl -H "Authorization: Bearer <CRON_SECRET>" \
+  "https://<проект>.vercel.app/api/cron/daily?hour=20"
+```
+
+В ответе `{"sent":N,"skipped":M,"failed":K,"kind":"summary","total":T}`:
+`sent: 0` при непустом `total` — это нормально, эндпоинт отбирает тех,
+у кого сейчас нужный местный час.
+
+**GitHub Actions** — альтернатива, если код и так лежит на GitHub: workflow
+с `schedule: '5 * * * *'` и `curl` с секретом из Actions secrets. Бесплатных
+минут приватного репозитория на это хватает с запасом (около часа в месяц).
 
 ### Чего не будет
 

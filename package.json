@@ -17,6 +17,7 @@
 		"bot": "node scripts/bot.ts",
 		"bot:webhook": "node scripts/set-webhook.ts",
 		"bot:setup": "node scripts/bot-setup.ts",
+		"db:migrate": "node scripts/migrate-db.ts",
 		"test": "vitest run --config vitest.config.ts",
 		"test:watch": "vitest --config vitest.config.ts"
 	},
