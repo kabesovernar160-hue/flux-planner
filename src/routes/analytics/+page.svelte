@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { CheckCircle, Fire, ForkKnife, Scales, Wallet } from 'phosphor-svelte';
+	import { CheckCircle, Fire, ForkKnife, Lock, Scales, Star, Wallet } from 'phosphor-svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import LineChart from '$lib/components/ui/line-chart.svelte';
 	import PeriodBars from '$lib/components/ui/period-bars.svelte';
 	import { CATEGORY_LABELS } from '$lib/services/financeService';
 	import { weightChange, weightProgress, weightSeries } from '$lib/services/weightService';
+	import { billing } from '$lib/state/billing.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { telegram } from '$lib/telegram';
@@ -25,13 +26,35 @@
 	} from '$lib/utils/analytics';
 	import { formatMacro, formatMoney, formatNumber, formatWeight } from '$lib/utils/format';
 
-	/** Неделя и месяц: две привычные рамки, между которыми есть смысл сравнивать. */
+	/**
+	 * Неделя, месяц и квартал.
+	 *
+	 * Первые две — привычные рамки, между которыми есть смысл сравнивать.
+	 * Квартал выходит за глубину бесплатного тарифа: это и есть то самое
+	 * «вся история» на Pro, обещанное в условиях.
+	 */
 	const PERIODS = [
 		{ days: 7, label: '7 дней' },
-		{ days: 30, label: '30 дней' }
+		{ days: 30, label: '30 дней' },
+		{ days: 90, label: '90 дней' },
+		{ days: 365, label: 'Год' }
 	];
 
 	let days = $state(7);
+
+	/** Глубина истории на текущем тарифе. null — ограничения нет. */
+	const historyDays = $derived(billing.historyDays);
+
+	const locked = (value: number) => historyDays !== null && value > historyDays;
+
+	/** Показывать ли объяснение. Появляется после нажатия на закрытый период. */
+	let lockExplained = $state(false);
+
+	// Подписка могла кончиться, пока экран открыт: выбранный период
+	// сам возвращается в разрешённые рамки, а не показывает лишнее.
+	$effect(() => {
+		if (locked(days)) days = historyDays ?? PERIODS[0].days;
+	});
 
 	const end = $derived(plannerStore.currentDate);
 	const currency = $derived(plannerStore.doc.settings.currency);
@@ -108,6 +131,14 @@
 	const budget = $derived(plannerStore.todayFinance.budget);
 
 	function pickPeriod(value: number) {
+		if (locked(value)) {
+			// Закрытый период не выбирается молча: человек должен понять,
+			// что это не поломка, а граница тарифа.
+			telegram.haptic.notification('warning');
+			lockExplained = true;
+			return;
+		}
+
 		telegram.haptic.selection();
 		days = value;
 	}
@@ -121,13 +152,36 @@
 			type="button"
 			onclick={() => pickPeriod(period.days)}
 			aria-pressed={days === period.days}
-			class="flex-1 rounded-full py-2 text-xs font-medium transition-colors duration-400 ease-flux
-			       {days === period.days ? 'bg-lavender text-void' : 'text-muted-foreground'}"
+			class="flex flex-1 items-center justify-center gap-1 rounded-full py-2 text-xs font-medium
+			       transition-colors duration-400 ease-flux
+			       {days === period.days ? 'bg-lavender text-void' : 'text-muted-foreground'}
+			       {locked(period.days) ? 'text-muted-foreground/50' : ''}"
 		>
+			{#if locked(period.days)}
+				<Lock size={12} weight="light" />
+			{/if}
 			{period.label}
 		</button>
 	{/each}
 </div>
+
+{#if lockExplained}
+	<GlassCard class="mb-4">
+		<p class="text-xs leading-relaxed text-muted-foreground">
+			На бесплатном тарифе аналитика показывает последние {historyDays} дней. Записи старше никуда не
+			делись — они на устройстве и в выгрузке, и снова откроются на Pro.
+		</p>
+		<a
+			href="/settings"
+			class="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-2.5
+			       text-sm font-medium text-void shadow-accent transition-transform duration-500
+			       ease-flux active:scale-[0.98]"
+		>
+			<Star size={15} weight="fill" />
+			Посмотреть тариф
+		</a>
+	</GlassCard>
+{/if}
 
 <div class="flex flex-col gap-4">
 	<GlassCard>

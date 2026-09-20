@@ -35,6 +35,21 @@ class BillingState {
 		return this.plan === 'pro';
 	}
 
+	/**
+	 * На сколько дней назад открыта история. null — ограничения нет.
+	 *
+	 * null отвечается не только тем, у кого Pro, но и когда тариф неизвестен:
+	 * вне Telegram, при недоступном сервере, до первого ответа. Ошибаться
+	 * здесь можно только в одну сторону — показать человеку его же записи.
+	 * Спрятать их из-за того, что мы не дозвонились до сервера, нельзя.
+	 */
+	get historyDays(): number | null {
+		if (this.status !== 'ready' || this.plan !== 'free') return null;
+
+		const days = this.limits.historyDays;
+		return Number.isFinite(days) && days > 0 ? days : null;
+	}
+
 	/** Остались ли распознавания на сегодня. null — ещё не знаем. */
 	get scansLeft(): number | null {
 		return this.scans?.remaining ?? null;

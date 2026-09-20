@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CaretLeft, CaretRight, Scales, Trash } from 'phosphor-svelte';
+	import { CaretLeft, CaretRight, Lock, Scales, Star, Trash } from 'phosphor-svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import HabitCheckbox from '$lib/components/ui/habit-checkbox.svelte';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
@@ -7,11 +7,13 @@
 	import { habitIcon } from '$lib/icons/habit-icons';
 	import { CATEGORY_LABELS, deleteTransaction } from '$lib/services/financeService';
 	import { removeWeight } from '$lib/services/weightService';
+	import { billing } from '$lib/state/billing.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { telegram } from '$lib/telegram';
 	import { dayActivity, monthGrid } from '$lib/utils/analytics';
 	import { getToday, type DateKey } from '$lib/utils/date';
+	import { historyStart } from '$lib/utils/history';
 	import { formatMoney, formatNumber, formatWeight } from '$lib/utils/format';
 	import { scheduledHabits } from '$lib/utils/habitFrequency';
 
@@ -44,6 +46,28 @@
 	const today = $derived(getToday(plannerStore.doc.user.timezone));
 
 	const cells = $derived(monthGrid(anchor));
+
+	/**
+	 * Граница истории на бесплатном тарифе. null — ограничения нет.
+	 *
+	 * Дни до неё остаются в календаре видимыми, но не открываются: записи
+	 * никуда не делись, и делать вид, что их не было, — неправда.
+	 */
+	const historyDays = $derived(billing.historyDays);
+	const earliest = $derived(historyDays === null ? null : historyStart(historyDays, today));
+
+	const isLocked = (date: DateKey) => earliest !== null && date < earliest;
+
+	/** Есть ли в показанном месяце закрытые дни — тогда нужна и подпись. */
+	const monthHasLocked = $derived(cells.some((cell) => isLocked(cell.date)));
+
+	/**
+	 * Листать назад дальше некуда.
+	 *
+	 * Считается по первой клетке сетки: если уже она за границей, следующий
+	 * месяц целиком закрыт, и стрелка вела бы в пустоту.
+	 */
+	const canGoBack = $derived(earliest === null || cells[0].date >= earliest);
 
 	const dayWeight = $derived(plannerStore.getWeight(selected));
 
@@ -85,9 +109,28 @@
 	}
 
 	function pick(date: DateKey) {
+		if (isLocked(date)) {
+			// Тихо игнорировать нажатие нельзя: это выглядит как поломка.
+			telegram.haptic.notification('warning');
+			lockExplained = true;
+			return;
+		}
+
 		telegram.haptic.impact('light');
 		plannerStore.setDate(date);
 	}
+
+	/** Объяснение границы. Появляется после нажатия на закрытый день. */
+	let lockExplained = $state(false);
+
+	// Подписка могла кончиться при открытом старом дне: возвращаемся
+	// к сегодняшнему, иначе внизу осталась бы сводка за закрытый день.
+	$effect(() => {
+		if (!isLocked(selected)) return;
+
+		plannerStore.goToToday();
+		anchor = today;
+	});
 
 	function dayLabel(date: DateKey): string {
 		return String(Number(date.slice(8, 10)));
@@ -143,9 +186,11 @@
 			<button
 				type="button"
 				onclick={() => shiftMonth(-1)}
+				disabled={!canGoBack}
 				aria-label="Предыдущий месяц"
 				class="grid size-8 shrink-0 place-items-center rounded-full border border-line-strong
-				       transition-transform duration-500 ease-flux active:scale-90"
+				       transition-transform duration-500 ease-flux active:scale-90
+				       disabled:border-line disabled:text-muted-foreground/40 disabled:active:scale-100"
 			>
 				<CaretLeft size={14} weight="light" />
 			</button>
@@ -171,17 +216,20 @@
 			{#each cells as cell (cell.date)}
 				{@const activity = dayActivity(cell.date, data)}
 				{@const isSelected = cell.date === selected}
+				{@const closed = isLocked(cell.date)}
 				<button
 					type="button"
 					onclick={() => pick(cell.date)}
-					aria-label={fullLabel(cell.date)}
+					aria-label={closed ? `${fullLabel(cell.date)} — доступно на Pro` : fullLabel(cell.date)}
 					aria-current={isSelected ? 'date' : undefined}
+					aria-disabled={closed ? 'true' : undefined}
 					class="relative grid aspect-square place-items-center rounded-lg text-xs
 					       transition-[background-color,color,transform] duration-400 ease-flux active:scale-90
 					       {isSelected ? 'bg-lavender font-semibold text-void' : ''}
 					       {!isSelected && cell.date === today ? 'border border-lavender/50' : ''}
-					       {!isSelected && cell.inMonth ? 'text-foreground' : ''}
-					       {!cell.inMonth ? 'text-muted-foreground/35' : ''}"
+					       {!isSelected && cell.inMonth && !closed ? 'text-foreground' : ''}
+					       {!cell.inMonth ? 'text-muted-foreground/35' : ''}
+					       {closed ? 'text-muted-foreground/25 active:scale-100' : ''}"
 				>
 					{dayLabel(cell.date)}
 
@@ -190,11 +238,40 @@
 						сам день значило бы соревноваться с выделением выбранной даты.
 					-->
 					{#if activity.hasAnything && !isSelected}
-						<span class="absolute bottom-1 size-1 rounded-full bg-lavender/70"></span>
+						<span
+							class="absolute bottom-1 size-1 rounded-full {closed
+								? 'bg-muted-foreground/30'
+								: 'bg-lavender/70'}"
+						></span>
 					{/if}
 				</button>
 			{/each}
 		</div>
+
+		{#if monthHasLocked}
+			<p class="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+				<Lock size={12} weight="light" class="shrink-0" />
+				Дни до {fullLabel(earliest ?? today)} — на Pro
+			</p>
+		{/if}
+
+		{#if lockExplained}
+			<div class="mt-3 border-t border-line pt-3">
+				<p class="text-xs leading-relaxed text-muted-foreground">
+					На бесплатном тарифе календарь открывает последние {historyDays} дней. Записи старше никуда
+					не делись — они на устройстве и в выгрузке, и снова откроются на Pro.
+				</p>
+				<a
+					href="/settings"
+					class="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-2.5
+					       text-sm font-medium text-void shadow-accent transition-transform duration-500
+					       ease-flux active:scale-[0.98]"
+				>
+					<Star size={15} weight="fill" />
+					Посмотреть тариф
+				</a>
+			</div>
+		{/if}
 	</GlassCard>
 
 	<GlassCard>
