@@ -223,6 +223,39 @@ export const pendingScans = sqliteTable(
 );
 
 /**
+ * Ключи быстрой записи.
+ *
+ * Нужны, чтобы записать дело или трату, не открывая Telegram: «Быстрая
+ * команда» на телефоне отправляет строку напрямую в приложение. Подпись
+ * Telegram там взять неоткуда — Mini App не запущен, — поэтому у человека
+ * есть личный ключ.
+ *
+ * Хранится только хеш: утёкшая база не должна давать доступ к чужим
+ * дневникам. Ключ односторонний — им можно записать, но нельзя прочитать,
+ * и отзывается он одной кнопкой.
+ */
+export const captureTokens = sqliteTable(
+	'capture_tokens',
+	{
+		id: text('id').primaryKey(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		/** SHA-256 от самого ключа, в шестнадцатеричном виде. */
+		tokenHash: text('token_hash').notNull(),
+		createdAt: text('created_at').notNull(),
+		/** Когда ключом воспользовались в последний раз: видно, живёт ли он. */
+		lastUsedAt: text('last_used_at'),
+		/** Отозван — ключ больше не работает, но запись о нём остаётся. */
+		revokedAt: text('revoked_at')
+	},
+	(table) => [
+		uniqueIndex('capture_token_hash_idx').on(table.tokenHash),
+		index('capture_token_user_idx').on(table.userId)
+	]
+);
+
+/**
  * Счётчики частоты запросов.
  *
  * Служебная таблица: в синхронизацию не входит, пользователю не принадлежит,
@@ -300,6 +333,7 @@ export type HabitRow = typeof habits.$inferSelect;
 export type HabitCompletionRow = typeof habitCompletions.$inferSelect;
 export type FinanceEntryRow = typeof financeEntries.$inferSelect;
 export type WeightEntryRow = typeof weightEntries.$inferSelect;
+export type CaptureTokenRow = typeof captureTokens.$inferSelect;
 export type DailyNutritionRow = typeof dailyNutrition.$inferSelect;
 export type DailyFinanceRow = typeof dailyFinance.$inferSelect;
 export type PlanItemRow = typeof planItems.$inferSelect;

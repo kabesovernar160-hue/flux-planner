@@ -17,6 +17,7 @@
 		Wallet
 	} from 'phosphor-svelte';
 	import SubscriptionCard from '$lib/components/billing/subscription-card.svelte';
+	import CaptureCard from '$lib/components/capture/capture-card.svelte';
 	import OnboardingFlow from '$lib/components/onboarding/onboarding-flow.svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
@@ -607,6 +608,8 @@
 			</p>
 		{/if}
 	</GlassCard>
+
+	<CaptureCard />
 
 	<GlassCard>
 		<h2 class="mb-1 flex items-center gap-2 text-sm font-medium">

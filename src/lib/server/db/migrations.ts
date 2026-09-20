@@ -236,5 +236,22 @@ export const MIGRATIONS: Migration[] = [
 			`CREATE INDEX IF NOT EXISTS weight_user_updated_idx ON weight_entries (user_id, updated_at)`,
 			`CREATE UNIQUE INDEX IF NOT EXISTS weight_user_date_idx ON weight_entries (user_id, date)`
 		]
+	},
+	{
+		// Ключи быстрой записи с телефона. Хранится только хеш: утёкшая
+		// база не должна открывать доступ к чужим дневникам.
+		name: '0007_capture_tokens',
+		statements: [
+			`CREATE TABLE IF NOT EXISTS capture_tokens (
+				id TEXT PRIMARY KEY,
+				user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				token_hash TEXT NOT NULL,
+				created_at TEXT NOT NULL,
+				last_used_at TEXT,
+				revoked_at TEXT
+			)`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS capture_token_hash_idx ON capture_tokens (token_hash)`,
+			`CREATE INDEX IF NOT EXISTS capture_token_user_idx ON capture_tokens (user_id)`
+		]
 	}
 ];

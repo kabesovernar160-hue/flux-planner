@@ -23,10 +23,10 @@ import {
 import { resolveIntentProvider } from '$lib/server/ai/intentProvider';
 import {
 	applyIntent,
+	describeApplied,
 	markPlanDone,
 	planFallbackIntent,
-	undoApplied,
-	type AppliedRecord
+	undoApplied
 } from '$lib/server/assistant/applyIntent';
 import { PLANS } from '$lib/billing/plans';
 import {
@@ -410,28 +410,6 @@ async function handleRefund(message: TelegramMessage, chatId: number): Promise<v
 
 	await sendMessage(chatId, 'Звёзды возвращены, подписка отключена. Бесплатный тариф остался.');
 }
-
-/** Как записанное выглядит в ответе бота. */
-function describeApplied(record: AppliedRecord): string {
-	const when =
-		record.date === getToday() ? 'сегодня' : record.date.split('-').reverse().slice(0, 2).join('.');
-
-	switch (record.kind) {
-		case 'plan':
-			return `В план на ${when}: ${record.title}${record.time ? ` в ${record.time}` : ''}`;
-		case 'food':
-			return `В дневник питания: ${record.title}${
-				record.calories
-					? `, ${Math.round(record.calories)} ккал`
-					: ' (калории поправьте в приложении)'
-			}`;
-		case 'expense':
-			return `Трата: ${record.title}${record.amount ? `, ${Math.round(record.amount)} ₽` : ''}`;
-		case 'income':
-			return `Доход: ${record.title}${record.amount ? `, ${Math.round(record.amount)} ₽` : ''}`;
-	}
-}
-
 /**
  * Свободный текст.
  *

@@ -107,7 +107,8 @@ describe('planы', () => {
 
 		expect(intent.kind).toBe('plan');
 		expect(intent.time).toBe('16:30');
-		expect(intent.title).toContain('врачу');
+		// «Час» из оборота времени в названии дела не нужен.
+		expect(intent.title).toBe('Позвонить врачу');
 	});
 
 	it('дело без времени тоже распознаётся, но с меньшей уверенностью', () => {

@@ -217,3 +217,30 @@ export async function undoApplied(
 		{ ...existing, deletedAt: timestamp, updatedAt: nowIso() }
 	]);
 }
+
+/**
+ * Как записанное выглядит в ответе.
+ *
+ * Один текст на все входы: бот в чате и быстрая запись с телефона должны
+ * подтверждать одинаково — человек не обязан помнить, каким путём
+ * он сделал запись.
+ */
+export function describeApplied(record: AppliedRecord): string {
+	const when =
+		record.date === getToday() ? 'сегодня' : record.date.split('-').reverse().slice(0, 2).join('.');
+
+	switch (record.kind) {
+		case 'plan':
+			return `В план на ${when}: ${record.title}${record.time ? ` в ${record.time}` : ''}`;
+		case 'food':
+			return `В дневник питания: ${record.title}${
+				record.calories
+					? `, ${Math.round(record.calories)} ккал`
+					: ' (калории поправьте в приложении)'
+			}`;
+		case 'expense':
+			return `Трата: ${record.title}${record.amount ? `, ${Math.round(record.amount)} ₽` : ''}`;
+		case 'income':
+			return `Доход: ${record.title}${record.amount ? `, ${Math.round(record.amount)} ₽` : ''}`;
+	}
+}

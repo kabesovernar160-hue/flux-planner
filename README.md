@@ -11,6 +11,7 @@ SvelteKit + Svelte 5 (руны), local-first, тёмный стеклянный 
 
 Подробности по слоям: [docs/architecture.md](docs/architecture.md),
 [docs/backend.md](docs/backend.md), [docs/telegram.md](docs/telegram.md),
+[docs/quick-capture.md](docs/quick-capture.md),
 [docs/food-scanner.md](docs/food-scanner.md), [docs/sync.md](docs/sync.md),
 [docs/deployment.md](docs/deployment.md).
 
@@ -54,6 +55,10 @@ SvelteKit + Svelte 5 (руны), local-first, тёмный стеклянный 
   считаются только по запланированным дням.
 - **Выгрузка данных.** JSON — полный снимок, CSV — таблица о еде. Без сервера
   и без просьб «напишите в поддержку».
+- **Запись без Telegram.** Личный ключ в «Быстрой команде» на айфоне:
+  кнопка «Действие», двойное касание крышки или Siri — сказали «ужин в 19:00»,
+  и запись в дневнике, не открывая ни чат, ни приложение.
+  Подробности: [docs/quick-capture.md](docs/quick-capture.md).
 - **Уведомления.** Итоги дня в чате с ботом — по местному времени человека,
   а не по времени сервера, — и дневное напоминание о незакрытых привычках.
   С переключателем в настройках.

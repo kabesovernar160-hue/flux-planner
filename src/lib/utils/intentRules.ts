@@ -406,6 +406,11 @@ const NUMBERS_AND_TIME =
  */
 export function cleanupTitle(text: string): string {
 	const cleaned = text
+		// Оборот времени убирается целиком: «через час» в названии дела
+		// превращал его в «Час позвонить врачу».
+		.replace(RELATIVE, ' ')
+		.replace(NOW_WORDS, ' ')
+		.replace(HOUR_WITH_PART, ' ')
 		.replace(NUMBERS_AND_TIME, ' ')
 		.replace(TITLE_NOISE, ' ')
 		.replace(/[«»"'`]+/g, ' ')

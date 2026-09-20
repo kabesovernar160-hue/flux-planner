@@ -55,17 +55,19 @@ daily_finance     + date, budget
 
 ## API
 
-| Метод | Путь                     | Назначение              |
-| ----- | ------------------------ | ----------------------- |
-| POST  | `/api/auth/telegram`     | Кто я для сервера       |
-| POST  | `/api/sync/push`         | Отправить изменения     |
-| GET   | `/api/sync/pull`         | Забрать изменения       |
-| POST  | `/api/nutrition/analyze` | Распознать еду по фото  |
-| POST  | `/api/telegram/webhook`  | Входящие сообщения бота |
-| POST  | `/api/telegram/notify`   | Уведомление самому себе |
-| POST  | `/api/cron/daily`        | Ежедневная рассылка     |
-| POST  | `/api/account/delete`    | Удаление своих данных   |
-| GET   | `/api/health`            | Живость для мониторинга |
+| Метод | Путь                     | Назначение                        |
+| ----- | ------------------------ | --------------------------------- |
+| POST  | `/api/auth/telegram`     | Кто я для сервера                 |
+| POST  | `/api/sync/push`         | Отправить изменения               |
+| GET   | `/api/sync/pull`         | Забрать изменения                 |
+| POST  | `/api/nutrition/analyze` | Распознать еду по фото            |
+| POST  | `/api/telegram/webhook`  | Входящие сообщения бота           |
+| POST  | `/api/telegram/notify`   | Уведомление самому себе           |
+| POST  | `/api/cron/daily`        | Ежедневная рассылка               |
+| POST  | `/api/account/delete`    | Удаление своих данных             |
+| POST  | `/api/capture`           | Запись строкой по личному ключу   |
+| POST  | `/api/capture/token`     | Выдать, посмотреть, отозвать ключ |
+| GET   | `/api/health`            | Живость для мониторинга           |
 
 Все эндпоинты, кроме вебхука и крона, требуют подписи Telegram в заголовке
 `X-Telegram-Init-Data`. Это относится и к `/api/nutrition/analyze`: он тратит
