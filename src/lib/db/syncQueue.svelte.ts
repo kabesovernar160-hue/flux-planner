@@ -87,7 +87,7 @@ function writeWatermark(watermark: Watermark): void {
  * знака». Журнал пришлось бы держать в согласии с данными, и потеря одной
  * его записи означала бы потерю изменения навсегда.
  */
-class SyncQueue {
+export class SyncQueue {
 	status = $state<SyncStatus>('idle');
 	lastSyncedAt = $state<string | null>(null);
 	lastError = $state<string | null>(null);
