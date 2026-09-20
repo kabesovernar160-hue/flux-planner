@@ -25,6 +25,16 @@ export interface IntentProvider {
 
 const MODEL = 'claude-opus-5';
 
+/**
+ * Насколько правила должны быть уверены, чтобы не звать модель.
+ *
+ * Ниже этого порога разбор держится на одном существительном или общем
+ * виде фразы — там модель действительно решает задачу лучше. Выше —
+ * это прямая формулировка со временем, суммой или калориями, и вызов
+ * провайдера был бы тратой денег и секунды ожидания.
+ */
+const RULES_CONFIDENT = 0.8;
+
 /** Короткий текст — короткое ожидание: человек смотрит в чат и ждёт ответа. */
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -38,6 +48,12 @@ export function createAnthropicIntentProvider(apiKey: string): IntentProvider {
 		name: 'anthropic',
 
 		async parseIntent(text: string): Promise<ParsedIntent> {
+			// Сначала правила: «ужин в 19:00» и «потратил 500 на такси» они
+			// разбирают точно, мгновенно и бесплатно. Модель нужна там, где
+			// правила не уверены, — платить за очевидное незачем.
+			const byRules = parseIntentLocally(text);
+			if (byRules.confidence >= RULES_CONFIDENT) return byRules;
+
 			try {
 				const response = await client.messages.parse({
 					model: MODEL,

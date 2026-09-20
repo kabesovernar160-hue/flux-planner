@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { MealType } from '$lib/utils/meals';
 import { AiError } from './types';
 
 /**
@@ -43,6 +44,14 @@ export interface ParsedIntent {
 	amount?: number;
 	grams?: number;
 	calories?: number;
+	/**
+	 * Приём пищи, если он назван словами: «на обед борщ».
+	 *
+	 * Модель его не возвращает — поле заполняют правила. Без него запись
+	 * из фразы «на обед…» попала бы в приём по текущему часу, то есть
+	 * в ужин, если человек записывает день вечером.
+	 */
+	meal?: MealType;
 	note?: string;
 	confidence: number;
 }

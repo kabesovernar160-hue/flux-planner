@@ -108,9 +108,6 @@ interface TelegramCallbackQuery {
 	message?: TelegramMessage;
 }
 
-/** Формат «450 борщ»: число калорий и название. */
-const QUICK_ENTRY = /^\s*(\d+(?:[.,]\d+)?)\s+(.{1,80})\s*$/;
-
 /** Команда с возможным суффиксом бота: /start@flux_planner_bot. */
 function command(text: string): string {
 	return text.split(/\s+/)[0].split('@')[0].toLowerCase();
@@ -591,44 +588,10 @@ async function handleMessage(message: TelegramMessage, chatId: number, fromId: n
 		return;
 	}
 
-	// Проверка стоит раньше «450 борщ», иначе «вес 78» стал бы едой
+	// Вес проверяется до общего разбора: «вес 78» иначе стало бы едой
 	// на 78 килокалорий.
 	if (/^\s*вес[\s:]/i.test(text)) {
 		await saveWeight(repositories, userId, timezone, parseWeightMessage(text), chatId);
-		return;
-	}
-
-	const quick = QUICK_ENTRY.exec(text);
-	if (quick) {
-		const calories = Number(quick[1].replace(',', '.'));
-		const title = quick[2].trim();
-
-		if (!Number.isFinite(calories) || calories <= 0 || calories > 20_000) {
-			await sendMessage(chatId, 'Похоже на опечатку в калориях. Попробуйте ещё раз.');
-			return;
-		}
-
-		// Числа названы человеком, а не моделью: подтверждать нечего,
-		// записываем сразу. Макросы из текста не вытащить — пишем нули.
-		const timestamp = nowIso();
-		await repositories.food.upsertMany(userId, [
-			{
-				id: createId(),
-				createdAt: timestamp,
-				updatedAt: timestamp,
-				deletedAt: null,
-				date: getToday(timezone),
-				name: title,
-				calories,
-				protein: 0,
-				fat: 0,
-				carbs: 0,
-				source: 'manual',
-				meal: mealForTime(new Date(), timezone)
-			} as never
-		]);
-
-		await sendMessage(chatId, `Записал: ${title}, ${Math.round(calories)} ккал.`);
 		return;
 	}
 
