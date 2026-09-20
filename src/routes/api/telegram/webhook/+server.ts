@@ -184,6 +184,52 @@ async function saveScan(
 	);
 }
 
+/**
+ * Отзыв из чата с ботом.
+ *
+ * Самый короткий путь от «неудобно» до разработчика: человек уже в Telegram,
+ * и заводить ради двух фраз форму, почту или чат поддержки — значит потерять
+ * девять отзывов из десяти. Сообщение уходит владельцу как есть, вместе с тем,
+ * кто написал: без этого на отзыв нельзя ответить и нельзя посмотреть,
+ * что у человека в дневнике.
+ */
+async function forwardFeedback(
+	text: string,
+	chatId: number,
+	from: TelegramMessage['from']
+): Promise<void> {
+	const body = text.replace(/^\/feedback(@\S+)?\s*/i, '').trim();
+
+	if (!body) {
+		await sendMessage(
+			chatId,
+			'Напишите отзыв одной командой: /feedback и дальше текст.\n' +
+				'Что угодно — что неудобно, что сломалось, чего не хватает.'
+		);
+		return;
+	}
+
+	const inbox = env.FEEDBACK_CHAT_ID?.trim();
+
+	if (!inbox) {
+		// Некому переслать — но человеку об этом знать незачем: он сделал
+		// свою часть. Отзыв останется в журнале сервера.
+		console.warn('[feedback] FEEDBACK_CHAT_ID не задан, отзыв только в журнале:', body);
+		await sendMessage(chatId, 'Спасибо, передал.');
+		return;
+	}
+
+	const who = from?.username ? `@${from.username}` : (from?.first_name ?? 'без имени');
+
+	try {
+		await sendMessage(inbox, `Отзыв от ${who} (${from?.id ?? '?'}):\n\n${body}`);
+		await sendMessage(chatId, 'Спасибо, передал. Если понадобится уточнить — напишу.');
+	} catch (error) {
+		logServerError('telegram/feedback', error);
+		await sendMessage(chatId, 'Спасибо, записал.');
+	}
+}
+
 async function handlePhoto(
 	message: TelegramMessage,
 	chatId: number,
@@ -549,6 +595,11 @@ async function handleMessage(message: TelegramMessage, chatId: number, fromId: n
 
 	if (name === '/help') {
 		await sendMessage(chatId, HELP_TEXT, { replyMarkup: miniAppKeyboard(miniAppUrl()) });
+		return;
+	}
+
+	if (name === '/feedback') {
+		await forwardFeedback(text, chatId, message.from);
 		return;
 	}
 

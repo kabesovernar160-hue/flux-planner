@@ -20,7 +20,8 @@ const API_BASE = 'https://api.telegram.org';
 const COMMANDS = [
 	{ command: 'start', description: 'Открыть Flux Planner' },
 	{ command: 'app', description: 'Открыть приложение' },
-	{ command: 'help', description: 'Что умею в чате' }
+	{ command: 'help', description: 'Что умею в чате' },
+	{ command: 'feedback', description: 'Написать отзыв разработчику' }
 ];
 
 /** Показывается в пустом чате, до первого сообщения. До 512 символов. */
