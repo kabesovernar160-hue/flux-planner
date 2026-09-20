@@ -195,8 +195,10 @@
 					<span class="break-all text-foreground">{url}</span>
 				</li>
 				<li>
-					3. Метод POST, заголовок <span class="text-foreground">Authorization</span> со значением
-					<span class="text-foreground">Bearer ключ</span>.
+					3. Метод POST. В заголовке слева — имя
+					<span class="text-foreground">Authorization</span>, справа — значение
+					<span class="text-foreground">Bearer ключ</span> (со словом Bearer и пробелом). Наоборот не
+					сработает, а пробел в имени iOS покажет как «сетевое соединение потеряно».
 				</li>
 				<li>
 					4. Тело запроса — <span class="text-foreground">JSON</span>, одно поле

@@ -114,7 +114,16 @@ export const POST: RequestHandler = async ({ request, url, getClientAddress }) =
 
 	try {
 		const token = readToken(request, url);
-		if (!token) return apiError('UNAUTHENTICATED', 'Нужен ключ быстрой записи', 401);
+		if (!token) {
+			// Подсказка с именем заголовка не роскошь: в «Быстрых командах»
+			// имя и значение стоят рядом двумя полями, и их регулярно
+			// заполняют наоборот — ключ в имя, слово Authorization в значение.
+			return apiError(
+				'UNAUTHENTICATED',
+				'Нужен ключ: заголовок Authorization со значением «Bearer ключ»',
+				401
+			);
+		}
 
 		const db = await getReadyDb();
 		const user = await findUserByCaptureToken(db, token);
