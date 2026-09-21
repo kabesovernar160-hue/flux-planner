@@ -73,6 +73,17 @@
 	let busy = $state(false);
 	let hint = $state<string | null>(null);
 
+	/**
+	 * Подсказка в поле ввода.
+	 *
+	 * Поле принимает и план, и еду, и деньги, но узнать об этом неоткуда:
+	 * один неизменный пример учит только себе подобным фразам. Пример
+	 * выбирается при открытии экрана — не бегущей строкой, которая
+	 * отвлекает ровно в тот момент, когда человек начал печатать.
+	 */
+	const PLACEHOLDERS = ['Ужин в 19:00', '450 борщ', '1,5к на такси', 'Тренировка завтра утром'];
+	const placeholder = PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)];
+
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
 
@@ -216,7 +227,8 @@
 
 	{#if items.length === 0}
 		<p class="mb-3 text-sm leading-relaxed text-muted-foreground">
-			Напишите, что запланировали: «ужин в 19:00», «тренировка», «позвонить врачу».
+			Напишите фразой — разберу сам: «ужин в 19:00» встанет в план, «450 борщ» уйдёт в еду, «1,5к на
+			такси» — в траты.
 		</p>
 	{:else}
 		<ul class="mb-3 flex flex-col gap-1.5">
@@ -286,7 +298,7 @@
 			bind:value={draft}
 			type="text"
 			autocomplete="off"
-			placeholder="Ужин в 19:00"
+			{placeholder}
 			disabled={busy}
 			class="min-w-0 flex-1 rounded-full border border-line-strong bg-white/[0.03] px-4 py-2.5
 			       text-sm transition-colors duration-300 ease-flux outline-none

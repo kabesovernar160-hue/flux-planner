@@ -7,12 +7,19 @@
 	import FinanceWidget from '$lib/components/dashboard/finance-widget.svelte';
 </script>
 
-<DashboardHeader />
+<!--
+	Лесенка появления: шапка первой, дальше карточки сверху вниз.
+	Номер шага — не индекс в цикле, а положение на экране: порядок
+	виджетов задан здесь руками, и лесенка обязана совпадать с ним.
+-->
+<div class="fx-rise" style="--fx-step: 0;">
+	<DashboardHeader />
+</div>
 
 <div class="flex flex-col gap-4">
-	<PlanWidget />
-	<NutritionWidget />
-	<FoodLogWidget />
-	<HabitsWidget />
-	<FinanceWidget />
+	<div class="fx-rise" style="--fx-step: 1;"><PlanWidget /></div>
+	<div class="fx-rise" style="--fx-step: 2;"><NutritionWidget /></div>
+	<div class="fx-rise" style="--fx-step: 3;"><FoodLogWidget /></div>
+	<div class="fx-rise" style="--fx-step: 4;"><HabitsWidget /></div>
+	<div class="fx-rise" style="--fx-step: 5;"><FinanceWidget /></div>
 </div>
