@@ -45,9 +45,17 @@ const result: FoodScanResult = {
 };
 
 describe('приветствие', () => {
-	it('содержит название приложения и приглашение открыть его', () => {
+	it('называет приложение и зовёт его открыть', () => {
 		expect(WELCOME_TEXT).toContain('Flux Planner');
-		expect(WELCOME_TEXT).toContain('Открой приложение');
+		expect(WELCOME_TEXT).toContain('Откройте приложение');
+	});
+
+	it('показывает все три способа записи', () => {
+		// Приветствие — единственное место, где человек узнаёт про фото
+		// и про фразу. Потеряется способ в тексте — потеряется и в голове.
+		expect(WELCOME_TEXT).toContain('фото');
+		expect(WELCOME_TEXT).toContain('фраза');
+		expect(WELCOME_TEXT).toContain('голосом');
 	});
 });
 
