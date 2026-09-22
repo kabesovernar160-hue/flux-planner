@@ -212,6 +212,8 @@
 		if (next) telegram.haptic.notification('success');
 		else telegram.haptic.impact('light');
 	}
+
+	const EXAMPLES = ['ужин в 19:00', '450 борщ', '1,5к на такси'];
 </script>
 
 <GlassCard>
@@ -226,10 +228,26 @@
 	</div>
 
 	{#if items.length === 0}
-		<p class="mb-3 text-sm leading-relaxed text-muted-foreground">
-			Напишите фразой — разберу сам: «ужин в 19:00» встанет в план, «450 борщ» уйдёт в еду, «1,5к на
-			такси» — в траты.
-		</p>
+		<p class="mb-2.5 text-sm text-muted-foreground">Пишите как есть — разберу сам, например:</p>
+		<!--
+			Примеры нажимаются и встают в поле: так видно, что фраза
+			может уйти в план, в еду или в траты, и не надо набирать её заново.
+		-->
+		<div class="mb-3 flex flex-wrap gap-1.5">
+			{#each EXAMPLES as example (example)}
+				<button
+					type="button"
+					onclick={() => {
+						telegram.haptic.impact('light');
+						draft = example;
+					}}
+					class="rounded-full border border-line-strong px-3 py-1 text-xs text-muted-foreground
+					       transition-colors duration-400 ease-flux hover:text-foreground active:scale-95"
+				>
+					{example}
+				</button>
+			{/each}
+		</div>
 	{:else}
 		<ul class="mb-3 flex flex-col gap-1.5">
 			{#each items as item (item.id)}

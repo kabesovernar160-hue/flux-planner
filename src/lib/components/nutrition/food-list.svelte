@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Camera, PencilSimple, Trash } from 'phosphor-svelte';
+	import { Camera, Trash } from 'phosphor-svelte';
 	import Sheet from '$lib/components/ui/sheet.svelte';
 	import FoodForm from './food-form.svelte';
 	import { removeFood } from '$lib/services/nutritionService';
@@ -52,24 +52,12 @@
 
 		<ul class="flex flex-col gap-1.5">
 			{#each group.entries as entry (entry.id)}
-				<li class="flex items-center gap-3 rounded-xl border border-line/70 bg-white/[0.02] p-3">
-					<div class="min-w-0 flex-1">
-						<p class="flex items-center gap-1.5 truncate text-sm font-medium">
-							{#if entry.source === 'ai'}
-								<!-- Помечаем оценку по фото: её точность иная, чем у введённой руками. -->
-								<Camera size={13} weight="light" class="shrink-0 text-muted-foreground" />
-							{/if}
-							{entry.name}
-						</p>
-						<p class="tabular mt-0.5 text-xs text-muted-foreground">
-							{formatNumber(entry.calories)} ккал
-							{#if entry.grams}· {formatNumber(entry.grams)} г{/if}
-							· Б {formatNumber(entry.protein)} · Ж {formatNumber(entry.fat)} · У {formatNumber(
-								entry.carbs
-							)}
-						</p>
-					</div>
-
+				<!--
+					Правка открывается нажатием на всю строку: мишень в полширины
+					экрана удобнее двух кружков, а место под кнопками уходит
+					на цифры, которые без него переносились на вторую строку.
+				-->
+				<li class="flex items-center rounded-xl border border-line/70 bg-white/[0.02]">
 					<button
 						type="button"
 						onclick={() => {
@@ -77,20 +65,39 @@
 							editing = entry;
 						}}
 						aria-label="Изменить {entry.name}"
-						class="grid size-8 shrink-0 place-items-center rounded-full border border-line-strong
-					       transition-transform duration-500 ease-flux active:scale-90"
+						class="flex min-w-0 flex-1 items-center gap-3 py-2.5 pl-3 text-left
+						       transition-transform duration-500 ease-flux active:scale-[0.98]"
 					>
-						<PencilSimple size={13} weight="light" />
+						<div class="min-w-0 flex-1">
+							<p class="flex items-center gap-1.5 text-sm font-medium">
+								{#if entry.source === 'ai'}
+									<!-- Помечаем оценку по фото: её точность иная, чем у введённой руками. -->
+									<Camera size={13} weight="light" class="shrink-0 text-muted-foreground" />
+								{/if}
+								<span class="truncate">{entry.name}</span>
+							</p>
+							<p class="tabular mt-0.5 truncate text-xs text-muted-foreground">
+								{#if entry.grams}{formatNumber(entry.grams)} г ·{/if}
+								Б {formatNumber(entry.protein)} · Ж {formatNumber(entry.fat)} · У {formatNumber(
+									entry.carbs
+								)}
+							</p>
+						</div>
+						<span class="tabular shrink-0 text-sm font-semibold">
+							{formatNumber(entry.calories)}<span
+								class="ml-0.5 text-[11px] font-normal text-muted-foreground">ккал</span
+							>
+						</span>
 					</button>
 
 					<button
 						type="button"
 						onclick={() => remove(entry)}
 						aria-label="Удалить {entry.name}"
-						class="grid size-8 shrink-0 place-items-center rounded-full border border-line-strong
-					       text-muted-foreground transition-transform duration-500 ease-flux active:scale-90"
+						class="grid size-10 shrink-0 place-items-center text-muted-foreground/70
+						       transition-[color,scale] duration-500 ease-flux hover:text-foreground active:scale-90"
 					>
-						<Trash size={13} weight="light" />
+						<Trash size={15} weight="light" />
 					</button>
 				</li>
 			{/each}
