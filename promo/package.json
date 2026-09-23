@@ -4,7 +4,8 @@
 	"type": "module",
 	"scripts": {
 		"studio": "remotion studio src/index.ts",
-		"render": "remotion render src/index.ts Promo out/flux-promo.mp4"
+		"render": "remotion render src/index.ts Promo out/flux-promo.mp4",
+		"render:banner": "remotion render src/index.ts Banner out/flux-banner.mp4"
 	},
 	"dependencies": {
 		"@remotion/cli": "^4.0.527",
@@ -13,7 +14,9 @@
 		"remotion": "^4.0.527"
 	},
 	"devDependencies": {
+		"@phosphor-icons/react": "^2.1.10",
 		"@types/react": "^19.3.0",
+		"qrcode": "^1.5.4",
 		"typescript": "^7.0.2"
 	}
 }

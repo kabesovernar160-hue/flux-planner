@@ -14,7 +14,7 @@ import {
 // Вертикальный ролик ~17 секунд под TikTok / Reels / Shorts.
 export const DURATION = 505;
 
-const C = {
+export const C = {
 	void: '#0D0D10',
 	text: '#FFFFFF',
 	dim: '#A0A0AA',
@@ -24,7 +24,7 @@ const C = {
 	sky: 'oklch(0.76 0.1 245)'
 };
 
-const FONTS = `
+export const FONTS = `
 @font-face { font-family: Geist; font-weight: 100 900; src: url(${staticFile('fonts/geist-cyrillic-wght-normal.woff2')}) format('woff2'); unicode-range: U+0400-04FF; }
 @font-face { font-family: Geist; font-weight: 100 900; src: url(${staticFile('fonts/geist-latin-wght-normal.woff2')}) format('woff2'); }
 @font-face { font-family: GeistMono; font-weight: 100 900; src: url(${staticFile('fonts/geist-mono-cyrillic-wght-normal.woff2')}) format('woff2'); unicode-range: U+0400-04FF; }
@@ -34,7 +34,7 @@ const FONTS = `
 const ease = Easing.bezier(0.32, 0.72, 0, 1);
 
 /** Появление снизу с пружиной; delay в кадрах. */
-const useRise = (delay = 0, distance = 60) => {
+export const useRise = (delay = 0, distance = 60) => {
 	const frame = useCurrentFrame();
 	const { fps } = useVideoConfig();
 	const p = spring({ frame: frame - delay, fps, config: { damping: 18, stiffness: 120 } });
@@ -51,7 +51,7 @@ const Fade = ({ len, children }: { len: number; children: ReactNode }) => {
 	return <AbsoluteFill style={{ opacity }}>{children}</AbsoluteFill>;
 };
 
-const Backdrop = () => {
+export const Backdrop = () => {
 	const frame = useCurrentFrame();
 	const drift = Math.sin(frame / 60) * 40;
 	const blob = (color: string, x: number, y: number, size: number): CSSProperties => ({
@@ -74,7 +74,7 @@ const Backdrop = () => {
 	);
 };
 
-const Title = ({ children, style }: { children: ReactNode; style?: CSSProperties }) => (
+export const Title = ({ children, style }: { children: ReactNode; style?: CSSProperties }) => (
 	<div
 		style={{
 			fontFamily: 'Geist',
@@ -112,7 +112,7 @@ const Phone = ({ src, style, pan = 0 }: { src: string; style?: CSSProperties; pa
 	</div>
 );
 
-const Chip = ({ color, children }: { color: string; children: ReactNode }) => (
+export const Chip = ({ color, children }: { color: string; children: ReactNode }) => (
 	<span
 		style={{
 			display: 'inline-block',
