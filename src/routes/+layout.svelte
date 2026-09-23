@@ -101,6 +101,11 @@
 			// это и есть local-first.
 			void plannerStore.initialize().then(async () => {
 				if (!import.meta.env.DEV) return;
+				// Внутри Telegram за dev-сервером стоит настоящий аккаунт (туннель):
+				// сид срабатывал на пустом устройстве раньше первой синхронизации,
+				// уезжал на сервер, и каждый новый запуск добавлял ещё копию
+				// демо-привычек, трат и еды в чужие данные.
+				if (telegram.isEmbedded) return;
 				// Динамический импорт под DEV-флагом: в прод-бандл сид не попадает.
 				const { seedDevData } = await import('$lib/db/devSeed');
 				seedDevData(plannerStore);
