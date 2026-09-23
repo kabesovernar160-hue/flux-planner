@@ -25,3 +25,7 @@ vite.config.ts.timestamp-*
 # Локальная база SQLite
 flux-planner.db
 flux-planner.db-*
+
+# Промо-ролик: зависимости и рендер
+promo/node_modules
+promo/out
