@@ -184,9 +184,11 @@
 {/if}
 
 <div class="flex flex-col gap-4">
-	<GlassCard>
+	<GlassCard tone="amber">
 		<div class="mb-3 flex items-center gap-2">
-			<ForkKnife size={16} weight="light" class="text-lavender" />
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+				<ForkKnife size={15} weight="regular" class="text-tone" />
+			</span>
 			<h2 class="flex-1 text-sm font-medium">Калории</h2>
 			<span class="tabular text-xs text-muted-foreground">цель {formatNumber(goal)}</span>
 		</div>
@@ -242,7 +244,7 @@
 								</div>
 								<div class="h-1 overflow-hidden rounded-full bg-line">
 									<div
-										class="h-full rounded-full bg-lavender"
+										class="h-full rounded-full bg-tone"
 										style="width: {Math.round(meal.share * 100)}%"
 									></div>
 								</div>
@@ -256,7 +258,9 @@
 
 	<GlassCard>
 		<div class="mb-3 flex items-center gap-2">
-			<Scales size={16} weight="light" class="text-lavender" />
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+				<Scales size={15} weight="regular" class="text-tone" />
+			</span>
 			<h2 class="flex-1 text-sm font-medium">Вес</h2>
 			{#if latest}
 				<span class="tabular text-xs text-muted-foreground">{latest.date}</span>
@@ -272,7 +276,7 @@
 				onclick={() => ui.openWeightSheet()}
 				class="mt-2 w-full rounded-full border border-line-strong py-2.5 text-xs font-medium
 				       transition-[transform,border-color] duration-500 ease-flux
-				       hover:border-lavender/60 active:scale-[0.98]"
+				       hover:border-tone/60 active:scale-[0.98]"
 			>
 				Записать вес
 			</button>
@@ -335,16 +339,18 @@
 		{/if}
 	</GlassCard>
 
-	<GlassCard>
+	<GlassCard tone="mint">
 		<div class="mb-3 flex items-center gap-2">
-			<CheckCircle size={16} weight="light" class="text-lavender" />
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+				<CheckCircle size={15} weight="regular" class="text-tone" />
+			</span>
 			<h2 class="flex-1 text-sm font-medium">Привычки</h2>
 			<span class="tabular text-xs text-muted-foreground">{habitPercent}%</span>
 		</div>
 
 		{#if plannerStore.habits.length === 0}
 			<p class="py-2 text-sm text-muted-foreground">
-				Привычек ещё нет. <a href="/habits" class="text-lavender">Добавить первую</a>.
+				Привычек ещё нет. <a href="/habits" class="text-tone">Добавить первую</a>.
 			</p>
 		{:else}
 			<!-- Доли 0…1 приводятся к процентам для общей шкалы графика. -->
@@ -357,7 +363,7 @@
 
 			<div class="mt-4 grid grid-cols-2 gap-2">
 				<div class="flex items-center gap-2.5 rounded-xl border border-line/70 px-3 py-2.5">
-					<Fire size={16} weight="fill" class="shrink-0 text-lavender" />
+					<Fire size={16} weight="fill" class="shrink-0 text-tone" />
 					<div class="min-w-0">
 						<p class="text-[11px] text-muted-foreground">Сейчас</p>
 						<p class="tabular text-sm font-medium">{plannerStore.currentStreak} дней</p>
@@ -374,9 +380,11 @@
 		{/if}
 	</GlassCard>
 
-	<GlassCard>
+	<GlassCard tone="sky">
 		<div class="mb-3 flex items-center gap-2">
-			<Wallet size={16} weight="light" class="text-lavender" />
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+				<Wallet size={15} weight="regular" class="text-tone" />
+			</span>
 			<h2 class="flex-1 text-sm font-medium">Траты</h2>
 			<span class="tabular text-xs text-muted-foreground">лимит {money(budget)}</span>
 		</div>
@@ -431,7 +439,7 @@
 						</div>
 						<div class="h-1 overflow-hidden rounded-full bg-line">
 							<div
-								class="h-full rounded-full bg-lavender"
+								class="h-full rounded-full bg-tone"
 								style="width: {Math.round(category.share * 100)}%"
 							></div>
 						</div>

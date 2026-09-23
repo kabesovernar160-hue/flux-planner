@@ -234,15 +234,18 @@
 					{dayLabel(cell.date)}
 
 					<!--
-						Точка под числом — единственный маркер активности. Раскрашивать
+						Точки под числом — по одной на раздел, в его цвете: еда, привычки,
+						деньги, план. Одна общая точка говорила только «что-то было»,
+						а по цветам видно, что именно, не открывая день. Раскрашивать
 						сам день значило бы соревноваться с выделением выбранной даты.
 					-->
 					{#if activity.hasAnything && !isSelected}
-						<span
-							class="absolute bottom-1 size-1 rounded-full {closed
-								? 'bg-muted-foreground/30'
-								: 'bg-lavender/70'}"
-						></span>
+						<span class="absolute bottom-1 flex gap-0.5 {closed ? 'opacity-30 grayscale' : ''}">
+							{#if activity.calories > 0}<span class="size-1 rounded-full bg-amber"></span>{/if}
+							{#if activity.habitsDone > 0}<span class="size-1 rounded-full bg-mint"></span>{/if}
+							{#if activity.spent > 0}<span class="size-1 rounded-full bg-sky"></span>{/if}
+							{#if activity.planTotal > 0}<span class="size-1 rounded-full bg-lavender"></span>{/if}
+						</span>
 					{/if}
 				</button>
 			{/each}

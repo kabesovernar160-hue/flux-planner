@@ -79,12 +79,12 @@
 					stroke-linecap="round"
 					stroke-linejoin="round"
 					vector-effect="non-scaling-stroke"
-					class="text-lavender"
+					class="text-tone"
 				/>
 			{/if}
 
 			{#each coords as point (point.date)}
-				<circle cx={point.x} cy={point.y} r="3" class="fill-lavender" />
+				<circle cx={point.x} cy={point.y} r="3" class="fill-tone" />
 			{/each}
 		</svg>
 

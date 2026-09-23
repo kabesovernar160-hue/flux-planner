@@ -1,16 +1,16 @@
 <script lang="ts">
 	import {
 		ArrowsClockwise,
-		Barbell,
 		BellSimple,
 		CaretRight,
 		CloudCheck,
 		CloudSlash,
+		Database,
 		DownloadSimple,
 		UploadSimple,
 		Drop,
 		ForkKnife,
-		PaperPlaneTilt,
+		Info,
 		Scales,
 		Sparkle,
 		Trash,
@@ -342,9 +342,16 @@
 			autocomplete="off"
 			class="tabular w-24 rounded-xl border border-line-strong bg-white/[0.03] px-3 py-2
 			       text-right text-sm transition-colors duration-300 ease-flux outline-none
-			       focus:border-lavender"
+			       focus:border-tone"
 		/>
 		<span class="w-10 shrink-0 text-xs text-muted-foreground">{unit}</span>
+	</div>
+{/snippet}
+
+{#snippet infoRow(label: string, value: string)}
+	<div class="flex items-center gap-3 py-2.5">
+		<span class="min-w-0 flex-1 text-sm text-muted-foreground">{label}</span>
+		<span class="tabular shrink-0 text-sm">{value}</span>
 	</div>
 {/snippet}
 
@@ -355,16 +362,15 @@
 <PageHeader title="Настройки" subtitle={sessionLabel} />
 
 <div class="flex flex-col gap-4">
-	<SubscriptionCard />
-
-	<GlassCard>
-		<h2 class="mb-1 flex items-center gap-2 text-sm font-medium">
-			<ForkKnife size={15} weight="light" class="text-lavender" />
-			Цели по питанию
-		</h2>
-		<p class="mb-2 text-xs text-muted-foreground">
-			Применяются к сегодняшнему дню и ко всем следующим.
-		</p>
+	<!-- Профиль и цели — самый используемый раздел, поэтому первый и заметнее прочих. -->
+	<GlassCard tone="amber">
+		<div class="mb-1 flex items-center gap-2">
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+				<ForkKnife size={15} weight="regular" class="text-tone" />
+			</span>
+			<h2 class="flex-1 text-sm font-medium">Профиль и цели</h2>
+		</div>
+		<p class="mb-3 text-xs text-muted-foreground">Действуют на сегодня и на все следующие дни.</p>
 
 		<button
 			type="button"
@@ -374,9 +380,9 @@
 			}}
 			class="mb-3 flex w-full items-center gap-2.5 rounded-xl border border-line/70
 			       bg-white/[0.02] px-3.5 py-3 text-left transition-[transform,border-color]
-			       duration-500 ease-flux hover:border-lavender/60 active:scale-[0.99]"
+			       duration-500 ease-flux hover:border-tone/60 active:scale-[0.99]"
 		>
-			<Sparkle size={16} weight="light" class="shrink-0 text-lavender" />
+			<Sparkle size={16} weight="light" class="shrink-0 text-tone" />
 			<span class="min-w-0 flex-1">
 				<span class="block text-sm">Посчитать под себя</span>
 				<span class="block text-xs text-pretty text-muted-foreground">{profileSummary}</span>
@@ -384,7 +390,8 @@
 			<CaretRight size={14} weight="light" class="shrink-0 text-muted-foreground" />
 		</button>
 
-		<div class="divide-y divide-line/70">
+		<p class="mb-1 text-xs text-muted-foreground">Калории и БЖУ</p>
+		<div class="divide-y divide-line/60">
 			{@render numberField('goal-calories', 'Калории', nutrition.calorieGoal, 'ккал', setCalories)}
 			{@render numberField('goal-protein', 'Белки', nutrition.proteinGoal, 'г', (value) =>
 				setMacro('proteinGoal', value)
@@ -396,28 +403,34 @@
 				setMacro('carbsGoal', value)
 			)}
 		</div>
-	</GlassCard>
 
-	<GlassCard>
-		<h2 class="mb-1 flex items-center gap-2 text-sm font-medium">
-			<Scales size={15} weight="light" class="text-lavender" />
-			Вес
-		</h2>
-		<p class="mb-2 text-xs leading-relaxed text-muted-foreground">
-			{#if plannerStore.latestWeight}
-				Последнее взвешивание: {formatWeight(plannerStore.latestWeight.weightKg)} кг,
-				{plannerStore.latestWeight.date}.
-			{:else}
-				Взвешиваний пока нет. Цели по питанию считаются от веса, и его стоит отмечать.
-			{/if}
-		</p>
+		<div class="flex items-center gap-3 border-t border-line/60 py-2.5">
+			<Drop size={14} weight="light" class="shrink-0 text-tone" />
+			<label for="goal-water" class="min-w-0 flex-1 text-sm">Вода, норма</label>
+			<input
+				id="goal-water"
+				value={formatNumber(nutrition.waterGoalMl)}
+				onblur={(event) => commit(event.currentTarget.value, setWater)}
+				onkeydown={(event) => {
+					if (event.key === 'Enter') event.currentTarget.blur();
+				}}
+				type="text"
+				inputmode="numeric"
+				autocomplete="off"
+				class="tabular w-24 rounded-xl border border-line-strong bg-white/[0.03] px-3 py-2
+				       text-right text-sm transition-colors duration-300 ease-flux outline-none
+				       focus:border-tone"
+			/>
+			<span class="w-10 shrink-0 text-xs text-muted-foreground">мл</span>
+		</div>
 
 		<!--
-			Цель необязательна: дневник полезен и без неё, а навязанная цифра
-			превращает его в укор. Пустое поле снимает цель.
+			Цель по весу необязательна: дневник полезен и без неё, а навязанная
+			цифра превращает его в укор. Пустое поле снимает цель.
 		-->
-		<div class="flex items-center gap-3 py-1.5">
-			<label for="goal-weight" class="min-w-0 flex-1 text-sm">Цель</label>
+		<div class="flex items-center gap-3 border-t border-line/60 py-2.5">
+			<Scales size={14} weight="light" class="shrink-0 text-tone" />
+			<label for="goal-weight" class="min-w-0 flex-1 text-sm">Вес, цель</label>
 			<input
 				id="goal-weight"
 				value={plannerStore.doc.settings.weightGoalKg
@@ -433,39 +446,83 @@
 				placeholder="нет"
 				class="tabular w-24 rounded-xl border border-line-strong bg-white/[0.03] px-3 py-2
 				       text-right text-sm transition-colors duration-300 ease-flux outline-none
-				       placeholder:text-muted-foreground/50 focus:border-lavender"
+				       placeholder:text-muted-foreground/50 focus:border-tone"
 			/>
 			<span class="w-10 shrink-0 text-xs text-muted-foreground">кг</span>
 		</div>
 
-		<button
-			type="button"
-			onclick={() => ui.openWeightSheet()}
-			class="mt-2 w-full rounded-full border border-line-strong py-2.5 text-xs font-medium
-			       transition-[transform,border-color] duration-500 ease-flux
-			       hover:border-lavender/60 active:scale-[0.98]"
-		>
-			Записать вес
-		</button>
-	</GlassCard>
-
-	<GlassCard>
-		<h2 class="mb-2 flex items-center gap-2 text-sm font-medium">
-			<Drop size={15} weight="light" class="text-lavender" />
-			Вода
-		</h2>
-		<div class="divide-y divide-line/70">
-			{@render numberField('goal-water', 'Норма в день', nutrition.waterGoalMl, 'мл', setWater)}
+		<div class="mt-1 flex items-center justify-between gap-3 border-t border-line/60 pt-3">
+			<p class="min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground">
+				{#if plannerStore.latestWeight}
+					Последнее: {formatWeight(plannerStore.latestWeight.weightKg)} кг, {plannerStore
+						.latestWeight.date}
+				{:else}
+					Взвешиваний пока нет
+				{/if}
+			</p>
+			<button
+				type="button"
+				onclick={() => ui.openWeightSheet()}
+				class="shrink-0 rounded-full border border-line-strong px-3.5 py-2 text-xs font-medium
+				       transition-[transform,border-color] duration-500 ease-flux
+				       hover:border-tone/60 active:scale-[0.98]"
+			>
+				Записать вес
+			</button>
 		</div>
 	</GlassCard>
 
-	<GlassCard>
-		<h2 class="mb-2 flex items-center gap-2 text-sm font-medium">
-			<Wallet size={15} weight="light" class="text-lavender" />
-			Деньги
-		</h2>
+	<GlassCard tone="mint">
+		<div class="mb-1 flex items-center gap-2">
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+				<BellSimple size={15} weight="regular" class="text-tone" />
+			</span>
+			<h2 class="flex-1 text-sm font-medium">Уведомления</h2>
+		</div>
 
-		<div class="divide-y divide-line/70">
+		<button
+			type="button"
+			onclick={toggleDailySummary}
+			role="switch"
+			aria-checked={dailySummaryOn}
+			class="flex w-full items-center gap-3 py-2 text-left"
+		>
+			<span class="min-w-0 flex-1">
+				<span class="block text-sm">Итоги дня в чате</span>
+				<span class="block text-xs text-muted-foreground">
+					Вечером бот присылает калории, привычки и траты
+				</span>
+			</span>
+			<span
+				class="relative h-6 w-10 shrink-0 rounded-full transition-colors duration-400 ease-flux
+				       {dailySummaryOn ? 'bg-tone' : 'bg-line'}"
+			>
+				<span
+					class="absolute top-1 size-4 rounded-full bg-white transition-[left] duration-400 ease-flux
+					       {dailySummaryOn ? 'left-5' : 'left-1'}"
+				></span>
+			</span>
+		</button>
+
+		{#if !telegram.isEmbedded}
+			<p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+				Сообщения приходят в чат с ботом — настройка подействует, когда приложение открыто из
+				Telegram.
+			</p>
+		{/if}
+	</GlassCard>
+
+	<SubscriptionCard />
+
+	<GlassCard tone="sky">
+		<div class="mb-1 flex items-center gap-2">
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+				<Wallet size={15} weight="regular" class="text-tone" />
+			</span>
+			<h2 class="flex-1 text-sm font-medium">Деньги</h2>
+		</div>
+
+		<div class="divide-y divide-line/60">
 			{@render numberField(
 				'goal-budget',
 				'Лимит на день',
@@ -488,7 +545,7 @@
 					class="rounded-full border px-3.5 py-1.5 text-xs transition-[transform,border-color,background-color]
 					       duration-500 ease-flux active:scale-95
 					       {settings.currency === currency
-						? 'border-lavender bg-lavender/12 text-lavender'
+						? 'border-tone bg-tone/12 text-tone'
 						: 'border-line-strong text-muted-foreground'}"
 				>
 					{currency}
@@ -498,66 +555,139 @@
 	</GlassCard>
 
 	<GlassCard>
-		<h2 class="mb-3 flex items-center gap-2 text-sm font-medium">
-			<Barbell size={15} weight="light" class="text-lavender" />
-			Данные
-		</h2>
-
-		<div class="flex items-start gap-2.5 rounded-xl border border-line/70 bg-white/[0.02] p-3">
-			{#if syncQueue.status === 'offline' || syncQueue.status === 'error'}
-				<CloudSlash size={16} weight="light" class="mt-0.5 shrink-0 text-muted-foreground" />
-			{:else}
-				<CloudCheck size={16} weight="light" class="mt-0.5 shrink-0 text-success" />
-			{/if}
-			<div class="min-w-0 flex-1">
-				<p class="text-sm">{SYNC_LABEL[syncQueue.status] ?? 'Синхронизация'}</p>
-				<p class="mt-0.5 text-xs text-muted-foreground">
-					{#if lastSynced}
-						Последний обмен: {lastSynced}
-					{:else}
-						Обмена с сервером ещё не было
-					{/if}
-				</p>
-			</div>
+		<div class="mb-1 flex items-center gap-2">
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+				<Database size={15} weight="regular" class="text-tone" />
+			</span>
+			<h2 class="flex-1 text-sm font-medium">Данные и аккаунт</h2>
 		</div>
 
-		<button
-			type="button"
-			onclick={() => {
-				telegram.haptic.impact('light');
-				void syncQueue.syncNow();
-			}}
-			disabled={!session.isAuthenticated}
-			class="mt-2 flex w-full items-center justify-center gap-2 rounded-full border
-			       border-line-strong py-2.5 text-xs font-medium transition-[transform,border-color]
-			       duration-500 ease-flux hover:border-lavender/60 active:scale-[0.98]
-			       disabled:pointer-events-none disabled:opacity-40"
-		>
-			<ArrowsClockwise size={13} weight="light" />
-			Синхронизировать сейчас
-		</button>
+		<div class="flex items-center gap-2.5 py-2.5">
+			{#if syncQueue.status === 'offline' || syncQueue.status === 'error'}
+				<CloudSlash size={16} weight="light" class="shrink-0 text-muted-foreground" />
+			{:else}
+				<CloudCheck size={16} weight="light" class="shrink-0 text-success" />
+			{/if}
+			<span class="min-w-0 flex-1">
+				<span class="block text-sm">{SYNC_LABEL[syncQueue.status] ?? 'Синхронизация'}</span>
+				<span class="block text-xs text-muted-foreground">
+					{lastSynced ? `Последний обмен: ${lastSynced}` : 'Обмена с сервером ещё не было'}
+				</span>
+			</span>
+			<button
+				type="button"
+				onclick={() => {
+					telegram.haptic.impact('light');
+					void syncQueue.syncNow();
+				}}
+				disabled={!session.isAuthenticated}
+				aria-label="Синхронизировать сейчас"
+				class="grid size-8 shrink-0 place-items-center rounded-full border border-line-strong
+				       text-muted-foreground transition-[transform,border-color] duration-500 ease-flux
+				       hover:border-tone/60 active:scale-90 disabled:pointer-events-none disabled:opacity-40"
+			>
+				<ArrowsClockwise size={13} weight="light" />
+			</button>
+		</div>
 
 		{#if !session.isAuthenticated}
-			<p class="mt-2 text-xs leading-relaxed text-muted-foreground">
+			<p class="mb-1 text-xs leading-relaxed text-muted-foreground">
 				Синхронизация работает внутри Telegram: сервер принимает данные только по подписи Telegram.
 				Здесь всё сохраняется локально.
 			</p>
 		{/if}
 
-		<div class="mt-4 space-y-1 border-t border-line/70 pt-3 text-xs text-muted-foreground">
-			<p>Часовой пояс: {resolveTimeZone(plannerStore.doc.user.timezone)}</p>
-			<p>Хранилище: {plannerStore.status === 'memory' ? 'память (временное)' : 'IndexedDB'}</p>
-			<p>
-				Записей: еда {plannerStore.foodEntries.length} · траты {plannerStore.financeEntries.length}
+		<div class="divide-y divide-line/60 border-t border-line/60">
+			{@render infoRow('Часовой пояс', resolveTimeZone(plannerStore.doc.user.timezone))}
+			{@render infoRow(
+				'Хранилище',
+				plannerStore.status === 'memory' ? 'память (временное)' : 'IndexedDB'
+			)}
+			{@render infoRow(
+				'Записей',
+				`еда ${plannerStore.foodEntries.length} · траты ${plannerStore.financeEntries.length}`
+			)}
+		</div>
+
+		<div class="mt-3 border-t border-line/60 pt-3">
+			<p class="mb-2 text-xs leading-relaxed text-muted-foreground">
+				Записи можно забрать в любой момент: JSON — полный снимок, CSV — таблица о еде для Excel или
+				Google Таблиц. Снимок принимается обратно: записи сливаются по времени изменения, свежее
+				побеждает.
 			</p>
+
+			<div class="flex gap-2">
+				<button
+					type="button"
+					onclick={exportJson}
+					class="flex-1 rounded-full border border-line-strong py-2.5 text-xs font-medium
+					       transition-[transform,border-color] duration-500 ease-flux
+					       hover:border-tone/60 active:scale-[0.98]"
+				>
+					JSON
+				</button>
+				<button
+					type="button"
+					onclick={exportCsv}
+					disabled={plannerStore.foodEntries.length === 0}
+					class="flex-1 rounded-full border border-line-strong py-2.5 text-xs font-medium
+					       transition-[transform,border-color] duration-500 ease-flux
+					       hover:border-tone/60 active:scale-[0.98]
+					       disabled:pointer-events-none disabled:opacity-40"
+				>
+					CSV с едой
+				</button>
+				<button
+					type="button"
+					onclick={exportWeightCsv}
+					disabled={plannerStore.weightEntries.length === 0}
+					class="flex-1 rounded-full border border-line-strong py-2.5 text-xs font-medium
+					       transition-[transform,border-color] duration-500 ease-flux
+					       hover:border-tone/60 active:scale-[0.98]
+					       disabled:pointer-events-none disabled:opacity-40"
+				>
+					CSV с весом
+				</button>
+			</div>
+
+			<label
+				class="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-full
+				       border border-line-strong py-2.5 text-xs font-medium
+				       transition-[transform,border-color] duration-500 ease-flux
+				       hover:border-tone/60 active:scale-[0.98]"
+			>
+				<UploadSimple size={13} weight="light" class="text-tone" />
+				{importing ? 'Читаем файл…' : 'Восстановить из JSON'}
+				<input
+					type="file"
+					accept="application/json,.json"
+					onchange={handleImport}
+					disabled={importing}
+					class="sr-only"
+				/>
+			</label>
+
+			{#if importMessage}
+				<p
+					class="mt-2 text-xs leading-relaxed {importFailed
+						? 'text-destructive'
+						: 'text-muted-foreground'}"
+				>
+					{importMessage}
+				</p>
+			{/if}
 		</div>
 	</GlassCard>
 
+	<CaptureCard />
+
 	<GlassCard>
-		<h2 class="mb-2 flex items-center gap-2 text-sm font-medium">
-			<PaperPlaneTilt size={15} weight="light" class="text-lavender" />
-			Telegram
-		</h2>
+		<div class="mb-1 flex items-center gap-2">
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+				<Info size={15} weight="regular" class="text-tone" />
+			</span>
+			<h2 class="flex-1 text-sm font-medium">О приложении</h2>
+		</div>
 		<p class="text-xs leading-relaxed text-muted-foreground">
 			{#if telegram.isEmbedded}
 				Клиент: {telegram.platform}. Приветствие и кнопка запуска живут в чате с ботом — там же
@@ -567,128 +697,28 @@
 				распознавание по фото и синхронизация между устройствами.
 			{/if}
 		</p>
-	</GlassCard>
 
-	<GlassCard>
-		<h2 class="mb-1 flex items-center gap-2 text-sm font-medium">
-			<BellSimple size={15} weight="light" class="text-lavender" />
-			Уведомления
-		</h2>
-
-		<button
-			type="button"
-			onclick={toggleDailySummary}
-			role="switch"
-			aria-checked={dailySummaryOn}
-			class="mt-2 flex w-full items-center gap-3 rounded-xl border border-line/70
-			       bg-white/[0.02] px-3.5 py-3 text-left transition-[transform,border-color]
-			       duration-500 ease-flux active:scale-[0.99]"
+		<div
+			class="mt-3 flex items-center gap-1.5 border-t border-line/60 pt-3 text-xs text-muted-foreground"
 		>
-			<span class="min-w-0 flex-1">
-				<span class="block text-sm">Итоги дня в чате</span>
-				<span class="block text-xs text-muted-foreground">
-					Вечером бот присылает калории, привычки и траты
-				</span>
-			</span>
-			<span
-				class="relative h-6 w-10 shrink-0 rounded-full transition-colors duration-400 ease-flux
-				       {dailySummaryOn ? 'bg-lavender' : 'bg-line'}"
-			>
-				<span
-					class="absolute top-1 size-4 rounded-full bg-white transition-[left] duration-400 ease-flux
-					       {dailySummaryOn ? 'left-5' : 'left-1'}"
-				></span>
-			</span>
-		</button>
-
-		{#if !telegram.isEmbedded}
-			<p class="mt-2 text-xs leading-relaxed text-muted-foreground">
-				Сообщения приходят в чат с ботом — настройка подействует, когда приложение открыто из
-				Telegram.
-			</p>
-		{/if}
-	</GlassCard>
-
-	<CaptureCard />
-
-	<GlassCard>
-		<h2 class="mb-1 flex items-center gap-2 text-sm font-medium">
-			<DownloadSimple size={15} weight="light" class="text-lavender" />
-			Выгрузка и восстановление
-		</h2>
-		<p class="mb-3 text-xs leading-relaxed text-muted-foreground">
-			Записи можно забрать в любой момент: JSON — полный снимок, CSV — таблица о еде для Excel или
-			Google Таблиц. Снимок принимается обратно: записи сливаются по времени изменения, свежее
-			побеждает.
-		</p>
-
-		<div class="flex gap-2">
-			<button
-				type="button"
-				onclick={exportJson}
-				class="flex-1 rounded-full border border-line-strong py-2.5 text-xs font-medium
-				       transition-[transform,border-color] duration-500 ease-flux
-				       hover:border-lavender/60 active:scale-[0.98]"
-			>
-				JSON
-			</button>
-			<button
-				type="button"
-				onclick={exportCsv}
-				disabled={plannerStore.foodEntries.length === 0}
-				class="flex-1 rounded-full border border-line-strong py-2.5 text-xs font-medium
-				       transition-[transform,border-color] duration-500 ease-flux
-				       hover:border-lavender/60 active:scale-[0.98]
-				       disabled:pointer-events-none disabled:opacity-40"
-			>
-				CSV с едой
-			</button>
-			<button
-				type="button"
-				onclick={exportWeightCsv}
-				disabled={plannerStore.weightEntries.length === 0}
-				class="flex-1 rounded-full border border-line-strong py-2.5 text-xs font-medium
-				       transition-[transform,border-color] duration-500 ease-flux
-				       hover:border-lavender/60 active:scale-[0.98]
-				       disabled:pointer-events-none disabled:opacity-40"
-			>
-				CSV с весом
-			</button>
+			<a href="/privacy" class="underline-offset-2 hover:text-foreground hover:underline">
+				Конфиденциальность
+			</a>
+			<span class="text-muted-foreground/50">·</span>
+			<a href="/terms" class="underline-offset-2 hover:text-foreground hover:underline">
+				Условия использования
+			</a>
 		</div>
-
-		<label
-			class="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-full
-			       border border-line-strong py-2.5 text-xs font-medium
-			       transition-[transform,border-color] duration-500 ease-flux
-			       hover:border-lavender/60 active:scale-[0.98]"
-		>
-			<UploadSimple size={13} weight="light" class="text-lavender" />
-			{importing ? 'Читаем файл…' : 'Восстановить из JSON'}
-			<input
-				type="file"
-				accept="application/json,.json"
-				onchange={handleImport}
-				disabled={importing}
-				class="sr-only"
-			/>
-		</label>
-
-		{#if importMessage}
-			<p
-				class="mt-2 text-xs leading-relaxed {importFailed
-					? 'text-destructive'
-					: 'text-muted-foreground'}"
-			>
-				{importMessage}
-			</p>
-		{/if}
 	</GlassCard>
 
+	<!-- Необратимые действия — внизу, отдельно, без большого красного блока. -->
 	<GlassCard>
-		<h2 class="mb-2 flex items-center gap-2 text-sm font-medium">
-			<Trash size={15} weight="light" class="text-destructive" />
-			Сброс
-		</h2>
+		<div class="mb-2 flex items-center gap-2">
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-destructive/12">
+				<Trash size={15} weight="regular" class="text-destructive" />
+			</span>
+			<h2 class="flex-1 text-sm font-medium text-muted-foreground">Сброс</h2>
+		</div>
 		<p class="mb-3 text-xs leading-relaxed text-muted-foreground">
 			Удалит с этого устройства еду, привычки и траты. Данные, уже уехавшие на сервер, вернутся при
 			следующей синхронизации.
@@ -745,14 +775,4 @@
 			{/if}
 		</div>
 	</GlassCard>
-
-	<footer class="pb-1 text-center text-xs text-muted-foreground">
-		<a href="/privacy" class="underline-offset-2 hover:text-foreground hover:underline">
-			Конфиденциальность
-		</a>
-		<span class="px-1.5 text-muted-foreground/50">·</span>
-		<a href="/terms" class="underline-offset-2 hover:text-foreground hover:underline">
-			Условия использования
-		</a>
-	</footer>
 </div>
