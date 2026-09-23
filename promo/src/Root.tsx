@@ -1,6 +1,6 @@
 import { Composition } from 'remotion';
 import { Promo, DURATION } from './Promo';
-import { Banner, BANNER_DURATION } from './Banner';
+import { Banner, BannerWide, BANNER_DURATION } from './Banner';
 
 export const Root = () => (
 	<>
@@ -19,6 +19,14 @@ export const Root = () => (
 			fps={30}
 			width={1080}
 			height={1920}
+		/>
+		<Composition
+			id="BannerWide"
+			component={BannerWide}
+			durationInFrames={BANNER_DURATION}
+			fps={30}
+			width={1920}
+			height={1080}
 		/>
 	</>
 );

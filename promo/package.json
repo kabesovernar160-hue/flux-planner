@@ -5,7 +5,8 @@
 	"scripts": {
 		"studio": "remotion studio src/index.ts",
 		"render": "remotion render src/index.ts Promo out/flux-promo.mp4",
-		"render:banner": "remotion render src/index.ts Banner out/flux-banner.mp4"
+		"render:banner": "remotion render src/index.ts Banner out/flux-banner.mp4",
+		"render:banner-wide": "remotion render src/index.ts BannerWide out/flux-banner-16x9.mp4"
 	},
 	"dependencies": {
 		"@remotion/cli": "^4.0.527",

@@ -62,7 +62,8 @@ const Row = ({ feature, delay }: { feature: Feature; delay: number }) => {
 	);
 };
 
-export const Banner = () => {
+/** Общая анимация краёв и QR для обоих форматов. */
+const useBannerMotion = () => {
 	const frame = useCurrentFrame();
 	const { fps } = useVideoConfig();
 
@@ -84,21 +85,47 @@ export const Banner = () => {
 		background: '#fff',
 		boxShadow: `0 30px 90px -20px ${C.lavender}`
 	};
+	return { shell: { opacity: edge, transform: `scale(${zoom})` } as CSSProperties, qrStyle };
+};
 
+const Handle = () => (
+	<div style={useRise(46)}>
+		<div style={{ fontFamily: 'Geist', fontSize: 40, color: C.dim }}>Бесплатно в Telegram</div>
+		<div
+			style={{
+				fontFamily: 'GeistMono',
+				fontWeight: 650,
+				fontSize: 50,
+				color: C.lavender,
+				marginTop: 10,
+				letterSpacing: '-0.03em'
+			}}
+		>
+			@fluxplanner_xbot
+		</div>
+	</div>
+);
+
+const Logo = () => (
+	<div style={{ ...useRise(0), display: 'flex', alignItems: 'center', gap: 28 }}>
+		<Img src={staticFile('app-icon.png')} style={{ width: 120, borderRadius: 30 }} />
+		<div>
+			<Title style={{ fontSize: 76, textAlign: 'left' }}>Flux Planner</Title>
+			<div style={{ fontFamily: 'Geist', fontSize: 38, color: C.dim, marginTop: 6 }}>
+				весь день — на одном экране
+			</div>
+		</div>
+	</div>
+);
+
+export const Banner = () => {
+	const { shell, qrStyle } = useBannerMotion();
 	return (
-		<AbsoluteFill style={{ opacity: edge, transform: `scale(${zoom})` }}>
+		<AbsoluteFill style={shell}>
 			<style>{FONTS}</style>
 			<Backdrop />
 			<AbsoluteFill style={{ padding: '140px 90px 400px', justifyContent: 'space-between' }}>
-				<div style={{ ...useRise(0), display: 'flex', alignItems: 'center', gap: 28 }}>
-					<Img src={staticFile('app-icon.png')} style={{ width: 120, borderRadius: 30 }} />
-					<div>
-						<Title style={{ fontSize: 76, textAlign: 'left' }}>Flux Planner</Title>
-						<div style={{ fontFamily: 'Geist', fontSize: 38, color: C.dim, marginTop: 6 }}>
-							весь день — на одном экране
-						</div>
-					</div>
-				</div>
+				<Logo />
 
 				<div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 					{FEATURES.map((feature, i) => (
@@ -110,23 +137,44 @@ export const Banner = () => {
 					<div style={qrStyle}>
 						<Img src={staticFile('qr.svg')} style={{ width: 230, height: 230, display: 'block' }} />
 					</div>
-					<div style={useRise(46)}>
-						<div style={{ fontFamily: 'Geist', fontSize: 40, color: C.dim }}>
-							Бесплатно в Telegram
+					<Handle />
+				</div>
+			</AbsoluteFill>
+		</AbsoluteFill>
+	);
+};
+
+/** Горизонтальный вариант под YouTube и десктоп: функции столбцом справа. */
+export const BannerWide = () => {
+	const { shell, qrStyle } = useBannerMotion();
+	return (
+		<AbsoluteFill style={shell}>
+			<style>{FONTS}</style>
+			<Backdrop />
+			<AbsoluteFill
+				style={{ padding: '110px 120px', flexDirection: 'row', alignItems: 'center', gap: 110 }}
+			>
+				<div
+					style={{
+						display: 'flex',
+						flexDirection: 'column',
+						justifyContent: 'space-between',
+						height: '100%',
+						flexShrink: 0
+					}}
+				>
+					<Logo />
+					<div style={{ display: 'flex', alignItems: 'center', gap: 44 }}>
+						<div style={qrStyle}>
+							<Img src={staticFile('qr.svg')} style={{ width: 250, height: 250, display: 'block' }} />
 						</div>
-						<div
-							style={{
-								fontFamily: 'GeistMono',
-								fontWeight: 650,
-								fontSize: 50,
-								color: C.lavender,
-								marginTop: 10,
-								letterSpacing: '-0.03em'
-							}}
-						>
-							@fluxplanner_xbot
-						</div>
+						<Handle />
 					</div>
+				</div>
+				<div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
+					{FEATURES.map((feature, i) => (
+						<Row key={feature[1]} feature={feature} delay={6 + i * 6} />
+					))}
 				</div>
 			</AbsoluteFill>
 		</AbsoluteFill>
