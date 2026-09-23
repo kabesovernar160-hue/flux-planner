@@ -42,16 +42,21 @@
 			{plannerStore.isOverCalorieGoal ? 'Перебор' : 'Осталось ккал'}
 		</p>
 
-		<div class="mt-2 flex items-center gap-3">
+		<!-- Число внутри кольца: пустое кольцо рядом с цифрой читалось как недорисованное. -->
+		<div class="mt-2 grid place-items-center">
 			<ProgressRing
 				value={plannerStore.calorieProgress}
 				over={plannerStore.isOverCalorieGoal}
-				size={60}
-				stroke={6}
-			/>
-			<span class="tabular fx-num text-2xl leading-none font-semibold tracking-tighter">
-				{formatNumber(headline)}
-			</span>
+				size={112}
+				stroke={8}
+			>
+				<span class="tabular fx-num text-[1.625rem] leading-none font-semibold tracking-tighter">
+					{formatNumber(headline)}
+				</span>
+				<span class="mt-1 text-[10px] text-muted-foreground">
+					из {formatNumber(plannerStore.todayNutrition.calorieGoal)}
+				</span>
+			</ProgressRing>
 		</div>
 	</GlassCard>
 
