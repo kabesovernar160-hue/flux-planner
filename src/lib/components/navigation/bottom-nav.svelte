@@ -42,10 +42,8 @@
 		       transition-transform duration-500 ease-flux active:scale-95"
 	>
 		{#if isActive}
-			<span
-				class="pointer-events-none absolute top-1.5 size-9 rounded-full"
-				style="background: radial-gradient(circle, oklch(0.7022 0.1527 293.82 / 0.22), transparent 70%);"
-			></span>
+			<!-- Плашка под иконкой: активный таб читается силуэтом, а не только цветом. -->
+			<span class="pointer-events-none absolute top-1 size-9 rounded-2xl bg-lavender/12"></span>
 		{/if}
 
 		<!--

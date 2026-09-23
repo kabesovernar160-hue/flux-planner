@@ -154,7 +154,7 @@
 			aria-pressed={days === period.days}
 			class="flex flex-1 items-center justify-center gap-1 rounded-full py-2 text-xs font-medium
 			       transition-colors duration-400 ease-flux
-			       {days === period.days ? 'bg-lavender text-void' : 'text-muted-foreground'}
+			       {days === period.days ? 'bg-lavender/12 text-lavender-hi' : 'text-muted-foreground'}
 			       {locked(period.days) ? 'text-muted-foreground/50' : ''}"
 		>
 			{#if locked(period.days)}
@@ -198,9 +198,9 @@
 				За этот период записей нет. Добавьте еду — график появится здесь.
 			</p>
 		{:else}
-			<p class="tabular text-3xl leading-none font-semibold tracking-tight">
+			<p class="fx-num text-3xl leading-none">
 				{formatNumber(Math.round(avgCalories))}
-				<span class="text-sm font-normal text-muted-foreground">ккал в среднем</span>
+				<span class="font-sans text-sm font-normal text-muted-foreground">ккал в среднем</span>
 			</p>
 			<p class="mt-1 text-xs text-muted-foreground">
 				Считается по дням с записями, их {trackedDays} из {days}.
@@ -281,9 +281,9 @@
 				Записать вес
 			</button>
 		{:else}
-			<p class="tabular text-3xl leading-none font-semibold tracking-tight">
+			<p class="fx-num text-3xl leading-none">
 				{formatWeight(latest.weightKg)}
-				<span class="text-sm font-normal text-muted-foreground">кг</span>
+				<span class="font-sans text-sm font-normal text-muted-foreground">кг</span>
 			</p>
 
 			{#if weightDelta === null}
@@ -392,7 +392,7 @@
 		{#if totalSpending === 0 && totalIncome === 0}
 			<p class="py-2 text-sm text-muted-foreground">За этот период записей не было.</p>
 		{:else}
-			<p class="tabular text-3xl leading-none font-semibold tracking-tight">
+			<p class="fx-num text-3xl leading-none">
 				{money(totalSpending)}
 			</p>
 			<p class="mt-1 text-xs text-muted-foreground">

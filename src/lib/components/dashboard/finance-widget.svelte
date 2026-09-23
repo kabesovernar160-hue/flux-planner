@@ -46,7 +46,7 @@
 	}
 </script>
 
-<GlassCard tone="sky">
+<GlassCard tone="sky" id="finance-card">
 	<div class="mb-3 flex items-center gap-2">
 		<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
 			<Wallet size={15} weight="regular" class="text-tone" />
@@ -59,7 +59,7 @@
 
 	<div class="flex items-end justify-between gap-4">
 		<div class="min-w-0">
-			<p class="tabular text-2xl leading-none font-semibold tracking-tight">
+			<p class="tabular fx-num text-2xl leading-none font-semibold tracking-tight">
 				{money(plannerStore.dailySpent)}
 			</p>
 			<p class="tabular mt-1.5 text-xs text-muted-foreground">лимит {money(budget)}</p>
@@ -113,7 +113,9 @@
 		</p>
 	{/if}
 
-	<div class="mt-4 grid grid-cols-3 gap-2">
+	<!-- Ряд-пилюль вместо сетки: он не растягивается в полную решётку 3×1 и
+	     смотрится компактнее рядом с плотными полосами выше. -->
+	<div class="mt-4 flex gap-2 overflow-x-auto">
 		{#each QUICK as category (category.id)}
 			{@const Icon = category.icon}
 			{@const amount = plannerStore.expensesByCategory[category.id] ?? 0}
@@ -121,12 +123,12 @@
 				type="button"
 				onclick={() => pickCategory(category.id)}
 				aria-label="{category.title}: потрачено {money(amount)}"
-				class="flex flex-col items-center gap-1.5 rounded-xl border border-line/70 bg-white/[0.02]
-				       px-2 py-3 transition-[transform,border-color] duration-500 ease-flux
+				class="flex shrink-0 items-center gap-1.5 rounded-full border border-line/70 bg-white/[0.02]
+				       py-2 pr-3.5 pl-2.5 transition-[transform,border-color] duration-500 ease-flux
 				       hover:border-line-strong active:scale-[0.97]"
 			>
-				<Icon size={18} weight="light" class="text-tone" />
-				<span class="max-w-full truncate text-[11px] text-muted-foreground">{category.title}</span>
+				<Icon size={15} weight="light" class="shrink-0 text-tone" />
+				<span class="text-[11px] text-muted-foreground">{category.title}</span>
 				<span class="tabular text-xs font-medium">{money(amount)}</span>
 			</button>
 		{/each}

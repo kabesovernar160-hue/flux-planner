@@ -1,19 +1,25 @@
 <script lang="ts">
 	import { CaretRight, CheckCircle } from 'phosphor-svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
-	import HabitCheckbox from '$lib/components/ui/habit-checkbox.svelte';
 	import { habitIcon } from '$lib/icons/habit-icons';
 	import { ui } from '$lib/state/ui.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
+	import { telegram } from '$lib/telegram';
 
 	const habits = $derived(plannerStore.todayHabits);
 	const done = $derived(plannerStore.completedHabits.length);
 
-	/** На дашборде показываем первые три — остальные живут на своём экране. */
-	const featured = $derived(habits.slice(0, 3));
+	/** На дашборде показываем первые четыре — ровно сетка 2×2, остальные на своём экране. */
+	const featured = $derived(habits.slice(0, 4));
+
+	function toggle(id: string) {
+		const next = plannerStore.toggleHabit(id);
+		if (next) telegram.haptic.notification('success');
+		else telegram.haptic.impact('light');
+	}
 </script>
 
-<GlassCard tone="mint">
+<GlassCard tone="mint" id="habits-card">
 	<div class="mb-3 flex items-center gap-2">
 		<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
 			<CheckCircle size={15} weight="regular" class="text-tone" />
@@ -40,26 +46,35 @@
 		</button>
 	{:else}
 		<!--
-			Сегменты по числу привычек, а не сплошная полоса: «4 из 6» должно
-			читаться с экрана без пересчёта в проценты.
+			Чипы вместо списка со строками-флажками: тон заливки — то же mint,
+			что и весь раздел, поэтому выполненная привычка не спорит с картой.
 		-->
-		<div class="mb-4 flex gap-1.5" aria-hidden="true">
-			{#each habits as habit (habit.id)}
-				<span
-					class="h-1 flex-1 rounded-full transition-colors duration-500 ease-flux
-					       {plannerStore.isHabitCompleted(habit.id) ? 'bg-tone' : 'bg-line'}"
-				></span>
-			{/each}
-		</div>
-
-		<div class="flex flex-col gap-0.5">
+		<div class="grid grid-cols-2 gap-2">
 			{#each featured as habit (habit.id)}
-				<HabitCheckbox
-					label={habit.name}
-					checked={plannerStore.isHabitCompleted(habit.id)}
-					icon={habitIcon(habit.icon)}
-					onchange={() => plannerStore.toggleHabit(habit.id)}
-				/>
+				{@const Icon = habitIcon(habit.icon)}
+				{@const checked = plannerStore.isHabitCompleted(habit.id)}
+				<button
+					type="button"
+					onclick={() => toggle(habit.id)}
+					role="checkbox"
+					aria-checked={checked}
+					aria-label={habit.name}
+					class="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left
+					       transition-[background-color,border-color] duration-400 ease-flux active:scale-[0.97]
+					       {checked ? 'border-tone/50 bg-tone/15' : 'border-line/70 bg-white/[0.02]'}"
+				>
+					<Icon
+						size={16}
+						weight={checked ? 'fill' : 'light'}
+						class="shrink-0 {checked ? 'text-tone' : 'text-muted-foreground'}"
+					/>
+					<span
+						class="min-w-0 flex-1 truncate text-xs font-medium
+					             {checked ? '' : 'text-muted-foreground'}"
+					>
+						{habit.name}
+					</span>
+				</button>
 			{/each}
 		</div>
 	{/if}

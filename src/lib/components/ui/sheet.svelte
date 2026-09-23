@@ -67,7 +67,7 @@
 			aria-labelledby={titleId}
 			tabindex="-1"
 			class="absolute inset-x-0 bottom-0 mx-auto flex max-h-[88%] w-full max-w-md flex-col
-			       overflow-hidden rounded-t-shell border-t border-line bg-surface outline-none"
+			       overflow-hidden rounded-t-[2rem] border-t border-line bg-surface outline-none"
 			style="padding-bottom: calc(var(--fx-safe-bottom) + 1rem);"
 		>
 			<!-- Блик по верхней кромке — та же деталь, что у карточек. -->
@@ -77,7 +77,12 @@
 				       from-transparent via-white/20 to-transparent"
 			></span>
 
-			<header class="flex items-center gap-3 px-5 pt-5 pb-3">
+			<!-- Грабер: подсказывает, что шторку можно закрыть свайпом вниз. -->
+			<div class="flex justify-center pt-2.5" aria-hidden="true">
+				<span class="h-1 w-9 rounded-full bg-white/15"></span>
+			</div>
+
+			<header class="flex items-center gap-3 px-5 pt-3 pb-3">
 				<h2 id={titleId} class="flex-1 text-base font-semibold tracking-tight">{title}</h2>
 				<button
 					type="button"

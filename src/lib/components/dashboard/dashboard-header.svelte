@@ -3,7 +3,8 @@
 	import AppIcon from '$lib/components/brand/app-icon.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { telegram } from '$lib/telegram';
-	import { getToday } from '$lib/utils/date';
+	import { dayActivity } from '$lib/utils/analytics';
+	import { addDays, dayOfWeek, getToday } from '$lib/utils/date';
 	import { greeting, pluralDays } from '$lib/utils/format';
 
 	// Вне Telegram имени нет — подставляем нейтральное, чтобы экран
@@ -39,6 +40,34 @@
 		const [, month, day] = plannerStore.currentDate.split('-').map(Number);
 		return `${day} ${MONTHS[month - 1]}`;
 	});
+
+	/**
+	 * Полоска недели: пн—вс текущей недели, а не выбранного дня.
+	 * Иначе при просмотре прошлого понедельника полоска сама уехала бы
+	 * в прошлое, и от «сегодня» на ней не осталось бы следа.
+	 */
+	const WEEKDAY_LETTERS = ['П', 'В', 'С', 'Ч', 'П', 'С', 'В'];
+
+	const weekStart = $derived.by(() => {
+		const dow = dayOfWeek(today); // 0 — воскресенье
+		const mondayOffset = dow === 0 ? -6 : 1 - dow;
+		return addDays(today, mondayOffset);
+	});
+
+	const weekDays = $derived(Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)));
+
+	// Один проход по всем записям на неделю, а не dayActivity внутри #each:
+	// $derived пересчитывался бы за каждую ячейку при любом изменении стора.
+	const weekActivity = $derived.by(() => {
+		const data = {
+			foodEntries: plannerStore.foodEntries,
+			financeEntries: plannerStore.financeEntries,
+			habits: plannerStore.habits,
+			completions: plannerStore.habitCompletions,
+			planItems: plannerStore.planItems
+		};
+		return weekDays.map((date) => dayActivity(date, data));
+	});
 </script>
 
 <header class="mb-6 flex items-center gap-3">
@@ -64,6 +93,43 @@
 		<span class="tabular text-xs font-semibold text-lavender">{streak}</span>
 	</div>
 </header>
+
+<!--
+	Лёгкая полоска без карточки: неделя — навигация, а не ещё один блок
+	с данными. Точки под числом дублируют логику календаря, чтобы цвета
+	раздела не разъезжались между экранами.
+-->
+<nav class="mb-5 grid grid-cols-7 gap-1" aria-label="Дни недели">
+	{#each weekDays as date, index (date)}
+		{@const activity = weekActivity[index]}
+		{@const isCurrentDay = date === today}
+		<a
+			href="/calendar"
+			onclick={() => telegram.haptic.impact('light')}
+			class="flex flex-col items-center gap-1 rounded-xl py-2 transition-colors duration-400
+			       ease-flux active:scale-95
+			       {isCurrentDay ? 'bg-lavender text-void' : 'hover:bg-white/[0.03]'}"
+		>
+			<span class="text-[10px] {isCurrentDay ? 'text-void/70' : 'text-muted-foreground'}">
+				{WEEKDAY_LETTERS[index]}
+			</span>
+			<span class="tabular text-xs font-medium {isCurrentDay ? '' : 'text-foreground'}">
+				{Number(date.slice(8, 10))}
+			</span>
+			<span class="flex h-1 items-center gap-0.5" aria-hidden="true">
+				{#if activity.calories > 0}
+					<span class="size-1 rounded-full {isCurrentDay ? 'bg-void/60' : 'bg-amber'}"></span>
+				{/if}
+				{#if activity.habitsDone > 0}
+					<span class="size-1 rounded-full {isCurrentDay ? 'bg-void/60' : 'bg-mint'}"></span>
+				{/if}
+				{#if activity.spent > 0}
+					<span class="size-1 rounded-full {isCurrentDay ? 'bg-void/60' : 'bg-sky'}"></span>
+				{/if}
+			</span>
+		</a>
+	{/each}
+</nav>
 
 {#if !isToday}
 	<button

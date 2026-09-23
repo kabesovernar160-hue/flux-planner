@@ -28,7 +28,7 @@
 	{/if}
 
 	<div class="min-w-0 flex-1">
-		<h1 class="truncate text-lg leading-tight font-semibold tracking-tight">{title}</h1>
+		<h1 class="truncate text-[1.75rem] leading-tight font-semibold tracking-tight">{title}</h1>
 		{#if subtitle}
 			<p class="truncate text-xs text-muted-foreground">{subtitle}</p>
 		{/if}

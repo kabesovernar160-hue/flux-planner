@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 
 /* Тема зафиксирована тёмной: Mini App не переключает режим.
    Вариант dark: оставлен рабочим, чтобы компоненты shadcn-svelte
@@ -174,6 +175,9 @@
 	--color-sky: var(--fx-sky);
 
 	--font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	/* Моно-начертание только для крупных цифр (аналитика, серии привычек):
+	   табличные цифры не гуляют по ширине и не путаются с текстом. */
+	--font-num: 'Geist Mono Variable', ui-monospace, monospace;
 
 	/* Единая шкала скруглений. Смешивать радиусы в проекте нельзя. */
 	--radius-sm: calc(var(--radius) - 6px);
@@ -256,6 +260,15 @@
 	   таймеры и счётчики дёргаются при смене значения. */
 	.tabular {
 		font-variant-numeric: tabular-nums;
+	}
+
+	/* Крупные цифры (герой-цифры аналитики, серии привычек) отдельным
+	   начертанием: контраст с текстовым Geist делает акцент без цвета. */
+	.fx-num {
+		font-family: var(--font-num);
+		font-variant-numeric: tabular-nums;
+		letter-spacing: -0.03em;
+		font-weight: 600;
 	}
 }
 
