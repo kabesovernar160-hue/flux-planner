@@ -1,13 +1,5 @@
 <script lang="ts">
-	import {
-		ArrowDown,
-		ArrowUp,
-		Bus,
-		CaretRight,
-		DeviceMobile,
-		ForkKnife,
-		Wallet
-	} from 'phosphor-svelte';
+	import { ArrowDown, ArrowUp, Bus, CaretRight, Repeat, ForkKnife, Wallet } from 'phosphor-svelte';
 	import type { Component } from 'svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import SparkBars from '$lib/components/ui/spark-bars.svelte';
@@ -26,7 +18,7 @@
 	const QUICK: { id: FinanceCategory; title: string; icon: Component }[] = [
 		{ id: 'food', title: 'Еда', icon: ForkKnife },
 		{ id: 'transport', title: 'Транспорт', icon: Bus },
-		{ id: 'subscriptions', title: 'Связь', icon: DeviceMobile }
+		{ id: 'subscriptions', title: 'Подписки', icon: Repeat }
 	];
 
 	const budget = $derived(plannerStore.todayFinance.budget);
@@ -54,9 +46,11 @@
 	}
 </script>
 
-<GlassCard>
+<GlassCard tone="sky">
 	<div class="mb-3 flex items-center gap-2">
-		<Wallet size={16} weight="light" class="text-lavender" />
+		<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+			<Wallet size={15} weight="regular" class="text-tone" />
+		</span>
 		<h2 class="flex-1 text-sm font-medium">Финансы</h2>
 		<a href="/calendar" aria-label="Открыть календарь">
 			<CaretRight size={14} weight="light" class="text-muted-foreground" />
@@ -78,7 +72,7 @@
 		<div
 			class="h-full origin-left rounded-full {plannerStore.isOverBudget
 				? 'bg-destructive'
-				: 'bg-lavender'}"
+				: 'bg-tone'}"
 			style="
 				transform: scaleX({revealed ? Math.min(1, plannerStore.dailyBudgetProgress) : 0});
 				transition: transform 0.9s var(--fx-ease);
@@ -131,7 +125,7 @@
 				       px-2 py-3 transition-[transform,border-color] duration-500 ease-flux
 				       hover:border-line-strong active:scale-[0.97]"
 			>
-				<Icon size={18} weight="light" class="text-lavender" />
+				<Icon size={18} weight="light" class="text-tone" />
 				<span class="max-w-full truncate text-[11px] text-muted-foreground">{category.title}</span>
 				<span class="tabular text-xs font-medium">{money(amount)}</span>
 			</button>

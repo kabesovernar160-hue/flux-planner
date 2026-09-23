@@ -26,6 +26,21 @@
 	--fx-lavender-hi: oklch(0.7606 0.1228 295.07); /* #B7A1F7  hover */
 	--fx-lavender-lo: oklch(0.6285 0.1759 292.4); /* #8E6FE8  press */
 
+	/* Оттенки разделов.
+
+	   Один лавандовый на весь экран делал карточки неразличимыми:
+	   глазу не за что зацепиться, чтобы найти еду или деньги.
+	   У каждого раздела свой тон той же светлоты и приглушённой
+	   насыщенности, чтобы они различались, но не спорили друг с другом
+	   и с брендом. Лаванда остаётся за брендом и планом дня. */
+	--fx-amber: oklch(0.8 0.115 68);
+	--fx-mint: oklch(0.8 0.105 168);
+	--fx-sky: oklch(0.76 0.1 245);
+
+	/* Текущий тон. Элементы внутри раздела красятся им, а не лавандой,
+	   поэтому полоска или кольцо сами берут цвет своей карточки. */
+	--fx-tone: var(--fx-lavender);
+
 	--fx-text: oklch(1 0 0); /* #FFFFFF  основной текст */
 	--fx-text-dim: oklch(0.7089 0.0144 286.03); /* #A0A0AA  вторичный текст */
 
@@ -153,6 +168,10 @@
 	--color-lavender: var(--fx-lavender);
 	--color-lavender-hi: var(--fx-lavender-hi);
 	--color-lavender-lo: var(--fx-lavender-lo);
+	--color-tone: var(--fx-tone);
+	--color-mint: var(--fx-mint);
+	--color-amber: var(--fx-amber);
+	--color-sky: var(--fx-sky);
 
 	--font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
@@ -238,6 +257,19 @@
 	.tabular {
 		font-variant-numeric: tabular-nums;
 	}
+}
+
+/* Тон задаётся на карточке раздела и наследуется всем внутри. */
+.tone-amber {
+	--fx-tone: var(--fx-amber);
+}
+
+.tone-mint {
+	--fx-tone: var(--fx-mint);
+}
+
+.tone-sky {
+	--fx-tone: var(--fx-sky);
 }
 
 /* Появление карточек лесенкой.

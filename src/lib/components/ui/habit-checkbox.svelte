@@ -37,7 +37,7 @@
 	<span
 		class="relative grid size-6 shrink-0 place-items-center overflow-hidden rounded-[0.5rem]
 		       border transition-colors duration-400 ease-flux
-		       {checked ? 'border-lavender' : 'border-line-strong group-hover:border-lavender/60'}"
+		       {checked ? 'border-tone' : 'border-line-strong group-hover:border-tone/60'}"
 	>
 		<!--
 			Заливка приезжает отдельным слоем через scale, а не сменой
@@ -45,7 +45,7 @@
 			от центра читается как физическое действие, а не как перекраска.
 		-->
 		<span
-			class="absolute inset-0 rounded-[0.35rem] bg-lavender transition-transform duration-400 ease-flux"
+			class="absolute inset-0 rounded-[0.35rem] bg-tone transition-transform duration-400 ease-flux"
 			style="transform: scale({checked ? 1 : 0});"
 		></span>
 
@@ -75,7 +75,7 @@
 			size={17}
 			weight="light"
 			class="shrink-0 transition-colors duration-400 ease-flux
-			       {checked ? 'text-lavender' : 'text-muted-foreground'}"
+			       {checked ? 'text-tone' : 'text-muted-foreground'}"
 		/>
 	{/if}
 

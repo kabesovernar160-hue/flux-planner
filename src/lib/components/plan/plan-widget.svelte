@@ -218,7 +218,9 @@
 
 <GlassCard>
 	<div class="mb-3 flex items-center gap-2">
-		<ListChecks size={16} weight="light" class="text-lavender" />
+		<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+			<ListChecks size={15} weight="regular" class="text-tone" />
+		</span>
 		<h2 class="flex-1 text-sm font-medium">План на день</h2>
 		{#if items.length > 0}
 			<span class="tabular text-sm font-semibold">

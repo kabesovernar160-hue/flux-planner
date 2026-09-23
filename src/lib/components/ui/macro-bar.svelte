@@ -44,7 +44,7 @@
 			пересчитывать layout каждый кадр. transform идёт на GPU.
 		-->
 		<div
-			class="h-full origin-left rounded-full bg-lavender"
+			class="h-full origin-left rounded-full bg-tone"
 			style="
 				opacity: {opacity};
 				transform: scaleX({revealed ? ratio : 0});

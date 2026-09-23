@@ -13,9 +13,11 @@
 	const featured = $derived(habits.slice(0, 3));
 </script>
 
-<GlassCard>
+<GlassCard tone="mint">
 	<div class="mb-3 flex items-center gap-2">
-		<CheckCircle size={16} weight="light" class="text-lavender" />
+		<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+			<CheckCircle size={15} weight="regular" class="text-tone" />
+		</span>
 		<h2 class="flex-1 text-sm font-medium">Привычки</h2>
 		<span class="tabular text-sm font-semibold">
 			<!-- Неразрывный пробел: обычный схлопывается на границе тега, и счётчик слипается в «4из 6». -->
@@ -32,7 +34,7 @@
 			onclick={() => ui.openHabitSheet()}
 			class="mt-2 w-full rounded-full border border-line-strong py-2.5 text-xs font-medium
 			       transition-[transform,border-color] duration-500 ease-flux
-			       hover:border-lavender/60 active:scale-[0.98]"
+			       hover:border-tone/60 active:scale-[0.98]"
 		>
 			Новая привычка
 		</button>
@@ -45,7 +47,7 @@
 			{#each habits as habit (habit.id)}
 				<span
 					class="h-1 flex-1 rounded-full transition-colors duration-500 ease-flux
-					       {plannerStore.isHabitCompleted(habit.id) ? 'bg-lavender' : 'bg-line'}"
+					       {plannerStore.isHabitCompleted(habit.id) ? 'bg-tone' : 'bg-line'}"
 				></span>
 			{/each}
 		</div>

@@ -6,6 +6,7 @@
 
 	type Padding = 'none' | 'sm' | 'md' | 'lg';
 	type Radius = 'card' | 'shell' | 'full';
+	type Tone = 'amber' | 'mint' | 'sky';
 
 	type Props = {
 		children: Snippet;
@@ -37,6 +38,12 @@
 		 * Для плотных списков не нужен — лишний DOM и визуальный шум.
 		 */
 		bezel?: boolean;
+		/**
+		 * Тон раздела. Красит всё внутри (полоски, кольца, иконки с классом
+		 * text-tone) и добавляет слабое свечение в верхнем углу, по которому
+		 * карточку узнаёшь боковым зрением, не читая заголовок.
+		 */
+		tone?: Tone;
 		/** Реакция на наведение и нажатие. Включается автоматически при href/onclick. */
 		interactive?: boolean;
 		href?: string;
@@ -56,6 +63,7 @@
 		radius = 'card',
 		blur = false,
 		bezel = false,
+		tone,
 		interactive,
 		href,
 		haptic = true,
@@ -79,6 +87,8 @@
 		full: 'rounded-full'
 	};
 
+	const toneClass = $derived(tone ? `tone-${tone}` : undefined);
+
 	function handleClick(event: MouseEvent & { currentTarget: EventTarget & HTMLElement }) {
 		if (haptic && isInteractive) haptics.tap();
 		onclick?.(event);
@@ -95,6 +105,18 @@
 		class="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent
 		       via-white/20 to-transparent"
 	></span>
+
+	{#if tone}
+		<!--
+			Свечение намеренно почти незаметное: карточка различается
+			по тону, но не начинает светиться, как вывеска.
+		-->
+		<span
+			aria-hidden="true"
+			class="pointer-events-none absolute -top-16 -right-12 size-48 rounded-full opacity-[0.13] blur-3xl"
+			style="background: var(--fx-tone);"
+		></span>
+	{/if}
 
 	<!--
 		Тень наведения вынесена в отдельный слой и анимируется через opacity.
@@ -130,6 +152,7 @@
 			'border border-white/[0.04] bg-white/[0.02]',
 			'transition-transform duration-500 ease-flux',
 			isInteractive && 'active:scale-[0.985]',
+			toneClass,
 			className
 		)}
 		{...rest}
@@ -165,6 +188,7 @@
 			'transition-transform duration-500 ease-flux',
 			isInteractive && 'hover:border-line-strong active:scale-[0.985]',
 			paddings[padding],
+			toneClass,
 			className
 		)}
 		{...rest}

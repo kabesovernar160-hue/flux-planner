@@ -379,7 +379,7 @@
 			<Sparkle size={16} weight="light" class="shrink-0 text-lavender" />
 			<span class="min-w-0 flex-1">
 				<span class="block text-sm">Посчитать под себя</span>
-				<span class="block truncate text-xs text-muted-foreground">{profileSummary}</span>
+				<span class="block text-xs text-pretty text-muted-foreground">{profileSummary}</span>
 			</span>
 			<CaretRight size={14} weight="light" class="shrink-0 text-muted-foreground" />
 		</button>

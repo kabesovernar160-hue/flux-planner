@@ -31,66 +31,73 @@
 	}
 </script>
 
-<GlassCard>
-	<div class="mb-1 flex items-center gap-2">
-		<ForkKnife size={16} weight="light" class="text-lavender" />
+<GlassCard tone="amber">
+	<!-- Стрелка обещает переход, поэтому заголовок ведёт в аналитику питания. -->
+	<a href="/analytics" class="mb-1 flex items-center gap-2">
+		<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+			<ForkKnife size={15} weight="regular" class="text-tone" />
+		</span>
 		<h2 class="flex-1 text-sm font-medium">Калории и питание</h2>
 		<CaretRight size={14} weight="light" class="text-muted-foreground" />
-	</div>
-
-	<div class="flex flex-col items-center py-3">
-		<ProgressRing
-			value={plannerStore.calorieProgress}
-			over={plannerStore.isOverCalorieGoal}
-			size={168}
-		>
-			<span class="tabular text-[2.75rem] leading-none font-semibold tracking-tight">
-				{formatNumber(headline)}
-			</span>
-			<span class="mt-1.5 text-[11px] tracking-wide text-muted-foreground">
-				{plannerStore.isOverCalorieGoal ? 'Перебор, ккал' : 'Осталось ккал'}
-			</span>
-		</ProgressRing>
-
-		<p class="tabular mt-3 text-xs text-muted-foreground">
-			{formatNumber(plannerStore.caloriesConsumed)} из {formatNumber(goals.calorieGoal)} ккал
-		</p>
-	</div>
+	</a>
 
 	<!--
-		2×2, а не 4 колонки: на 375px четыре колонки дают ~66px на макрос,
-		и подпись со значением «82/120 г» перестаёт помещаться в строку.
+		Кольцо слева, макросы столбиком справа. Раньше кольцо стояло
+		по центру во всю ширину и одно занимало полэкрана: главный экран
+		открывался одной цифрой, а до привычек приходилось листать.
+		Бок о бок та же информация помещается вдвое ниже.
 	-->
-	<div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-3.5">
-		<MacroBar
-			label="Белки"
-			current={plannerStore.proteinConsumed}
-			goal={goals.proteinGoal}
-			unit="г"
-			tone={0}
-		/>
-		<MacroBar
-			label="Жиры"
-			current={plannerStore.fatConsumed}
-			goal={goals.fatGoal}
-			unit="г"
-			tone={1}
-		/>
-		<MacroBar
-			label="Углеводы"
-			current={plannerStore.carbsConsumed}
-			goal={goals.carbsGoal}
-			unit="г"
-			tone={2}
-		/>
-		<!-- Вода хранится в миллилитрах, показывается в литрах. -->
-		<MacroBar
-			label="Вода"
-			current={goals.waterConsumedMl / 1000}
-			goal={goals.waterGoalMl / 1000}
-			unit="л"
-			tone={3}
-		/>
+	<div class="mt-3 flex items-center gap-5">
+		<div class="flex shrink-0 flex-col items-center">
+			<ProgressRing
+				value={plannerStore.calorieProgress}
+				over={plannerStore.isOverCalorieGoal}
+				size={128}
+			>
+				<span class="tabular text-[2rem] leading-none font-semibold tracking-tighter">
+					{formatNumber(headline)}
+				</span>
+				<span class="mt-1 text-[10px] tracking-wide text-muted-foreground">
+					{plannerStore.isOverCalorieGoal ? 'перебор' : 'осталось'}
+				</span>
+			</ProgressRing>
+
+			<p class="tabular mt-2 text-[11px] text-muted-foreground">
+				{formatNumber(plannerStore.caloriesConsumed)} / {formatNumber(goals.calorieGoal)} ккал
+			</p>
+		</div>
+
+		<div class="flex min-w-0 flex-1 flex-col gap-3">
+			<MacroBar
+				label="Белки"
+				current={plannerStore.proteinConsumed}
+				goal={goals.proteinGoal}
+				unit="г"
+				tone={0}
+			/>
+			<MacroBar
+				label="Жиры"
+				current={plannerStore.fatConsumed}
+				goal={goals.fatGoal}
+				unit="г"
+				tone={1}
+			/>
+			<MacroBar
+				label="Углеводы"
+				current={plannerStore.carbsConsumed}
+				goal={goals.carbsGoal}
+				unit="г"
+				tone={2}
+			/>
+			<!-- Вода хранится в миллилитрах, показывается в литрах. -->
+			<MacroBar
+				label="Вода"
+				current={goals.waterConsumedMl / 1000}
+				goal={goals.waterGoalMl / 1000}
+				unit="л"
+				tone={3}
+			/>
+		</div>
 	</div>
 
 	<!--
@@ -104,9 +111,9 @@
 			onclick={pourWater}
 			class="flex flex-1 items-center justify-center gap-2 rounded-full border border-line-strong
 			       py-2.5 text-xs font-medium transition-[transform,border-color] duration-500 ease-flux
-			       hover:border-lavender/60 active:scale-[0.98]"
+			       hover:border-tone/60 active:scale-[0.98]"
 		>
-			<Plus size={13} weight="bold" class="text-lavender" />
+			<Plus size={13} weight="bold" class="text-tone" />
 			Стакан воды · {WATER_GLASS_ML} мл
 		</button>
 		<button

@@ -43,7 +43,7 @@
 			width={barWidth}
 			height={barHeight}
 			rx={barWidth / 2}
-			fill={isToday ? 'var(--fx-lavender)' : 'var(--fx-line-strong)'}
+			fill={isToday ? 'var(--fx-tone)' : 'var(--fx-line-strong)'}
 			style="
 				transform-origin: 50% {height}px;
 				transform: scaleY({revealed ? 1 : 0});

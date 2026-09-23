@@ -70,7 +70,7 @@
 			type="button"
 			onclick={() => ui.openHabitSheet()}
 			aria-label="Новая привычка"
-			class="grid size-9 shrink-0 place-items-center rounded-full bg-lavender text-void
+			class="grid size-9 shrink-0 place-items-center rounded-full bg-mint text-void
 			       shadow-accent transition-transform duration-500 ease-flux active:scale-90"
 		>
 			<Plus size={16} weight="bold" />
@@ -78,7 +78,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="flex flex-col gap-4">
+<div class="tone-mint flex flex-col gap-4">
 	<GlassCard>
 		{#if active.length === 0}
 			<p class="py-2 text-sm leading-relaxed text-muted-foreground">
