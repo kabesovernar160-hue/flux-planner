@@ -12,6 +12,7 @@
 	import CreateHint from '$lib/components/navigation/create-hint.svelte';
 	import { page } from '$app/state';
 	import { untrack } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { syncQueue } from '$lib/db/syncQueue.svelte';
 	import { billing } from '$lib/state/billing.svelte';
 	import { firstRun } from '$lib/state/firstRun.svelte';
@@ -48,6 +49,11 @@
 				break;
 			case 'plan':
 				ui.openPlanSheet();
+				break;
+			case 'week':
+				// Итоги недели — экран, а не шторка: из кнопки бота или ссылки
+				// человек попадает прямо в отчёт.
+				void goto('/week');
 				break;
 		}
 	}

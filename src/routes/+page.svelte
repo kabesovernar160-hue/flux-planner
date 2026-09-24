@@ -1,4 +1,5 @@
 <script lang="ts">
+	import WeekReadyCard from '$lib/components/week/week-ready-card.svelte';
 	import DashboardHeader from '$lib/components/dashboard/dashboard-header.svelte';
 	import DashboardBento from '$lib/components/dashboard/dashboard-bento.svelte';
 	import PlanWidget from '$lib/components/plan/plan-widget.svelte';
@@ -41,6 +42,8 @@
 			hasRecordSince(plannerStore, firstRun.emptySince)
 	);
 </script>
+
+<WeekReadyCard />
 
 <!--
 	Лесенка появления: шапка первой, дальше плитки и карточки сверху вниз.

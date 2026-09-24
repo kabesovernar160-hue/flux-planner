@@ -7,7 +7,8 @@ import { apiError, logServerError } from '$lib/server/errors';
 import {
 	runBudgetWarnings,
 	runDailyNotifications,
-	runHabitReminders
+	runHabitReminders,
+	runWeeklyReports
 } from '$lib/server/notifications/notificationService';
 import { purgeExpiredRateLimits } from '$lib/server/rateLimit';
 import type { RequestHandler } from './$types';
@@ -98,11 +99,16 @@ const run: RequestHandler = async ({ request, url }) => {
 					? await runBudgetWarnings(db, users, { localHour })
 					: await runDailyNotifications(db, users, { localHour });
 
+		// Итоги недели едут тем же ежечасным вызовом, что и итоги дня:
+		// отдельное расписание пришлось бы заводить на каждом хостинге,
+		// а решение «у кого сейчас вечер воскресенья» функция принимает сама.
+		const weekly = kind === 'summary' ? await runWeeklyReports(db, users, { localHour }) : null;
+
 		// Попутная уборка: таблица счётчиков иначе копит по строке
 		// на каждый новый ключ и никогда не уменьшается.
 		await purgeExpiredRateLimits({ db });
 
-		return json({ ...result, kind, total: users.length });
+		return json({ ...result, kind, total: users.length, ...(weekly ? { weekly } : {}) });
 	} catch (error) {
 		logServerError('cron/daily', error);
 		return apiError('INTERNAL', 'Рассылка не выполнена', 500);

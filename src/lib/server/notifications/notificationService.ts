@@ -1,12 +1,29 @@
+import { env } from '$env/dynamic/private';
 import type { Db } from '../db/client';
-import { loadDaySnapshot, loadPlannerSettings } from '../db/queries';
+import { loadDaySnapshot, loadPlannerSettings, loadRangeSnapshot } from '../db/queries';
 import type { UserRow } from '../db/schema';
-import { sendMessage } from '../telegram/botApi';
-import { getHour, getToday } from '$lib/utils/date';
+import { checkRateLimit } from '../rateLimit';
+import { sendMessage, type SendMessageOptions } from '../telegram/botApi';
+import { isValidMiniAppUrl } from '../telegram/botMessages';
+import {
+	addDays,
+	dayOfWeek,
+	formatDateKey,
+	getHour,
+	getToday,
+	type DateKey
+} from '$lib/utils/date';
 import { calculateFinanceSummary } from '$lib/utils/finance';
 import { scheduledHabits } from '$lib/utils/habitFrequency';
 import { calculateNutritionSummary } from '$lib/utils/nutrition';
-import { formatWeight } from '$lib/utils/format';
+import { formatMoney as formatCurrency, formatWeight } from '$lib/utils/format';
+import {
+	buildWeekReport,
+	weekBotLines,
+	weekLabel,
+	weekStartOf,
+	type WeekReport
+} from '$lib/utils/weekly';
 
 /**
  * Сборка и отправка уведомлений.
@@ -330,4 +347,192 @@ export async function runBudgetWarnings(
 	options: RunOptions = {}
 ): Promise<RunResult> {
 	return runForUsers(users, options, (user) => sendBudgetWarning(db, user));
+}
+
+/* ───────────────── Итоги недели ───────────────── */
+
+/**
+ * Когда приходят итоги недели: воскресенье, 19:00 по местному времени.
+ *
+ * На час раньше итогов дня: два сообщения в одну минуту читаются как спам,
+ * а вечер воскресенья — время, когда неделю уже можно подвести, а на
+ * следующую ещё хочется что-то запланировать.
+ */
+export const WEEKLY_REPORT_HOUR = 19;
+
+/**
+ * Пора ли присылать итоги недели.
+ *
+ * Итоги едут в том же ежечасном вызове, что и итоги дня, — отдельного
+ * расписания нет. Параметр hour вызова относится к итогам дня; у недели
+ * свой час. Без hour (прежние расписания «всем сразу» раз в день) итоги
+ * уходят в тот вызов, что пришёлся на воскресенье по местному времени.
+ */
+export function isWeeklyReportTime(
+	timezone: string,
+	localHour: number | undefined,
+	now: Date
+): boolean {
+	const localDate = formatDateKey(now, timezone);
+	if (dayOfWeek(localDate) !== 0) return false;
+
+	return localHour === undefined || getHour(now, timezone) === WEEKLY_REPORT_HOUR;
+}
+
+export interface WeeklyMessage {
+	text: string;
+	start: DateKey;
+	report: WeekReport;
+	/** Ноль записей за неделю — писать не о чем. */
+	hasData: boolean;
+}
+
+/**
+ * Итоги недели для бота.
+ *
+ * Считаются теми же функциями, что и экран /week, по записям с сервера.
+ * Прошлая неделя грузится вместе с текущей: без сравнения «86 %» — число
+ * в вакууме.
+ */
+export async function buildWeeklyMessage(
+	db: Db,
+	user: UserRow,
+	now: Date = new Date(),
+	settings?: unknown
+): Promise<WeeklyMessage> {
+	const start = weekStartOf(formatDateKey(now, user.timezone));
+	const previousStart = addDays(start, -7);
+
+	const [snapshot, resolvedSettings] = await Promise.all([
+		loadRangeSnapshot(db, user.id, previousStart, addDays(start, 6)),
+		settings === undefined ? loadPlannerSettings(db, user.id) : Promise.resolve(settings)
+	]);
+
+	const goals = readSummaryGoals(resolvedSettings);
+	const source = (resolvedSettings ?? {}) as { currency?: unknown; locale?: unknown };
+	const currency = typeof source.currency === 'string' ? source.currency : 'RUB';
+	const locale = typeof source.locale === 'string' ? source.locale : 'ru-RU';
+
+	const data = {
+		foodEntries: snapshot.foods,
+		habits: snapshot.habits,
+		completions: snapshot.completions,
+		financeEntries: snapshot.finance,
+		planItems: snapshot.plan,
+		weightEntries: snapshot.weights,
+		calorieGoals: snapshot.calorieGoals,
+		budgets: snapshot.budgets,
+		defaultCalorieGoal: goals.calorieGoal,
+		defaultBudget: goals.dailyBudget
+	};
+
+	const report = buildWeekReport(data, start, formatDateKey(now, user.timezone));
+	const previous = buildWeekReport(data, previousStart);
+
+	const lines = weekBotLines(report, previous, (value) => formatCurrency(value, currency, locale));
+
+	return {
+		start,
+		report,
+		hasData: report.activeDays > 0,
+		text: [`Итоги недели, ${weekLabel(start)}`, '', ...lines].join('\n')
+	};
+}
+
+/** Кнопка «Открыть итоги»: Mini App сразу на экране недели. */
+export function weeklyReportKeyboard(miniAppUrl: string | undefined) {
+	if (!isValidMiniAppUrl(miniAppUrl)) return undefined;
+
+	const url = `${(miniAppUrl as string).replace(/\/+$/, '')}/week`;
+	return { inline_keyboard: [[{ text: '📊 Открыть итоги', web_app: { url } }]] };
+}
+
+type WeeklySend = (chatId: string, text: string, options: SendMessageOptions) => Promise<void>;
+
+export interface WeeklyOptions {
+	now?: Date;
+	send?: WeeklySend;
+	botToken?: string;
+	miniAppUrl?: string;
+}
+
+export async function sendWeeklyReport(
+	db: Db,
+	user: UserRow,
+	options: WeeklyOptions = {}
+): Promise<boolean> {
+	const now = options.now ?? new Date();
+
+	// Тот же переключатель, что у итогов дня: человек, отключивший сводки,
+	// выключил сообщения бота по расписанию, а не одно из них.
+	const settings = await loadPlannerSettings(db, user.id);
+	if (!dailySummaryEnabled(settings)) return false;
+
+	const message = await buildWeeklyMessage(db, user, now, settings);
+
+	// Неделя без единой записи — не повод писать: итоги из нулей
+	// читаются как упрёк, а не как напоминание.
+	if (!message.hasData) return false;
+
+	// Защита от повторного вызова планировщика в тот же час: одна неделя —
+	// одно сообщение. Счётчик частоты уже живёт в базе и переживает рестарты.
+	const once = await checkRateLimit(
+		`weekly:${user.id}:${message.start}`,
+		1,
+		8 * 24 * 60 * 60 * 1000,
+		{
+			db,
+			now: now.getTime()
+		}
+	);
+	if (!once.allowed) return false;
+
+	const botToken = options.botToken ?? env.TELEGRAM_BOT_TOKEN?.trim();
+	const replyMarkup = weeklyReportKeyboard(options.miniAppUrl ?? env.TELEGRAM_MINI_APP_URL?.trim());
+
+	if (!botToken && !options.send) {
+		// Локальная разработка: отправлять некуда, но видеть текст полезно.
+		console.info(
+			`[notifications] итоги недели для ${user.telegramUserId} (нет токена бота):\n${message.text}`
+		);
+		return true;
+	}
+
+	await (options.send ?? sendMessage)(user.telegramUserId, message.text, { replyMarkup });
+	return true;
+}
+
+/**
+ * Итоги недели в ежечасном проходе планировщика.
+ *
+ * Отдельного расписания нет: функция вызывается из того же cron, что и итоги
+ * дня, и сама решает, у кого сейчас вечер воскресенья.
+ */
+export async function runWeeklyReports(
+	db: Db,
+	users: UserRow[],
+	options: RunOptions & Omit<WeeklyOptions, 'now'> = {}
+): Promise<RunResult> {
+	const now = options.now ?? new Date();
+	let sent = 0;
+	let skipped = 0;
+	let failed = 0;
+
+	for (const user of users) {
+		try {
+			if (!isWeeklyReportTime(user.timezone, options.localHour, now)) {
+				skipped += 1;
+				continue;
+			}
+
+			const delivered = await sendWeeklyReport(db, user, { ...options, now });
+			if (delivered) sent += 1;
+			else skipped += 1;
+		} catch (error) {
+			failed += 1;
+			console.error(`[notifications] итоги недели, пользователь ${user.id}`, error);
+		}
+	}
+
+	return { sent, skipped, failed };
 }
