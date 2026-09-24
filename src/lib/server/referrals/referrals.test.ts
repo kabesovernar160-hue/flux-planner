@@ -324,7 +324,13 @@ describe('засчитывание', () => {
 			expect(await expiresAt(inviter.id)).toBe(new Date(NOW.getTime() + 7 * DAY).toISOString());
 		} finally {
 			client.close();
-			rmSync(dir, { recursive: true, force: true });
+			// На Windows libsql держит файл базы и после close(): уборка временной
+			// папки там не должна валить тест, проверки которого уже прошли.
+			try {
+				rmSync(dir, { recursive: true, force: true });
+			} catch {
+				/* папка во временных файлах ничему не мешает */
+			}
 		}
 	});
 
