@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { activeFavorites, toggleFavorite } from '$lib/utils/favorites';
 import {
 	isSyncRow,
 	MAX_ROWS_PER_COLLECTION,
@@ -114,6 +115,46 @@ describe('mergePlannerSettings', () => {
 		expect(merged.onboardedAt).toBe('2026-01-10T08:00:00.000Z');
 		expect(merged.profile).toEqual(stored.profile);
 		expect(merged.calorieGoal).toBe(2100);
+	});
+
+	it('избранное сливается поштучно, а не побеждает целиком', () => {
+		const oatmeal = toggleFavorite(
+			[],
+			{ name: 'Овсянка', calories: 230, protein: 8, fat: 4, carbs: 40 },
+			'2026-01-10T08:00:00.000Z'
+		);
+		const soup = toggleFavorite(
+			[],
+			{ name: 'Борщ', calories: 180, protein: 6, fat: 7, carbs: 20 },
+			'2026-01-10T09:00:00.000Z'
+		);
+
+		const merged = mergePlannerSettings(
+			{ ...stored, favoriteFoods: oatmeal },
+			{ calorieGoal: 2100, favoriteFoods: soup }
+		) as Record<string, unknown>;
+
+		expect(activeFavorites(merged.favoriteFoods).map((item) => item.name)).toEqual([
+			'Борщ',
+			'Овсянка'
+		]);
+	});
+
+	it('старый клиент без избранного его не стирает', () => {
+		const oatmeal = toggleFavorite(
+			[],
+			{ name: 'Овсянка', calories: 230, protein: 8, fat: 4, carbs: 40 },
+			'2026-01-10T08:00:00.000Z'
+		);
+
+		const merged = mergePlannerSettings(
+			{ ...stored, favoriteFoods: oatmeal },
+			{
+				calorieGoal: 2100
+			}
+		) as Record<string, unknown>;
+
+		expect(activeFavorites(merged.favoriteFoods)).toHaveLength(1);
 	});
 
 	it('без сохранённых настроек отдаёт пришедшие как есть', () => {

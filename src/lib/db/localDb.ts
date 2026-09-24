@@ -1,3 +1,4 @@
+import { mergeFavorites } from '$lib/utils/favorites';
 import type { DailyFinanceRecord, FinanceEntry } from '$lib/types/finance';
 import type { Habit, HabitCompletion } from '$lib/types/habit';
 import type { DailyNutritionRecord, FoodEntry } from '$lib/types/nutrition';
@@ -609,7 +610,12 @@ export async function mergeSettingsFromSync(
 
 	if (updatedAt <= document.settingsUpdatedAt) return false;
 
+	// Избранное приезжающей версией не заменяется, а сливается с локальным:
+	// звёздочка, поставленная здесь и ещё не отправленная, иначе пропала бы.
+	const favorites = mergeFavorites(document.settings.favoriteFoods, settings.favoriteFoods);
+
 	document.settings = { ...createDefaultSettings(), ...settings };
+	if (favorites.length > 0) document.settings.favoriteFoods = favorites;
 	document.settingsUpdatedAt = updatedAt;
 
 	await savePlannerDocument(document);

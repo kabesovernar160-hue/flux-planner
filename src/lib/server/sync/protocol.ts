@@ -1,3 +1,4 @@
+import { mergeFavorites } from '$lib/utils/favorites';
 import type { Repositories, SyncRow } from '../db/repositories';
 
 /**
@@ -125,6 +126,12 @@ export function mergePlannerSettings(stored: unknown, incoming: unknown): unknow
 
 	for (const key of STICKY_SETTINGS_KEYS) {
 		if (merged[key] === undefined && stored[key] !== undefined) merged[key] = stored[key];
+	}
+
+	// Избранное сливается поштучно: звёздочка с телефона не должна пропадать
+	// оттого, что планшет в ту же минуту поменял цель калорий.
+	if (stored.favoriteFoods !== undefined || merged.favoriteFoods !== undefined) {
+		merged.favoriteFoods = mergeFavorites(stored.favoriteFoods, merged.favoriteFoods);
 	}
 
 	return merged;
