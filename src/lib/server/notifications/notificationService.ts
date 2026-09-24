@@ -426,7 +426,7 @@ export async function buildWeeklyMessage(
 		defaultBudget: goals.dailyBudget
 	};
 
-	const report = buildWeekReport(data, start);
+	const report = buildWeekReport(data, start, formatDateKey(now, user.timezone));
 	const previous = buildWeekReport(data, previousStart);
 
 	const lines = weekBotLines(report, previous, (value) => formatCurrency(value, currency, locale));

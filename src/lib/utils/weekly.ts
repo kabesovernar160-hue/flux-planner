@@ -123,7 +123,14 @@ function alive<T extends { deletedAt?: string | null }>(items: T[]): T[] {
 	return items.filter((item) => !item.deletedAt);
 }
 
-export function buildWeekReport(data: WeekData, start: DateKey): WeekReport {
+/**
+ * Отчёт за неделю.
+ *
+ * `today` нужен текущей неделе: пятница, которая ещё не наступила, не может
+ * быть «проваленной» по привычкам, и её лимит трат ещё никто не тратил.
+ * Дни после него не входят ни в план, ни в лимит.
+ */
+export function buildWeekReport(data: WeekData, start: DateKey, today?: DateKey): WeekReport {
 	const dates = weekDates(start);
 	const end = dates[6];
 
@@ -150,9 +157,10 @@ export function buildWeekReport(data: WeekData, start: DateKey): WeekReport {
 				.filter((entry) => entry.date === date && entry.type === 'expense')
 				.map((entry) => entry.amount)
 		);
-		const budget = data.budgets?.[date] ?? data.defaultBudget;
+		const future = today !== undefined && date > today;
+		const budget = future ? 0 : (data.budgets?.[date] ?? data.defaultBudget);
 
-		const planned = scheduledHabits(habits, date);
+		const planned = future ? [] : scheduledHabits(habits, date);
 		const done = doneByDate.get(date);
 		const habitsDone = planned.filter((habit) => done?.has(habit.id)).length;
 
@@ -250,7 +258,10 @@ export function buildWeekReport(data: WeekData, start: DateKey): WeekReport {
 				.map(([category, amount]) => ({ category, amount }))
 				.sort((a, b) => b.amount - a.amount),
 			byDay: days.map((day) => ({ date: day.date, value: day.spent })),
-			dailyBudget: sum(days.map((day) => day.budget)) / days.length
+			// Средний лимит по наступившим дням: будущие с нулём тянули бы пунктир вниз.
+			dailyBudget:
+				sum(days.map((day) => day.budget)) /
+				Math.max(1, days.filter((day) => day.budget > 0).length)
 		},
 		plan: {
 			done: sum(days.map((day) => day.planDone)),
@@ -392,7 +403,8 @@ export function weekInsights(current: WeekReport, previous: WeekReport | null): 
 		);
 	}
 
-	if (insights.length < 2 && current.nutrition.trackedDays > 0) {
+	// Только как похвала: «в цели 0 из 3» — это упрёк, а не вывод.
+	if (insights.length < 2 && current.nutrition.inGoalDays > 0) {
 		insights.push(
 			`Калории в цели ${current.nutrition.inGoalDays} из ${current.nutrition.trackedDays} ${ofDays(current.nutrition.trackedDays)} с записями.`
 		);

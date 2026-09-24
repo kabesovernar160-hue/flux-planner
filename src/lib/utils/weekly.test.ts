@@ -181,6 +181,19 @@ describe('сводка недели', () => {
 		expect(report.habits.bestStreak).toBe(3);
 	});
 
+	it('в текущей неделе будущие дни не входят в план привычек и в лимит', () => {
+		const water = habit('Вода');
+		const report = buildWeekReport(
+			data({ habits: [water], completions: [done(water.id, '2026-09-21')] }),
+			MON,
+			'2026-09-24'
+		);
+
+		expect(report.habits.planned).toBe(4);
+		expect(report.finance.budget).toBe(4000);
+		expect(report.finance.dailyBudget).toBe(1000);
+	});
+
 	it('удалённые записи и снятые отметки не считаются', () => {
 		const water = habit('Вода');
 		const report = buildWeekReport(
