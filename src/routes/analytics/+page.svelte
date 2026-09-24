@@ -7,6 +7,7 @@
 	import { CATEGORY_LABELS } from '$lib/services/financeService';
 	import { weightChange, weightProgress, weightSeries } from '$lib/services/weightService';
 	import { billing } from '$lib/state/billing.svelte';
+	import InviteNudge from '$lib/components/referrals/invite-nudge.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { telegram } from '$lib/telegram';
@@ -182,6 +183,9 @@
 		</a>
 	</GlassCard>
 {/if}
+
+<!-- Над карточками: раз в неделю и закрывается крестиком, см. InviteNudge. -->
+<InviteNudge />
 
 <div class="flex flex-col gap-4">
 	<GlassCard tone="amber">
