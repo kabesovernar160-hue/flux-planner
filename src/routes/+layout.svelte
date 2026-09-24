@@ -9,6 +9,8 @@
 	import WeightSheet from '$lib/components/weight/weight-sheet.svelte';
 	import OnboardingFlow from '$lib/components/onboarding/onboarding-flow.svelte';
 	import CreateSheet from '$lib/components/navigation/create-sheet.svelte';
+	import CreateHint from '$lib/components/navigation/create-hint.svelte';
+	import { page } from '$app/state';
 	import { untrack } from 'svelte';
 	import { syncQueue } from '$lib/db/syncQueue.svelte';
 	import { billing } from '$lib/state/billing.svelte';
@@ -88,6 +90,18 @@
 		onboardingDismissed = true;
 		showOnboarding = false;
 	}
+
+	/**
+	 * Подсказка у «+» — только на главной и только когда её есть кому увидеть:
+	 * не под приветствием, не под шторкой и не раньше, чем экран наполнился.
+	 */
+	const createHintActive = $derived(
+		page.url.pathname === '/' &&
+			firstRun.settled &&
+			!needsOnboarding &&
+			!showOnboarding &&
+			!ui.anySheetOpen
+	);
 
 	/**
 	 * Запуск приложения: один раз на монтирование.
@@ -187,6 +201,7 @@
 </div>
 
 <BottomNav oncreate={() => ui.openCreateSheet()} />
+<CreateHint active={createHintActive} />
 
 {#if showOnboarding}
 	<OnboardingFlow onclose={closeOnboarding} />
