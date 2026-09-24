@@ -117,6 +117,15 @@ describe('mergePlannerSettings', () => {
 		expect(merged.calorieGoal).toBe(2100);
 	});
 
+	it('без сохранённых настроек отдаёт пришедшие как есть', () => {
+		expect(mergePlannerSettings(null, { calorieGoal: 2100 })).toEqual({ calorieGoal: 2100 });
+		expect(mergePlannerSettings(undefined, 'мусор')).toBe('мусор');
+	});
+});
+
+describe('mergePlannerSettings: избранное', () => {
+	const stored = { calorieGoal: 2460, onboardedAt: '2026-01-10T08:00:00.000Z' };
+
 	it('избранное сливается поштучно, а не побеждает целиком', () => {
 		const oatmeal = toggleFavorite(
 			[],
@@ -155,10 +164,5 @@ describe('mergePlannerSettings', () => {
 		) as Record<string, unknown>;
 
 		expect(activeFavorites(merged.favoriteFoods)).toHaveLength(1);
-	});
-
-	it('без сохранённых настроек отдаёт пришедшие как есть', () => {
-		expect(mergePlannerSettings(null, { calorieGoal: 2100 })).toEqual({ calorieGoal: 2100 });
-		expect(mergePlannerSettings(undefined, 'мусор')).toBe('мусор');
 	});
 });
