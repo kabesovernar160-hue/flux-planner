@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ArrowRight, Check, Sparkle } from 'phosphor-svelte';
 	import AppIcon from '$lib/components/brand/app-icon.svelte';
+	import StartActions from '$lib/components/first-run/start-actions.svelte';
 	import { saveProfile, skipOnboarding } from '$lib/services/profileService';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { telegram } from '$lib/telegram';
@@ -14,6 +15,7 @@
 		type Sex,
 		type WeightGoal
 	} from '$lib/utils/goals';
+	import { hasAnyRecords } from '$lib/utils/firstRun';
 	import { formatNumber } from '$lib/utils/format';
 
 	type Props = {
@@ -32,7 +34,7 @@
 	 * экрана — как разговор. Первый запуск — единственное место, где человек
 	 * решает, стоит ли приложение его времени.
 	 */
-	type Step = 'intro' | 'body' | 'activity' | 'result';
+	type Step = 'intro' | 'body' | 'activity' | 'result' | 'start';
 
 	let step = $state<Step>('intro');
 
@@ -100,7 +102,12 @@
 		}
 
 		telegram.haptic.notification('success');
-		onclose();
+
+		// Анкета заканчивается не пустым экраном, а первым действием:
+		// цели посчитаны, но пока нечего сравнивать с ними. Тем, у кого
+		// записи уже есть (второе устройство), предлагать начинать незачем.
+		if (hasAnyRecords(plannerStore)) onclose();
+		else step = 'start';
 	}
 
 	function skip() {
@@ -308,7 +315,7 @@
 					Показать цели
 				</button>
 			</div>
-		{:else if preview}
+		{:else if step === 'result' && preview}
 			<div class="flex items-center gap-2">
 				<Sparkle size={18} weight="light" class="text-lavender" />
 				<h1 class="text-xl font-semibold tracking-tight">Ваши цели</h1>
@@ -361,6 +368,26 @@
 					Применить
 				</button>
 			</div>
+		{:else if step === 'start'}
+			<div class="flex items-center gap-2">
+				<Check size={18} weight="bold" class="text-lavender" />
+				<h1 class="text-xl font-semibold tracking-tight">Цели готовы</h1>
+			</div>
+			<p class="mt-1.5 mb-5 text-sm leading-relaxed text-muted-foreground">
+				{formatNumber(plannerStore.doc.settings.calorieGoal)} ккал в день. Теперь одна запись — и будет
+				с чем сравнивать.
+			</p>
+
+			<StartActions onpick={onclose} />
+
+			<button
+				type="button"
+				onclick={onclose}
+				class="mt-3 w-full rounded-full py-3 text-sm text-muted-foreground
+				       transition-colors duration-400 ease-flux hover:text-foreground"
+			>
+				Позже
+			</button>
 		{/if}
 	</div>
 </div>

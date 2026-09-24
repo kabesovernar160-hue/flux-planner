@@ -64,13 +64,30 @@
 	 */
 	let onboardingDismissed = $state(false);
 
-	const showOnboarding = $derived(
+	const needsOnboarding = $derived(
 		!onboardingDismissed &&
 			session.profileKnown &&
 			plannerStore.status !== 'idle' &&
 			plannerStore.status !== 'hydrating' &&
 			!plannerStore.doc.settings.onboardedAt
 	);
+
+	/**
+	 * Открытое приветствие держится до явного закрытия.
+	 *
+	 * Сохранение анкеты сразу ставит onboardedAt, и без защёлки слой исчезал
+	 * бы на том же кадре — последний шаг с первым действием никто бы не увидел.
+	 */
+	let showOnboarding = $state(false);
+
+	$effect(() => {
+		if (needsOnboarding) showOnboarding = true;
+	});
+
+	function closeOnboarding() {
+		onboardingDismissed = true;
+		showOnboarding = false;
+	}
 
 	/**
 	 * Запуск приложения: один раз на монтирование.
@@ -172,7 +189,7 @@
 <BottomNav oncreate={() => ui.openCreateSheet()} />
 
 {#if showOnboarding}
-	<OnboardingFlow onclose={() => (onboardingDismissed = true)} />
+	<OnboardingFlow onclose={closeOnboarding} />
 {/if}
 
 <CreateSheet />
