@@ -10,6 +10,7 @@ import {
 	pendingScans,
 	planItems,
 	plannerState,
+	referralCodes,
 	users,
 	weightEntries
 } from '../db/schema';
@@ -60,7 +61,11 @@ export async function deleteAccountData(db: Db, userId: string): Promise<DeleteR
 			dailyNutrition,
 			dailyFinance,
 			pendingScans,
-			plannerState
+			plannerState,
+			// Ссылка-приглашение удалённого аккаунта больше ничего не приносит.
+			// Сами приглашения остаются: по ним считается лимит и видно,
+			// кого уже приглашали, — личных данных в них нет.
+			referralCodes
 		];
 
 		for (const table of tables) {

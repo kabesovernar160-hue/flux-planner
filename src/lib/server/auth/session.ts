@@ -2,6 +2,8 @@ import { env } from '$env/dynamic/private';
 import { createId } from '$lib/utils/id';
 import { nowIso } from '$lib/utils/date';
 import { getReadyDb } from '../db/client';
+import { logServerError } from '../errors';
+import { referralInviteeKey, registerReferral } from '../referrals/referrals';
 import { createRepositories, type Repositories } from '../db/repositories';
 import { validateInitData, type InitDataFailure } from '../telegram/initData';
 import type { UserRow } from '../db/schema';
@@ -62,16 +64,38 @@ export async function requireUser(request: Request): Promise<Session> {
 		throw new AuthError('UNAUTHENTICATED', FAILURE_MESSAGES[result.reason], 401);
 	}
 
-	const repositories = createRepositories(await getReadyDb());
+	const db = await getReadyDb();
+	const repositories = createRepositories(db);
 	const telegramUser = result.data.user;
+	const now = nowIso();
 
 	const user = await repositories.users.upsertFromTelegram({
 		id: createId(),
 		telegramUserId: String(telegramUser.id),
 		username: telegramUser.username,
 		firstName: telegramUser.firstName,
-		now: nowIso()
+		now
 	});
+
+	// Приглашение записывается здесь, а не в эндпоинте входа: первым
+	// запросом нового человека может оказаться и синхронизация — клиент
+	// шлёт их параллельно, — и пропустить её значило бы потерять друга.
+	// Пользователь новый, если строку завёл этот самый вызов: у давнего
+	// createdAt остаётся прежним. Параметр запуска подписан вместе с
+	// initData, поэтому подменить код в чужой ссылке нельзя.
+	if (result.data.startParam && user.createdAt === now) {
+		try {
+			await registerReferral(db, {
+				inviteeId: user.id,
+				inviteeKey: referralInviteeKey(user.telegramUserId, botToken),
+				startParam: result.data.startParam,
+				isNewUser: true
+			});
+		} catch (error) {
+			// Сбой приглашения не должен стоить человеку входа.
+			logServerError('referrals/register', error);
+		}
+	}
 
 	return { user, repositories };
 }
