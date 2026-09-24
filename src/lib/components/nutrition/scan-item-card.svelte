@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Minus, PencilSimple, Plus, Trash } from 'phosphor-svelte';
+	import { Check, Minus, PencilSimple, Plus, Trash } from 'phosphor-svelte';
 	import type { FoodScanItem } from '$lib/types/nutrition';
 	import { telegram } from '$lib/telegram';
 	import { confidenceLevel, rescaleItem } from '$lib/utils/foodScan';
@@ -9,9 +9,13 @@
 		item: FoodScanItem;
 		onchange: (next: FoodScanItem) => void;
 		onremove: () => void;
+		/** Идёт ли компонент в дневник. */
+		selected?: boolean;
+		/** Галочка есть, только когда компонентов несколько: единственный снимать некуда. */
+		ontoggle?: () => void;
 	};
 
-	let { item, onchange, onremove }: Props = $props();
+	let { item, onchange, onremove, selected = true, ontoggle }: Props = $props();
 
 	const uid = $props.id();
 
@@ -71,9 +75,28 @@
 	}
 </script>
 
-<div class="rounded-card border border-line/70 bg-white/[0.02] p-3.5">
+<div
+	class="rounded-card border border-line/70 bg-white/[0.02] p-3.5 transition-opacity duration-400
+	       ease-flux {selected ? '' : 'opacity-50'}"
+>
 	<div class="flex items-start gap-3">
-		<span aria-hidden="true" class="mt-1.5 size-2 shrink-0 rounded-full {DOT_CLASS[level]}"></span>
+		{#if ontoggle}
+			<button
+				type="button"
+				role="checkbox"
+				aria-checked={selected}
+				aria-label="Добавлять «{item.name}»"
+				onclick={ontoggle}
+				class="tone-amber mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border
+				       transition-[background-color,border-color] duration-400 ease-flux
+				       {selected ? 'border-tone bg-tone text-void' : 'border-line-strong'}"
+			>
+				{#if selected}<Check size={12} weight="bold" />{/if}
+			</button>
+		{:else}
+			<span aria-hidden="true" class="mt-1.5 size-2 shrink-0 rounded-full {DOT_CLASS[level]}"
+			></span>
+		{/if}
 
 		<div class="min-w-0 flex-1">
 			<p class="truncate text-sm font-medium">{item.name}</p>

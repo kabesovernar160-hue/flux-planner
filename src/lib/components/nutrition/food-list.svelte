@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { Camera, Trash } from 'phosphor-svelte';
+	import { Camera, Star, Trash } from 'phosphor-svelte';
 	import Sheet from '$lib/components/ui/sheet.svelte';
 	import FoodForm from './food-form.svelte';
-	import { removeFood } from '$lib/services/nutritionService';
+	import { removeFood, toggleFavoriteFood } from '$lib/services/nutritionService';
+	import { activeFavorites, favoriteKey } from '$lib/utils/favorites';
 	import type { FoodEntry } from '$lib/types/nutrition';
 	import { telegram } from '$lib/telegram';
 	import { formatNumber } from '$lib/utils/format';
@@ -33,6 +34,16 @@
 	 */
 	const groups = $derived(groupByMeal(entries, plannerStore.doc.user.timezone));
 
+	/** Звёздочка по названию: «Овсянка» в избранном — это любая овсянка из дневника. */
+	const favoriteKeys = $derived(
+		new Set(activeFavorites(plannerStore.doc.settings.favoriteFoods).map((item) => item.key))
+	);
+
+	function star(entry: FoodEntry) {
+		const on = toggleFavoriteFood(entry);
+		telegram.haptic.impact(on ? 'medium' : 'light');
+	}
+
 	function remove(entry: FoodEntry) {
 		telegram.haptic.impact('medium');
 		removeFood(entry.id);
@@ -52,6 +63,7 @@
 
 		<ul class="flex flex-col gap-1.5">
 			{#each group.entries as entry (entry.id)}
+				{@const starred = favoriteKeys.has(favoriteKey(entry.name))}
 				<!--
 					Правка открывается нажатием на всю строку: мишень в полширины
 					экрана удобнее двух кружков, а место под кнопками уходит
@@ -88,6 +100,23 @@
 								class="ml-0.5 text-[11px] font-normal text-muted-foreground">ккал</span
 							>
 						</span>
+					</button>
+
+					<button
+						type="button"
+						onclick={() => star(entry)}
+						aria-label={starred
+							? `Убрать «${entry.name}» из избранного`
+							: `В избранное «${entry.name}»`}
+						aria-pressed={starred}
+						class="tone-amber grid size-10 shrink-0 place-items-center transition-transform
+						       duration-500 ease-flux active:scale-90"
+					>
+						<Star
+							size={15}
+							weight={starred ? 'fill' : 'light'}
+							class={starred ? 'text-tone' : 'text-muted-foreground/50'}
+						/>
 					</button>
 
 					<button

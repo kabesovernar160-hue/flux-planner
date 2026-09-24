@@ -4,7 +4,9 @@ import {
 	averageConfidence,
 	confidenceLevel,
 	nutritionForGrams,
+	PORTION_FACTORS,
 	rescaleItem,
+	scalePortion,
 	sumTotals
 } from './foodScan';
 
@@ -131,5 +133,48 @@ describe('confidenceLevel', () => {
 
 	it('считает мусор низкой уверенностью', () => {
 		expect(confidenceLevel(Number.NaN)).toBe('low');
+	});
+});
+
+describe('scalePortion', () => {
+	const rice = item();
+	const chicken = item({
+		id: 'b',
+		name: 'Курица',
+		estimatedGrams: 150,
+		per100g: { calories: 165, protein: 31, fat: 3.6, carbs: 0 }
+	});
+	const base = { a: 200, b: 150 };
+
+	it('полторы порции пересчитывают граммы, калории и БЖУ каждого компонента', () => {
+		const [scaledRice, scaledChicken] = scalePortion([rice, chicken], base, 1.5);
+
+		expect(scaledRice).toMatchObject({
+			estimatedGrams: 300,
+			calories: 390,
+			protein: 8.1,
+			carbs: 84
+		});
+		expect(scaledChicken).toMatchObject({ estimatedGrams: 225, calories: 371, protein: 69.8 });
+	});
+
+	it('считает от исходного веса: ×2 → ×0,5 → ×1 возвращает ровно то, что было', () => {
+		let items = scalePortion([rice, chicken], base, 2);
+		items = scalePortion(items, base, 0.5);
+		items = scalePortion(items, base, 1);
+
+		expect(items.map((value) => value.estimatedGrams)).toEqual([200, 150]);
+		expect(sumTotals(items).calories).toBe(260 + 248);
+	});
+
+	it('шкала — от половины до двойной порции', () => {
+		expect(PORTION_FACTORS[0]).toBe(0.5);
+		expect(PORTION_FACTORS.at(-1)).toBe(2);
+		expect(PORTION_FACTORS).toContain(1);
+	});
+
+	it('испорченный множитель не обнуляет блюдо', () => {
+		expect(scalePortion([rice], base, Number.NaN)[0].estimatedGrams).toBe(200);
+		expect(scalePortion([item({ estimatedGrams: 1 })], { a: 1 }, 0.5)[0].estimatedGrams).toBe(1);
 	});
 });

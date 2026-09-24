@@ -1,3 +1,4 @@
+import type { FavoriteFood } from '$lib/utils/favorites';
 import type { ProfileInput } from '$lib/utils/goals';
 import type { DailyFinanceRecord, FinanceEntry } from './finance';
 import type { Habit, HabitCompletion } from './habit';
@@ -63,6 +64,16 @@ export interface PlannerSettings {
 	 * превращает его в укор. Появляется только когда человек её назвал сам.
 	 */
 	weightGoalKg?: number;
+
+	/**
+	 * Избранные блюда.
+	 *
+	 * В настройках, потому что они уже синхронизируются. Сливаются не целиком,
+	 * как остальные настройки, а поштучно — см. $lib/utils/favorites. Старые
+	 * версии приложения поле не знают, но и не теряют: настройки при чтении
+	 * раскладываются поверх значений по умолчанию, и незнакомые ключи остаются.
+	 */
+	favoriteFoods?: FavoriteFood[];
 
 	/** Анкета расчёта целей. Её может не быть: заполнение необязательно. */
 	profile?: UserProfile;

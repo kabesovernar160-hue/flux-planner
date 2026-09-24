@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FoodEntry } from '$lib/types/nutrition';
-import { frequentFoods, searchHistory } from './foodHistory';
+import { frequentFoods, recentFoods, searchHistory, yesterdayMeals } from './foodHistory';
 
 const entry = (overrides: Partial<FoodEntry> & { date: string; name: string }): FoodEntry => ({
 	id: `${overrides.date}-${overrides.name}`,
@@ -127,5 +127,81 @@ describe('searchHistory', () => {
 
 	it('на пустой запрос ничего не отдаёт', () => {
 		expect(searchHistory(entries, '   ', { end: '2026-01-15' })).toEqual([]);
+	});
+});
+
+describe('recentFoods', () => {
+	it('свежие первыми, каждое блюдо один раз, с последней порцией', () => {
+		const entries = [
+			entry({ date: '2026-01-10', name: 'Овсянка', grams: 60 }),
+			entry({ date: '2026-01-12', name: 'Суп', createdAt: '2026-01-12T13:00:00.000Z' }),
+			entry({ date: '2026-01-12', name: 'Кофе', createdAt: '2026-01-12T08:00:00.000Z' }),
+			entry({ date: '2026-01-11', name: 'овсянка ', grams: 80 })
+		];
+
+		const recent = recentFoods(entries, { end: '2026-01-12' });
+
+		expect(recent.map((food) => food.name)).toEqual(['Суп', 'Кофе', 'овсянка']);
+		expect(recent[2].grams).toBe(80);
+	});
+
+	it('не заглядывает за выбранный день и не видит удалённого', () => {
+		const entries = [
+			entry({ date: '2026-01-13', name: 'Завтрашнее' }),
+			entry({ date: '2026-01-12', name: 'Удалённое', deletedAt: '2026-01-12T09:00:00.000Z' }),
+			entry({ date: '2026-01-11', name: 'Вчерашнее' })
+		];
+
+		expect(recentFoods(entries, { end: '2026-01-12' }).map((food) => food.name)).toEqual([
+			'Вчерашнее'
+		]);
+	});
+
+	it('частое и недавнее считаются из одних записей по-разному', () => {
+		const entries = [
+			entry({ date: '2026-01-05', name: 'Овсянка' }),
+			entry({ date: '2026-01-06', name: 'Овсянка' }),
+			entry({ date: '2026-01-07', name: 'Овсянка' }),
+			entry({ date: '2026-01-12', name: 'Суп' })
+		];
+
+		expect(frequentFoods(entries, { end: '2026-01-12' })[0].name).toBe('Овсянка');
+		expect(recentFoods(entries, { end: '2026-01-12' })[0].name).toBe('Суп');
+	});
+});
+
+describe('yesterdayMeals', () => {
+	const today = '2026-01-12';
+
+	it('предлагает вчерашние приёмы, которых сегодня ещё не было', () => {
+		const entries = [
+			entry({ date: '2026-01-11', name: 'Овсянка', meal: 'breakfast', calories: 300 }),
+			entry({ date: '2026-01-11', name: 'Кофе', meal: 'breakfast', calories: 40 }),
+			entry({ date: '2026-01-11', name: 'Суп', meal: 'lunch' }),
+			entry({ date: '2026-01-12', name: 'Бутерброд', meal: 'lunch' })
+		];
+
+		const repeats = yesterdayMeals(entries, today);
+
+		expect(repeats.map((repeat) => repeat.meal)).toEqual(['breakfast']);
+		expect(repeats[0].label).toBe('вчерашний завтрак');
+		expect(repeats[0].items.map((item) => item.name)).toEqual(['Овсянка', 'Кофе']);
+		expect(repeats[0].calories).toBe(340);
+	});
+
+	it('без вчерашних записей повторять нечего', () => {
+		expect(
+			yesterdayMeals([entry({ date: '2026-01-09', name: 'Суп', meal: 'lunch' })], today)
+		).toEqual([]);
+	});
+
+	it('приём старой записи без поля берётся по времени создания', () => {
+		const repeats = yesterdayMeals(
+			[entry({ date: '2026-01-11', name: 'Ужин', createdAt: '2026-01-11T19:30:00.000Z' })],
+			today,
+			'UTC'
+		);
+
+		expect(repeats[0]?.meal).toBe('dinner');
 	});
 });

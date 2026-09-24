@@ -21,6 +21,7 @@ import {
 } from './localDb';
 import { getDriver, PLANNER_DOC_KEY, resetDriverForTests, STORES } from './storage';
 import { createId } from '$lib/utils/id';
+import { activeFavorites, toggleFavorite } from '$lib/utils/favorites';
 
 beforeEach(async () => {
 	resetDriverForTests();
@@ -423,6 +424,35 @@ describe('настройки в синхронизации', () => {
 		const state = await loadPlannerState();
 		expect(state.settings.calorieGoal).toBe(1700);
 		expect(state.settings.onboardedAt).toBe('2026-01-10T08:00:00.000Z');
+	});
+
+	it('избранное с сервера сливается с локальным, а не заменяет его', async () => {
+		const local = createDefaultDocument();
+		local.settings.favoriteFoods = toggleFavorite(
+			[],
+			{ name: 'Овсянка', calories: 230, protein: 8, fat: 4, carbs: 40 },
+			'2026-01-10T08:00:00.000Z'
+		);
+		await savePlannerDocument(local);
+
+		await mergeSettingsFromSync(
+			{
+				calorieGoal: 1700,
+				favoriteFoods: toggleFavorite(
+					[],
+					{ name: 'Борщ', calories: 180, protein: 6, fat: 7, carbs: 20 },
+					'2026-01-10T09:00:00.000Z'
+				)
+			},
+			'2026-01-10T09:00:00.000Z'
+		);
+
+		const state = await loadPlannerState();
+		expect(activeFavorites(state.settings.favoriteFoods).map((item) => item.name)).toEqual([
+			'Борщ',
+			'Овсянка'
+		]);
+		expect(state.settings.calorieGoal).toBe(1700);
 	});
 
 	it('пустое хранилище видно синхронизации', async () => {
