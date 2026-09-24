@@ -1,7 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { AuthError, requireUser } from '$lib/server/auth/session';
 import { apiError, logServerError } from '$lib/server/errors';
+import { getReadyDb } from '$lib/server/db/client';
 import { checkRateLimit } from '$lib/server/rateLimit';
+import { settleReferral } from '$lib/server/referrals/notify';
 import {
 	mergePlannerSettings,
 	parsePushPayload,
@@ -62,7 +64,21 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			});
 		}
 
-		const response: PushResponse = { applied, serverTime: nowIso() };
+		// Первая запись приглашённого — повод засчитать приглашение.
+		// Проверяются только коллекции, которые считаются записью: план дня
+		// и вес дней не приносят.
+		const recorded = (['food', 'habits', 'finance'] as const).some(
+			(collection) => (applied[collection] ?? 0) > 0
+		);
+		const referral = recorded ? await settleReferral(await getReadyDb(), user.id) : null;
+
+		// Клиенту сообщается только его собственная награда: так он знает,
+		// что пора перечитать тариф, не дожидаясь следующего запуска.
+		const response: PushResponse & { referralRewardDays?: number } = {
+			applied,
+			serverTime: nowIso(),
+			...(referral ? { referralRewardDays: referral.inviteeDays } : {})
+		};
 		return json(response);
 	} catch (error) {
 		if (error instanceof AuthError) {

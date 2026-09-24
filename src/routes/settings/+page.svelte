@@ -18,6 +18,7 @@
 	} from 'phosphor-svelte';
 	import SubscriptionCard from '$lib/components/billing/subscription-card.svelte';
 	import CaptureCard from '$lib/components/capture/capture-card.svelte';
+	import InviteCard from '$lib/components/referrals/invite-card.svelte';
 	import OnboardingFlow from '$lib/components/onboarding/onboarding-flow.svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
@@ -513,6 +514,9 @@
 	</GlassCard>
 
 	<SubscriptionCard />
+
+	<!-- Сразу за тарифом: приглашение — второй путь к тому же Pro. -->
+	<InviteCard />
 
 	<GlassCard tone="sky">
 		<div class="mb-1 flex items-center gap-2">

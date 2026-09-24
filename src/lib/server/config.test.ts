@@ -29,6 +29,13 @@ describe('readConfig', () => {
 	it('подставляет локальный файл, если база не указана', () => {
 		expect(readConfig({}).databaseUrl).toBe('file:flux-planner.db');
 	});
+
+	it('имя бота по умолчанию — нынешний бот, @ в начале отбрасывается', () => {
+		expect(readConfig({}).botUsername).toBe('fluxplanner_xbot');
+		expect(readConfig({ TELEGRAM_BOT_USERNAME: '@flux_test_bot' }).botUsername).toBe(
+			'flux_test_bot'
+		);
+	});
 });
 
 describe('validateConfig', () => {

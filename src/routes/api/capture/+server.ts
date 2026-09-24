@@ -8,6 +8,7 @@ import { createRepositories } from '$lib/server/db/repositories';
 import { sendMessage } from '$lib/server/telegram/botApi';
 import { miniAppKeyboard } from '$lib/server/telegram/botMessages';
 import { apiError, logServerError } from '$lib/server/errors';
+import { settleReferral } from '$lib/server/referrals/notify';
 import { checkRateLimit } from '$lib/server/rateLimit';
 import { parseWeightMessage } from '$lib/utils/weight';
 import { getToday, nowIso } from '$lib/utils/date';
@@ -177,6 +178,8 @@ export const POST: RequestHandler = async ({ request, url, getClientAddress }) =
 				{ status: 422 }
 			);
 		}
+
+		await settleReferral(db, user.id);
 
 		const recorded = `Записал. ${describeApplied(applied)}`;
 		await echoToChat(user.telegramUserId, recorded, text);

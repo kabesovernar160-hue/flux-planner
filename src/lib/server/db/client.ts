@@ -6,6 +6,12 @@ import * as schema from './schema';
 
 export type Db = LibSQLDatabase<typeof schema>;
 
+/** Транзакция Drizzle: те же запросы, что у базы, но внутри одного BEGIN…COMMIT. */
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
+/** Куда можно писать: в базу напрямую или в уже открытую транзакцию. */
+export type DbExecutor = Db | Tx;
+
 /**
  * Одна база и один драйвер для всех окружений.
  *
