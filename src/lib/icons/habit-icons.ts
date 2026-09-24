@@ -49,3 +49,16 @@ export function isHabitIconKey(value: unknown): value is HabitIconKey {
 export function habitIcon(key: string): Component {
 	return isHabitIconKey(key) ? HABIT_ICONS[key] : HABIT_ICONS[DEFAULT_HABIT_ICON];
 }
+
+/**
+ * Готовые привычки для первого запуска.
+ *
+ * Четыре самые частые, чтобы уместиться сеткой 2×2 без прокрутки.
+ * Названия короткие: они же подписи кнопок, и длинное обрезалось бы.
+ */
+export const HABIT_PRESETS: { name: string; icon: HabitIconKey }[] = [
+	{ name: 'Вода', icon: 'drop' },
+	{ name: 'Зарядка', icon: 'barbell' },
+	{ name: 'Чтение', icon: 'book' },
+	{ name: 'Прогулка', icon: 'footprints' }
+];
