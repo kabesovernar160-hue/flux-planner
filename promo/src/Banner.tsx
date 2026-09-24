@@ -2,7 +2,10 @@ import type { ComponentType, CSSProperties } from 'react';
 import { Camera, CheckCircle, ChatText, Wallet } from '@phosphor-icons/react';
 import {
 	AbsoluteFill,
+	Audio,
+	getStaticFiles,
 	Img,
+	Sequence,
 	interpolate,
 	spring,
 	staticFile,
@@ -61,6 +64,17 @@ const Row = ({ feature, delay }: { feature: Feature; delay: number }) => {
 		</div>
 	);
 };
+
+/**
+ * Голос баннера, если он сгенерирован (node promo/voice.mjs).
+ * Без файла баннер остаётся немым, а не падает при рендере.
+ */
+const Voice = () =>
+	getStaticFiles().some((file) => file.name === 'voice/banner.mp3') ? (
+		<Sequence from={4}>
+			<Audio src={staticFile('voice/banner.mp3')} />
+		</Sequence>
+	) : null;
 
 /** Общая анимация краёв и QR для обоих форматов. */
 const useBannerMotion = () => {
@@ -124,6 +138,7 @@ export const Banner = () => {
 		<AbsoluteFill style={shell}>
 			<style>{FONTS}</style>
 			<Backdrop />
+			<Voice />
 			<AbsoluteFill style={{ padding: '140px 90px 400px', justifyContent: 'space-between' }}>
 				<Logo />
 
@@ -151,6 +166,7 @@ export const BannerWide = () => {
 		<AbsoluteFill style={shell}>
 			<style>{FONTS}</style>
 			<Backdrop />
+			<Voice />
 			<AbsoluteFill
 				style={{ padding: '110px 120px', flexDirection: 'row', alignItems: 'center', gap: 110 }}
 			>
