@@ -18,7 +18,7 @@ if (!KEY) throw new Error('Нет ELEVENLABS_API_KEY в .env');
 // Имя приложения написано по-русски: иначе модель читает его по-английски
 // с другой интонацией посреди русской фразы.
 export const TEXT =
-	'Калории по фото, привычки и траты — всё в одном месте. Флакс Пла́ннер — в Телеграме!';
+	'Калории по фото, привычки и траты — в одном месте. Флакс Пла́ннер в Телеграме!';
 
 // Молодые мягкие женские голоса из стандартной библиотеки ElevenLabs.
 const CANDIDATES = ['Jessica', 'Sarah', 'Lily', 'Alice', 'Laura'];
@@ -39,7 +39,7 @@ async function speak(voiceId, file) {
 			text: TEXT,
 			model_id: 'eleven_multilingual_v2',
 			// Чуть живее и теплее стандартных настроек, скорость — чтобы влезть в 5 секунд.
-			voice_settings: { stability: 0.4, similarity_boost: 0.8, style: 0.35, speed: 1.08 }
+			voice_settings: { stability: 0.4, similarity_boost: 0.8, style: 0.35, speed: 1.15 }
 		})
 	});
 	if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
