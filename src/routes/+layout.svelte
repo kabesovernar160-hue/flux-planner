@@ -1,6 +1,7 @@
 <script lang="ts">
 	import './layout.css';
 	import AmbientBackdrop from '$lib/components/ambient-backdrop.svelte';
+	import Toast from '$lib/components/ui/toast.svelte';
 	import BottomNav from '$lib/components/navigation/bottom-nav.svelte';
 	import FoodScanner from '$lib/components/nutrition/food-scanner.svelte';
 	import FinanceSheet from '$lib/components/finance/finance-sheet.svelte';
@@ -169,3 +170,6 @@
 <HabitSheet />
 <PlanSheet />
 <WeightSheet />
+
+<!-- Последним: «Отменить» после быстрой записи виден поверх всего. -->
+<Toast />
