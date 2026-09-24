@@ -142,10 +142,20 @@ export function resolveEntitlement(
 
 /** Конец периода после оплаты. Продление считается от большей из двух дат. */
 export function calculateExpiry(current: string | null, now: Date = new Date()): string {
+	return extendExpiry(current, SUBSCRIPTION_DAYS, now);
+}
+
+/**
+ * Срок, продлённый на несколько дней.
+ *
+ * Общий для оплаты и подарков: дни всегда прибавляются к большей из двух
+ * дат — концу текущего периода или сегодняшнему дню. Продление не «сгорает»:
+ * если человек оплатил заранее или получил дни за приглашение, оставшиеся
+ * дни прибавляются, а не теряются.
+ */
+export function extendExpiry(current: string | null, days: number, now: Date = new Date()): string {
 	const base =
 		current && new Date(current).getTime() > now.getTime() ? new Date(current) : new Date(now);
 
-	// Продление не «сгорает»: если человек оплатил заранее, оставшиеся дни
-	// прибавляются, а не теряются.
-	return new Date(base.getTime() + SUBSCRIPTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+	return new Date(base.getTime() + days * 24 * 60 * 60 * 1000).toISOString();
 }

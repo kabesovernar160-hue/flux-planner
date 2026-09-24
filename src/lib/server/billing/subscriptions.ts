@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import {
 	calculateExpiry,
+	extendExpiry,
 	PLANS,
 	resolveEntitlement,
 	type Entitlement,
@@ -8,7 +9,7 @@ import {
 } from '$lib/billing/plans';
 import { createId } from '$lib/utils/id';
 import { nowIso } from '$lib/utils/date';
-import type { Db } from '../db/client';
+import type { Db, DbExecutor } from '../db/client';
 import { payments, subscriptions } from '../db/schema';
 
 /**
@@ -101,8 +102,11 @@ export async function activateSubscription(
 	}
 
 	// Срок из Telegram точнее нашего расчёта: там он привязан к списанию.
-	// Свой считаем, только если его не прислали.
-	const expiresAt = input.expiresAt ?? calculateExpiry(current?.expiresAt ?? null, now);
+	// Но он ничего не знает о подаренных днях — за приглашения, например, —
+	// и при автопродлении перезаписал бы их. Поэтому берётся больший из двух:
+	// наш расчёт продлевает от текущего конца, вместе с подарком.
+	const calculated = calculateExpiry(current?.expiresAt ?? null, now);
+	const expiresAt = input.expiresAt && input.expiresAt > calculated ? input.expiresAt : calculated;
 
 	await db.insert(payments).values({
 		id: createId(),
@@ -139,6 +143,64 @@ export async function activateSubscription(
 		});
 
 	return { applied: true, expiresAt };
+}
+
+/**
+ * Подарить дни Pro.
+ *
+ * Не платёж: в журнал платежей ничего не пишется. Дни прибавляются к концу
+ * текущего срока, поэтому оплаченный период не сокращается и не ломается —
+ * платная подписка просто заканчивается позже.
+ *
+ * Строка после возврата или ручного снятия Pro оживает заново, но без
+ * идентификаторов прежнего платежа: иначе «отмена» в чате попыталась бы
+ * отменить подписку, которой больше нет.
+ *
+ * Принимает и открытую транзакцию: начисление за приглашение обязано
+ * пройти вместе с отметкой о нём или не пройти вовсе.
+ */
+export async function grantProDays(
+	db: DbExecutor,
+	userId: string,
+	days: number,
+	now: Date = new Date()
+): Promise<string> {
+	const timestamp = now.toISOString();
+
+	const [current] = await db
+		.select()
+		.from(subscriptions)
+		.where(eq(subscriptions.userId, userId))
+		.limit(1);
+
+	const alive = current?.plan === 'pro' && current.status === 'active';
+	const expiresAt = extendExpiry(alive ? current.expiresAt : null, days, now);
+
+	await db
+		.insert(subscriptions)
+		.values({
+			userId,
+			plan: 'pro',
+			status: 'active',
+			expiresAt,
+			chargeId: null,
+			subscriptionId: null,
+			createdAt: timestamp,
+			updatedAt: timestamp
+		})
+		.onConflictDoUpdate({
+			target: subscriptions.userId,
+			set: {
+				plan: 'pro',
+				status: 'active',
+				expiresAt,
+				chargeId: alive ? current.chargeId : null,
+				subscriptionId: alive ? current.subscriptionId : null,
+				updatedAt: timestamp
+			}
+		});
+
+	return expiresAt;
 }
 
 /**
