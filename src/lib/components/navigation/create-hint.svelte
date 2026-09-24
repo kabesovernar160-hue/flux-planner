@@ -57,12 +57,9 @@
 			       bg-[var(--fx-glass-tint-solid)] px-4 py-2.5 text-center shadow-lift
 			       transition-transform duration-500 ease-flux active:scale-[0.97]"
 			style="--fx-step: 8;"
-			data-testid="create-hint"
 		>
 			<span class="block text-sm font-medium">Всё добавляется отсюда</span>
-			<span class="block text-[11px] text-muted-foreground">
-				Еда, привычки, траты и вес
-			</span>
+			<span class="block text-[11px] text-muted-foreground">Еда, привычки, траты и вес</span>
 
 			<!-- Хвостик указывает на «+»: квадрат, повёрнутый на 45° и наполовину спрятанный. -->
 			<span

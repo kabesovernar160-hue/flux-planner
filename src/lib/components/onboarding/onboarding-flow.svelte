@@ -154,6 +154,9 @@
 	которые ещё ничего не значат.
 -->
 <div
+	role="dialog"
+	aria-modal="true"
+	aria-label="Первый запуск"
 	class="fixed inset-0 z-50 overflow-y-auto bg-void"
 	style="
 		padding-top: calc(var(--fx-safe-top) + 1.5rem);

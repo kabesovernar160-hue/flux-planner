@@ -25,3 +25,8 @@ vite.config.ts.timestamp-*
 # Локальная база SQLite
 flux-planner.db
 flux-planner.db-*
+
+# Playwright
+/test-results
+/playwright-report
+/blob-report
