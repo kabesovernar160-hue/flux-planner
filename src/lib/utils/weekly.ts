@@ -582,3 +582,18 @@ export function weekBotLines(
 
 	return lines;
 }
+
+/**
+ * Какую неделю предлагать с главной.
+ *
+ * В воскресенье — текущую: она почти закрыта, и бот как раз прислал итоги.
+ * В понедельник — прошедшую: новая неделя ещё пустая, а вчерашние итоги
+ * человек мог не успеть открыть. В остальные дни карточка не нужна —
+ * итоги середины недели ничего не подводят.
+ */
+export function readyWeekStart(today: DateKey): DateKey | null {
+	const dow = dayOfWeek(today);
+	if (dow === 0) return weekStartOf(today);
+	if (dow === 1) return addDays(weekStartOf(today), -7);
+	return null;
+}

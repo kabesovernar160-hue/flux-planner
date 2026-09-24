@@ -13,6 +13,7 @@ import {
 	weekdayName,
 	weekInsights,
 	weekLabel,
+	readyWeekStart,
 	weekShareText,
 	weekStartOf,
 	type WeekData
@@ -126,6 +127,14 @@ describe('границы недели', () => {
 	it('подпись недели по-русски, в том числе через границу месяца', () => {
 		expect(weekLabel(MON)).toBe('21–27 сентября');
 		expect(weekLabel('2026-09-28')).toBe('28 сентября — 4 октября');
+	});
+});
+
+describe('карточка на главной', () => {
+	it('воскресенье — текущая неделя, понедельник — прошедшая, остальные дни — ничего', () => {
+		expect(readyWeekStart('2026-09-27')).toBe(MON);
+		expect(readyWeekStart('2026-09-28')).toBe(MON);
+		expect(readyWeekStart('2026-09-24')).toBeNull();
 	});
 });
 

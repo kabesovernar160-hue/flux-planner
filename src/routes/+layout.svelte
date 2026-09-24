@@ -10,6 +10,7 @@
 	import OnboardingFlow from '$lib/components/onboarding/onboarding-flow.svelte';
 	import CreateSheet from '$lib/components/navigation/create-sheet.svelte';
 	import { untrack } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { syncQueue } from '$lib/db/syncQueue.svelte';
 	import { billing } from '$lib/state/billing.svelte';
 	import { session } from '$lib/state/session.svelte';
@@ -45,6 +46,11 @@
 				break;
 			case 'plan':
 				ui.openPlanSheet();
+				break;
+			case 'week':
+				// Итоги недели — экран, а не шторка: из кнопки бота или ссылки
+				// человек попадает прямо в отчёт.
+				void goto('/week');
 				break;
 		}
 	}
