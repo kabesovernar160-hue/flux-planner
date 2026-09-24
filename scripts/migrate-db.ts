@@ -38,7 +38,9 @@ const TABLES = [
 	'daily_finance',
 	'subscriptions',
 	'payments',
-	'capture_tokens'
+	'capture_tokens',
+	'referral_codes',
+	'referrals'
 ];
 
 /**
