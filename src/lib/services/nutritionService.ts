@@ -1,6 +1,7 @@
 import { plannerStore, type FoodEntryInput } from '$lib/stores/plannerStore.svelte';
 import type { FoodEntry, FoodScanItem } from '$lib/types/nutrition';
-import type { DateKey } from '$lib/utils/date';
+import { nowIso, type DateKey } from '$lib/utils/date';
+import { isFavorite, toggleFavorite } from '$lib/utils/favorites';
 import { isMealType, mealForTime, type MealType } from '$lib/utils/meals';
 import { calculateNutritionSummary, type NutritionSummary } from '$lib/utils/nutrition';
 
@@ -217,4 +218,96 @@ export function getNutritionSummary(date: DateKey = plannerStore.currentDate): N
 	};
 
 	return calculateNutritionSummary(getFoodsForDate(date), nutrition);
+}
+
+/* ───────────────── Быстрая запись ───────────────── */
+
+/** Блюдо с готовой порцией: из частого, недавнего или избранного. */
+export type FoodSnapshot = Pick<
+	FoodEntry,
+	'name' | 'grams' | 'calories' | 'protein' | 'fat' | 'carbs'
+>;
+
+/**
+ * Записать блюдо одним касанием — с теми же граммами и цифрами.
+ *
+ * Без формы: человек выбирает то, что уже ел, и цифры уже проверены им
+ * самим. Порцию при необходимости правят отдельно — долгим нажатием.
+ */
+export function quickLogFood(food: FoodSnapshot, meal?: MealType): ServiceResult<FoodEntry> {
+	return addFood({
+		name: food.name,
+		grams: food.grams,
+		calories: food.calories,
+		protein: food.protein,
+		fat: food.fat,
+		carbs: food.carbs,
+		meal
+	});
+}
+
+/**
+ * Повторить вчерашний приём пищи целиком.
+ *
+ * Записи копируются в выбранный день с тем же приёмом: вчерашний завтрак
+ * становится сегодняшним завтраком, даже если кнопку нажали в полдень.
+ */
+export function repeatMeal(
+	items: readonly FoodEntry[],
+	meal: MealType,
+	date: DateKey = plannerStore.currentDate
+): ServiceResult<FoodEntry[]> {
+	if (items.length === 0) return { ok: false, errors: { items: 'Нечего повторять' } };
+
+	const drafts: FoodDraft[] = items.map((item) => ({
+		name: item.name,
+		grams: item.grams,
+		calories: item.calories,
+		protein: item.protein,
+		fat: item.fat,
+		carbs: item.carbs,
+		source: item.source,
+		meal,
+		date
+	}));
+
+	// Сначала проверка всех, потом запись: половина повторённого завтрака
+	// хуже, чем понятный отказ.
+	for (const draft of drafts) {
+		const errors = validateFoodDraft(draft);
+		if (Object.keys(errors).length > 0) return { ok: false, errors };
+	}
+
+	return {
+		ok: true,
+		value: drafts.map((draft) =>
+			plannerStore.addFoodEntry({
+				name: draft.name.trim(),
+				grams: draft.grams,
+				calories: draft.calories,
+				protein: draft.protein,
+				fat: draft.fat,
+				carbs: draft.carbs,
+				source: draft.source ?? 'manual',
+				meal: draft.meal,
+				date: draft.date
+			})
+		)
+	};
+}
+
+/** Отмена быстрой записи: удаляются ровно те записи, что она создала. */
+export function undoFoodEntries(ids: readonly string[]): void {
+	for (const id of ids) plannerStore.removeFoodEntry(id);
+}
+
+/** Поставить или снять звёздочку. Список живёт в настройках и синхронизируется. */
+export function toggleFavoriteFood(food: FoodSnapshot): boolean {
+	const next = toggleFavorite(plannerStore.doc.settings.favoriteFoods, food, nowIso());
+	plannerStore.updateSettings({ favoriteFoods: next });
+	return isFavorite(next, food.name);
+}
+
+export function isFavoriteFood(name: string): boolean {
+	return isFavorite(plannerStore.doc.settings.favoriteFoods, name);
 }
