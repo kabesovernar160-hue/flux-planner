@@ -1,5 +1,16 @@
 <script lang="ts">
-	import { CheckCircle, Fire, ForkKnife, Lock, Scales, Star, Wallet } from 'phosphor-svelte';
+	import {
+		Camera,
+		CheckCircle,
+		Fire,
+		ForkKnife,
+		Lock,
+		Plus,
+		Scales,
+		Star,
+		Wallet
+	} from 'phosphor-svelte';
+	import EmptyAction from '$lib/components/ui/empty-action.svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import LineChart from '$lib/components/ui/line-chart.svelte';
@@ -194,9 +205,12 @@
 		</div>
 
 		{#if trackedDays === 0}
-			<p class="py-2 text-sm text-muted-foreground">
-				За этот период записей нет. Добавьте еду — график появится здесь.
-			</p>
+			<EmptyAction
+				text="Здесь будет средняя за день и за каким приёмом набегают калории."
+				label="Сфоткать еду"
+				icon={Camera}
+				onclick={() => ui.openFoodSheet()}
+			/>
 		{:else}
 			<p class="fx-num text-3xl leading-none">
 				{formatNumber(Math.round(avgCalories))}
@@ -268,18 +282,12 @@
 		</div>
 
 		{#if !latest}
-			<p class="py-2 text-sm text-muted-foreground">
-				Взвешиваний пока нет. Цели считаются от веса, и его стоит отмечать хотя бы раз в неделю.
-			</p>
-			<button
-				type="button"
+			<EmptyAction
+				text="Раз в неделю на весы — и здесь появится график и прогноз до цели."
+				label="Записать вес"
+				icon={Scales}
 				onclick={() => ui.openWeightSheet()}
-				class="mt-2 w-full rounded-full border border-line-strong py-2.5 text-xs font-medium
-				       transition-[transform,border-color] duration-500 ease-flux
-				       hover:border-tone/60 active:scale-[0.98]"
-			>
-				Записать вес
-			</button>
+			/>
 		{:else}
 			<p class="fx-num text-3xl leading-none">
 				{formatWeight(latest.weightKg)}
@@ -349,9 +357,12 @@
 		</div>
 
 		{#if plannerStore.habits.length === 0}
-			<p class="py-2 text-sm text-muted-foreground">
-				Привычек ещё нет. <a href="/habits" class="text-tone">Добавить первую</a>.
-			</p>
+			<EmptyAction
+				text="Здесь появятся серии и доля выполненных дней."
+				label="Добавить привычку"
+				icon={Plus}
+				onclick={() => ui.openHabitSheet()}
+			/>
 		{:else}
 			<!-- Доли 0…1 приводятся к процентам для общей шкалы графика. -->
 			<PeriodBars
@@ -390,7 +401,12 @@
 		</div>
 
 		{#if totalSpending === 0 && totalIncome === 0}
-			<p class="py-2 text-sm text-muted-foreground">За этот период записей не было.</p>
+			<EmptyAction
+				text="Здесь будет видно, куда уходят деньги и сколько остаётся."
+				label="Записать трату"
+				icon={Wallet}
+				onclick={() => ui.openFinanceSheet(undefined, 'expense')}
+			/>
 		{:else}
 			<p class="fx-num text-3xl leading-none">
 				{money(totalSpending)}
