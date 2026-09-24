@@ -115,6 +115,28 @@ class TelegramSession {
 		});
 	}
 
+	/**
+	 * Открыть ссылку t.me: выбор чата для «Поделиться», профиль бота.
+	 *
+	 * Внутри Telegram — его собственным переходом, иначе ссылка ушла бы
+	 * во внешний браузер. Вне Telegram — новой вкладкой: там t.me откроет
+	 * веб-версию или предложит приложение.
+	 */
+	openTelegramLink(url: string): void {
+		const wa = getWebApp();
+
+		if (this.isEmbedded && wa?.openTelegramLink) {
+			try {
+				wa.openTelegramLink(url);
+				return;
+			} catch {
+				// Старый клиент без метода — падаем на обычное открытие.
+			}
+		}
+
+		window.open(url, '_blank', 'noopener');
+	}
+
 	/** Обработчик, навешенный на главную кнопку сейчас. Нужен, чтобы его снять. */
 	#mainButtonHandler: (() => void) | null = null;
 
