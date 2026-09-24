@@ -29,3 +29,8 @@ flux-planner.db-*
 # Промо-ролик: зависимости и рендер
 promo/node_modules
 promo/out
+
+# Playwright
+/test-results
+/playwright-report
+/blob-report

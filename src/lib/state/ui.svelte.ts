@@ -50,6 +50,18 @@ class UiState {
 	/** Правимая запись. Как и у привычек — идентификатор, а не объект. */
 	financeEntryId = $state<string | null>(null);
 
+	/** Открыта ли хоть одна шторка. Подсказкам поверх шторки не место. */
+	get anySheetOpen(): boolean {
+		return (
+			this.createSheetOpen ||
+			this.foodSheetOpen ||
+			this.financeSheetOpen ||
+			this.planSheetOpen ||
+			this.habitSheetOpen ||
+			this.weightSheetOpen
+		);
+	}
+
 	openCreateSheet() {
 		this.createSheetOpen = true;
 	}

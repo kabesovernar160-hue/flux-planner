@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, gte, isNull, lte } from 'drizzle-orm';
 import type { Db } from './client';
 import {
 	dailyFinance,
@@ -7,12 +7,14 @@ import {
 	foodEntries,
 	habitCompletions,
 	habits,
+	planItems,
 	plannerState,
 	weightEntries
 } from './schema';
 import type { DailyFinance, FinanceEntry } from '$lib/types/finance';
 import type { Habit, HabitCompletion } from '$lib/types/habit';
 import type { DailyNutrition, FoodEntry } from '$lib/types/nutrition';
+import type { PlanItem } from '$lib/types/plan';
 import type { WeightEntry } from '$lib/types/weight';
 
 /**
@@ -133,5 +135,92 @@ export async function loadDaySnapshot(db: Db, userId: string, date: string): Pro
 		finance: financeRows as unknown as FinanceEntry[],
 		budget: (budgetRows[0] as unknown as DailyFinance) ?? null,
 		weight: (weightRows[0] as unknown as WeightEntry) ?? null
+	};
+}
+
+export interface RangeSnapshot {
+	foods: FoodEntry[];
+	habits: Habit[];
+	completions: HabitCompletion[];
+	finance: FinanceEntry[];
+	plan: PlanItem[];
+	/** Все взвешивания до конца периода: изменению нужна точка до его начала. */
+	weights: WeightEntry[];
+	calorieGoals: Record<string, number>;
+	budgets: Record<string, number>;
+}
+
+/**
+ * Записи за период — для итогов недели.
+ *
+ * Один проход по диапазону дат вместо семи срезов по дню: неделя с прошлой
+ * для сравнения — это четырнадцать дней, и четырнадцать отдельных запросов
+ * на каждого получателя рассылки заметно тянули бы её.
+ */
+export async function loadRangeSnapshot(
+	db: Db,
+	userId: string,
+	from: string,
+	to: string
+): Promise<RangeSnapshot> {
+	const inRange = <T extends { userId: never; date: never; deletedAt: never }>(table: T) =>
+		and(
+			eq(table.userId, userId),
+			gte(table.date, from),
+			lte(table.date, to),
+			isNull(table.deletedAt)
+		);
+
+	const [foods, habitRows, completions, finance, plan, weights, nutritionRows, budgetRows] =
+		await Promise.all([
+			db
+				.select()
+				.from(foodEntries)
+				.where(inRange(foodEntries as never)),
+			db
+				.select()
+				.from(habits)
+				.where(and(eq(habits.userId, userId), isNull(habits.deletedAt))),
+			db
+				.select()
+				.from(habitCompletions)
+				.where(inRange(habitCompletions as never)),
+			db
+				.select()
+				.from(financeEntries)
+				.where(inRange(financeEntries as never)),
+			db
+				.select()
+				.from(planItems)
+				.where(inRange(planItems as never)),
+			db
+				.select()
+				.from(weightEntries)
+				.where(
+					and(
+						eq(weightEntries.userId, userId),
+						lte(weightEntries.date, to),
+						isNull(weightEntries.deletedAt)
+					)
+				),
+			db
+				.select()
+				.from(dailyNutrition)
+				.where(inRange(dailyNutrition as never)),
+			db
+				.select()
+				.from(dailyFinance)
+				.where(inRange(dailyFinance as never))
+		]);
+
+	return {
+		foods: foods as unknown as FoodEntry[],
+		habits: habitRows as unknown as Habit[],
+		completions: completions as unknown as HabitCompletion[],
+		finance: finance as unknown as FinanceEntry[],
+		plan: plan as unknown as PlanItem[],
+		weights: weights as unknown as WeightEntry[],
+		calorieGoals: Object.fromEntries(nutritionRows.map((row) => [row.date, row.calorieGoal])),
+		budgets: Object.fromEntries(budgetRows.map((row) => [row.date, row.budget]))
 	};
 }

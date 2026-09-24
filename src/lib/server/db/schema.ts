@@ -327,6 +327,59 @@ export const payments = sqliteTable(
 	]
 );
 
+/**
+ * Реферальный код пользователя.
+ *
+ * Выдаётся при первом открытии экрана приглашения, а не при регистрации:
+ * большинству кодов иначе суждено было бы пролежать без дела.
+ */
+export const referralCodes = sqliteTable(
+	'referral_codes',
+	{
+		userId: text('user_id')
+			.primaryKey()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		code: text('code').notNull(),
+		createdAt: text('created_at').notNull()
+	},
+	(table) => [uniqueIndex('referral_codes_code_idx').on(table.code)]
+);
+
+/**
+ * Приглашение.
+ *
+ * Создаётся в статусе pending, когда новый пользователь впервые входит
+ * по чужой ссылке, и становится qualified после его первой записи.
+ * Уникальность по приглашённому — и по строке, и по ключу его Telegram —
+ * не даёт засчитать одного человека дважды.
+ */
+export const referrals = sqliteTable(
+	'referrals',
+	{
+		id: text('id').primaryKey(),
+		inviterId: text('inviter_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		inviteeId: text('invitee_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		/** HMAC от telegram id приглашённого: переживает обезличивание аккаунта. */
+		inviteeKey: text('invitee_key').notNull(),
+		status: text('status').notNull(),
+		/** Сколько дней Pro получил приглашённый. */
+		inviteeDays: integer('invitee_days').notNull().default(0),
+		/** Сколько дней Pro получил пригласивший: меньше награды, когда упёрлись в лимит. */
+		inviterDays: integer('inviter_days').notNull().default(0),
+		createdAt: text('created_at').notNull(),
+		qualifiedAt: text('qualified_at')
+	},
+	(table) => [
+		uniqueIndex('referrals_invitee_idx').on(table.inviteeId),
+		uniqueIndex('referrals_invitee_key_idx').on(table.inviteeKey),
+		index('referrals_inviter_idx').on(table.inviterId, table.status)
+	]
+);
+
 export type UserRow = typeof users.$inferSelect;
 export type FoodEntryRow = typeof foodEntries.$inferSelect;
 export type HabitRow = typeof habits.$inferSelect;
@@ -338,6 +391,7 @@ export type DailyNutritionRow = typeof dailyNutrition.$inferSelect;
 export type DailyFinanceRow = typeof dailyFinance.$inferSelect;
 export type PlanItemRow = typeof planItems.$inferSelect;
 export type PendingScanRow = typeof pendingScans.$inferSelect;
+export type ReferralRow = typeof referrals.$inferSelect;
 export type RateLimitRow = typeof rateLimits.$inferSelect;
 export type SubscriptionRow = typeof subscriptions.$inferSelect;
 export type PaymentRow = typeof payments.$inferSelect;

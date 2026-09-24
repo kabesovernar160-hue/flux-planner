@@ -1,5 +1,16 @@
 <script lang="ts">
-	import { CaretLeft, CaretRight, Lock, Scales, Star, Trash } from 'phosphor-svelte';
+	import {
+		Camera,
+		CaretLeft,
+		CaretRight,
+		Lock,
+		Plus,
+		Scales,
+		Star,
+		Trash,
+		Wallet
+	} from 'phosphor-svelte';
+	import EmptyAction from '$lib/components/ui/empty-action.svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import HabitCheckbox from '$lib/components/ui/habit-checkbox.svelte';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
@@ -376,14 +387,40 @@
 
 	<GlassCard>
 		<h2 class="mb-3 text-sm font-medium">Еда</h2>
-		<!--
-			Тот же список, что и на главной: правка и удаление записи за любой день
-			работают одинаково, отдельной «истории только для чтения» нет.
-		-->
-		<FoodList entries={dayFoods} empty="За этот день записей о еде нет." />
+		{#if dayFoods.length === 0}
+			<!-- Запись уходит в выбранный день: шторки пишут в currentDate стора. -->
+			<EmptyAction
+				text="С записями о еде у дня появится отметка, и пропуски станут видны."
+				label="Добавить еду"
+				icon={Camera}
+				tone="amber"
+				onclick={() => ui.openFoodSheet()}
+			/>
+		{:else}
+			<!--
+				Тот же список, что и на главной: правка и удаление записи за любой день
+				работают одинаково, отдельной «истории только для чтения» нет.
+			-->
+			<FoodList entries={dayFoods} />
+		{/if}
 	</GlassCard>
 
-	{#if dayHabits.length > 0}
+	{#if plannerStore.habits.length === 0}
+		<!--
+			Без единой привычки карточка раньше просто пропадала, и календарь
+			не подсказывал, что отметки дней тоже живут здесь.
+		-->
+		<GlassCard>
+			<h2 class="mb-3 text-sm font-medium">Привычки</h2>
+			<EmptyAction
+				tone="mint"
+				text="Отметки привычек сложатся здесь в серии по дням."
+				label="Добавить привычку"
+				icon={Plus}
+				onclick={() => ui.openHabitSheet()}
+			/>
+		</GlassCard>
+	{:else if dayHabits.length > 0}
 		<GlassCard>
 			<h2 class="mb-2 text-sm font-medium">Привычки</h2>
 			<div class="flex flex-col gap-0.5">
@@ -403,7 +440,13 @@
 		<h2 class="mb-3 text-sm font-medium">Траты и доходы</h2>
 
 		{#if dayFinance.length === 0}
-			<p class="py-1 text-sm text-muted-foreground">За этот день записей нет.</p>
+			<EmptyAction
+				text="Траты за день сложатся в баланс и покажут, где уходит лишнее."
+				label="Записать трату"
+				icon={Wallet}
+				tone="sky"
+				onclick={() => ui.openFinanceSheet(undefined, 'expense')}
+			/>
 		{:else}
 			<ul class="flex flex-col gap-1.5">
 				{#each dayFinance as entry (entry.id)}

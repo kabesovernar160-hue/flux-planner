@@ -253,5 +253,42 @@ export const MIGRATIONS: Migration[] = [
 			`CREATE UNIQUE INDEX IF NOT EXISTS capture_token_hash_idx ON capture_tokens (token_hash)`,
 			`CREATE INDEX IF NOT EXISTS capture_token_user_idx ON capture_tokens (user_id)`
 		]
+	},
+	{
+		// Реферальная программа. Две таблицы, а не колонки в users: код
+		// выдаётся лениво, только тем, кто открыл экран приглашения, а у
+		// приглашения своя жизнь — ожидание первой записи и засчитывание.
+		name: '0008_referrals',
+		statements: [
+			// Код — случайная строка, а не производное от telegram id: ссылку
+			// пересылают в чаты, и по ней нельзя узнать, чья она.
+			`CREATE TABLE IF NOT EXISTS referral_codes (
+				user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+				code TEXT NOT NULL,
+				created_at TEXT NOT NULL
+			)`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS referral_codes_code_idx ON referral_codes (code)`,
+
+			// Одна строка на приглашённого. invitee_key — HMAC от telegram id:
+			// удалённый аккаунт обезличивается, и вход тем же Telegram заводит
+			// нового пользователя. Без ключа его можно было бы «пригласить»
+			// заново и получать дни Pro по кругу. Сам id при этом не хранится.
+			// Дни хранятся на строке, чтобы лимит считался суммой по ним,
+			// а не пересчётом правил задним числом.
+			`CREATE TABLE IF NOT EXISTS referrals (
+				id TEXT PRIMARY KEY,
+				inviter_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				invitee_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				invitee_key TEXT NOT NULL,
+				status TEXT NOT NULL,
+				invitee_days INTEGER NOT NULL DEFAULT 0,
+				inviter_days INTEGER NOT NULL DEFAULT 0,
+				created_at TEXT NOT NULL,
+				qualified_at TEXT
+			)`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS referrals_invitee_idx ON referrals (invitee_id)`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS referrals_invitee_key_idx ON referrals (invitee_key)`,
+			`CREATE INDEX IF NOT EXISTS referrals_inviter_idx ON referrals (inviter_id, status)`
+		]
 	}
 ];

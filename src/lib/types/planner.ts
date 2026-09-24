@@ -1,3 +1,4 @@
+import type { FavoriteFood } from '$lib/utils/favorites';
 import type { ProfileInput } from '$lib/utils/goals';
 import type { DailyFinanceRecord, FinanceEntry } from './finance';
 import type { Habit, HabitCompletion } from './habit';
@@ -64,6 +65,16 @@ export interface PlannerSettings {
 	 */
 	weightGoalKg?: number;
 
+	/**
+	 * Избранные блюда.
+	 *
+	 * В настройках, потому что они уже синхронизируются. Сливаются не целиком,
+	 * как остальные настройки, а поштучно — см. $lib/utils/favorites. Старые
+	 * версии приложения поле не знают, но и не теряют: настройки при чтении
+	 * раскладываются поверх значений по умолчанию, и незнакомые ключи остаются.
+	 */
+	favoriteFoods?: FavoriteFood[];
+
 	/** Анкета расчёта целей. Её может не быть: заполнение необязательно. */
 	profile?: UserProfile;
 
@@ -82,7 +93,19 @@ export interface PlannerSettings {
 	 * не должно показываться снова при каждом открытии.
 	 */
 	onboardedAt?: string;
+
+	/**
+	 * Какие подсказки уже показаны и когда.
+	 *
+	 * Лежит в настройках, а не в localStorage: подсказку, закрытую на телефоне,
+	 * не должно быть видно снова на планшете. Telegram к тому же чистит
+	 * хранилище webview, и локальный флаг возвращал бы её после каждой чистки.
+	 */
+	hints?: Partial<Record<HintId, string>>;
 }
+
+/** Одноразовые подсказки интерфейса. */
+export type HintId = 'createButton';
 
 /**
  * Полное логическое состояние приложения.

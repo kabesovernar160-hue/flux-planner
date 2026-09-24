@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateExpiry, PLANS, resolveEntitlement } from './plans';
+import { calculateExpiry, extendExpiry, PLANS, resolveEntitlement } from './plans';
 
 const NOW = new Date('2026-01-15T12:00:00.000Z');
 
@@ -72,6 +72,17 @@ describe('calculateExpiry', () => {
 
 	it('после истечения считает заново от сегодняшнего дня', () => {
 		expect(calculateExpiry('2025-12-01T12:00:00.000Z', NOW)).toBe('2026-02-14T12:00:00.000Z');
+	});
+});
+
+describe('extendExpiry', () => {
+	it('подарочные дни идут после оплаченного периода', () => {
+		expect(extendExpiry('2026-01-20T12:00:00.000Z', 7, NOW)).toBe('2026-01-27T12:00:00.000Z');
+	});
+
+	it('без действующего срока отсчитываются от сегодня', () => {
+		expect(extendExpiry(null, 7, NOW)).toBe('2026-01-22T12:00:00.000Z');
+		expect(extendExpiry('2025-12-01T12:00:00.000Z', 7, NOW)).toBe('2026-01-22T12:00:00.000Z');
 	});
 });
 

@@ -3,6 +3,7 @@ import { clearAllData } from '$lib/db/localDb';
 import { resetDriverForTests } from '$lib/db/storage';
 import { plannerStore } from '$lib/stores/plannerStore.svelte';
 import type { FoodScanItem } from '$lib/types/nutrition';
+import { addDays } from '$lib/utils/date';
 import { mealForTime } from '$lib/utils/meals';
 import {
 	addFood,
@@ -10,8 +11,13 @@ import {
 	addWater,
 	getFoodsForDate,
 	getNutritionSummary,
+	isFavoriteFood,
+	quickLogFood,
 	removeFood,
 	removeWater,
+	repeatMeal,
+	toggleFavoriteFood,
+	undoFoodEntries,
 	updateFood,
 	validateFoodDraft,
 	WATER_GLASS_ML
@@ -316,5 +322,58 @@ describe('приёмы пищи', () => {
 		updateFood(created.value.id, { calories: 500 });
 
 		expect(getFoodsForDate(plannerStore.currentDate)[0].meal).toBe('lunch');
+	});
+});
+
+describe('быстрая запись', () => {
+	const oatmeal = { name: 'Овсянка', grams: 60, calories: 230, protein: 8, fat: 4, carbs: 40 };
+
+	it('записывает блюдо с теми же граммами и цифрами', () => {
+		const result = quickLogFood(oatmeal, 'breakfast');
+
+		expect(result.ok).toBe(true);
+		expect(plannerStore.todayFoods).toHaveLength(1);
+		expect(plannerStore.todayFoods[0]).toMatchObject({ ...oatmeal, meal: 'breakfast' });
+	});
+
+	it('отмена убирает ровно созданное', () => {
+		const kept = quickLogFood({ ...oatmeal, name: 'Кофе' });
+		const result = quickLogFood(oatmeal);
+		if (!result.ok || !kept.ok) throw new Error('не записалось');
+
+		undoFoodEntries([result.value.id]);
+
+		expect(plannerStore.todayFoods.map((entry) => entry.name)).toEqual(['Кофе']);
+	});
+
+	it('вчерашний приём повторяется целиком, в сегодняшний день и тот же приём', () => {
+		const yesterday = addDays(plannerStore.currentDate, -1);
+		const eggs = addFood({ ...oatmeal, name: 'Яйца', meal: 'breakfast', date: yesterday });
+		const coffee = addFood({ ...oatmeal, name: 'Кофе', meal: 'breakfast', date: yesterday });
+		if (!eggs.ok || !coffee.ok) throw new Error('не записалось');
+
+		const result = repeatMeal([eggs.value, coffee.value], 'breakfast');
+
+		expect(result.ok).toBe(true);
+		expect(plannerStore.todayFoods.map((entry) => [entry.name, entry.meal])).toEqual([
+			['Яйца', 'breakfast'],
+			['Кофе', 'breakfast']
+		]);
+
+		if (result.ok) undoFoodEntries(result.value.map((entry) => entry.id));
+		expect(plannerStore.todayFoods).toHaveLength(0);
+		// Вчерашние записи отмена не трогает.
+		expect(plannerStore.foodEntries).toHaveLength(2);
+	});
+
+	it('звёздочка сохраняется в настройках и двигает их отметку для синхронизации', () => {
+		const before = plannerStore.doc.settingsUpdatedAt;
+
+		expect(toggleFavoriteFood(oatmeal)).toBe(true);
+		expect(isFavoriteFood('овсянка')).toBe(true);
+		expect(plannerStore.doc.settingsUpdatedAt).not.toBe(before);
+
+		expect(toggleFavoriteFood(oatmeal)).toBe(false);
+		expect(isFavoriteFood('Овсянка')).toBe(false);
 	});
 });

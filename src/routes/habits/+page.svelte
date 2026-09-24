@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Archive, ArrowCounterClockwise, PencilSimple, Plus, Trash } from 'phosphor-svelte';
+	import EmptyAction from '$lib/components/ui/empty-action.svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import { habitIcon } from '$lib/icons/habit-icons';
@@ -80,9 +81,12 @@
 <div class="tone-mint flex flex-col gap-4">
 	<GlassCard>
 		{#if active.length === 0}
-			<p class="py-2 text-sm leading-relaxed text-muted-foreground">
-				Привычек пока нет. Добавьте первую — она появится на главной в те дни, когда запланирована.
-			</p>
+			<EmptyAction
+				text="Отмеченные дни складываются в серии — видно, что держится, а что нет."
+				label="Добавить привычку"
+				icon={Plus}
+				onclick={() => ui.openHabitSheet()}
+			/>
 		{:else}
 			<ul class="divide-y divide-line/60">
 				{#each active as habit (habit.id)}

@@ -4,6 +4,8 @@ import { users } from '../db/schema';
 import {
 	activateSubscription,
 	getEntitlement,
+	getSubscriptionRow,
+	grantProDays,
 	listPayments,
 	revokeSubscription
 } from './subscriptions';
@@ -77,6 +79,53 @@ describe('activateSubscription', () => {
 	});
 });
 
+describe('grantProDays', () => {
+	it('без подписки включает Pro на подаренные дни', async () => {
+		const expiresAt = await grantProDays(db, USER_ID, 7, NOW);
+
+		expect(expiresAt).toBe('2026-01-22T12:00:00.000Z');
+		expect((await getEntitlement(db, USER_ID, NOW)).plan).toBe('pro');
+		// Подарок — не платёж: журнал платежей пуст.
+		expect(await listPayments(db, USER_ID)).toHaveLength(0);
+	});
+
+	it('продлевает платную подписку, не сокращая и не ломая её', async () => {
+		const paid = await activateSubscription(db, payment('charge-1', '2026-02-14T12:00:00.000Z'));
+		const expiresAt = await grantProDays(db, USER_ID, 7, NOW);
+
+		expect(expiresAt).toBe('2026-02-21T12:00:00.000Z');
+		expect(new Date(expiresAt).getTime()).toBeGreaterThan(new Date(paid.expiresAt).getTime());
+
+		// Идентификатор платежа остаётся: по нему работают отмена и возврат.
+		const row = await getSubscriptionRow(db, USER_ID);
+		expect(row?.chargeId).toBe('charge-1');
+	});
+
+	it('автопродление звёздами не съедает подаренные дни', async () => {
+		await activateSubscription(db, payment('charge-1', '2026-02-14T12:00:00.000Z'));
+		await grantProDays(db, USER_ID, 7, NOW);
+
+		// Telegram присылает свой срок следующего периода — он не знает о подарке.
+		const renewal = await activateSubscription(db, {
+			...payment('charge-2', '2026-03-16T12:00:00.000Z'),
+			now: new Date('2026-02-14T12:00:00.000Z')
+		});
+
+		expect(renewal.expiresAt).toBe('2026-03-23T12:00:00.000Z');
+	});
+
+	it('после возврата оживляет Pro без идентификаторов старого платежа', async () => {
+		await activateSubscription(db, payment('charge-1'));
+		await revokeSubscription(db, 'charge-1');
+
+		await grantProDays(db, USER_ID, 7, NOW);
+
+		const row = await getSubscriptionRow(db, USER_ID);
+		expect(row?.status).toBe('active');
+		expect(row?.chargeId).toBeNull();
+	});
+});
+
 describe('revokeSubscription', () => {
 	it('снимает доступ после возврата', async () => {
 		await activateSubscription(db, payment('charge-1'));
@@ -109,9 +158,10 @@ describe('getEntitlement', () => {
 	});
 
 	it('после окончания срока возвращает на бесплатный', async () => {
-		await activateSubscription(db, payment('charge-1', '2026-01-16T00:00:00.000Z'));
+		await activateSubscription(db, payment('charge-1'));
 
-		const later = new Date('2026-02-01T00:00:00.000Z');
+		// Оплаченный период — 30 дней от 15 января, то есть до 14 февраля.
+		const later = new Date('2026-03-01T00:00:00.000Z');
 		expect((await getEntitlement(db, USER_ID, later)).plan).toBe('free');
 	});
 });

@@ -17,6 +17,14 @@ export interface ServerConfig {
 	botToken: string;
 	/** Публичный адрес Mini App по HTTPS. */
 	miniAppUrl: string;
+	/**
+	 * Имя бота без @: из него собираются ссылки t.me/<бот>/app.
+	 *
+	 * У значения есть умолчание — нынешний бот, — чтобы реферальные ссылки
+	 * работали без новой переменной на проде. Переопределять нужно только
+	 * тестовому боту.
+	 */
+	botUsername: string;
 	/** Секрет вебхука: Telegram присылает его в заголовке. */
 	webhookSecret: string;
 	/** Ключ провайдера распознавания. */
@@ -47,6 +55,7 @@ export interface ConfigProblem {
 }
 
 const DEFAULT_DATABASE_URL = 'file:flux-planner.db';
+const DEFAULT_BOT_USERNAME = 'fluxplanner_xbot';
 
 function read(value: string | undefined): string {
 	return value?.trim() ?? '';
@@ -59,6 +68,7 @@ export function readConfig(
 	return {
 		botToken: read(source.TELEGRAM_BOT_TOKEN),
 		miniAppUrl: read(source.TELEGRAM_MINI_APP_URL),
+		botUsername: read(source.TELEGRAM_BOT_USERNAME).replace(/^@/, '') || DEFAULT_BOT_USERNAME,
 		webhookSecret: read(source.TELEGRAM_WEBHOOK_SECRET),
 		aiApiKey: read(source.AI_API_KEY),
 		databaseUrl: read(source.DATABASE_URL) || DEFAULT_DATABASE_URL,
@@ -128,6 +138,14 @@ export function validateConfig(config: ServerConfig): ConfigProblem[] {
 		problems.push({
 			variable: 'TELEGRAM_WEBHOOK_SECRET',
 			message: 'вебхук бота отвечает 401 на всё',
+			level: 'warning'
+		});
+	}
+
+	if (!/^[A-Za-z0-9_]{5,32}$/.test(config.botUsername)) {
+		problems.push({
+			variable: 'TELEGRAM_BOT_USERNAME',
+			message: 'имя бота некорректно — ссылки-приглашения будут вести в никуда',
 			level: 'warning'
 		});
 	}

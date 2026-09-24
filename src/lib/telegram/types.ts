@@ -129,6 +129,14 @@ export interface TelegramWebApp {
 	setBottomBarColor?(color: string): void;
 
 	/**
+	 * Открыть ссылку t.me внутри Telegram, не закрывая Mini App.
+	 *
+	 * Окно «Поделиться» (t.me/share/url) открывается только так: через
+	 * обычный window.open клиент ушёл бы во внешний браузер.
+	 */
+	openTelegramLink?(url: string): void;
+
+	/**
 	 * Bot API 6.1+ — открывает счёт прямо в приложении.
 	 *
 	 * Оплата звёздами проходит внутри Telegram: браузер, карта и внешний

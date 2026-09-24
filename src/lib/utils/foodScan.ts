@@ -51,6 +51,37 @@ export function rescaleItem(item: FoodScanItem, grams: number): FoodScanItem {
 	return { ...item, estimatedGrams: grams, ...nutritionForGrams(item.per100g, grams) };
 }
 
+/**
+ * Множители порции для всего блюда: от половины до двойной.
+ *
+ * Шаг в четверть — ровно та точность, с которой человек оценивает свою
+ * тарелку относительно того, что увидела модель: «чуть меньше», «в полтора
+ * раза больше». Точнее по фото всё равно не бывает.
+ */
+export const PORTION_FACTORS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
+
+/**
+ * Порция всего блюда целиком.
+ *
+ * Считается от исходного веса каждого компонента, а не от текущего:
+ * переключение ×1,5 → ×2 → ×1 должно вернуть ровно то, что было, а не
+ * накопить округления. Исходные граммы хранит вызывающий: их меняет только
+ * ручная правка компонента.
+ */
+export function scalePortion(
+	items: readonly FoodScanItem[],
+	baseGrams: Readonly<Record<string, number>>,
+	factor: number
+): FoodScanItem[] {
+	const safeFactor = Number.isFinite(factor) && factor > 0 ? factor : 1;
+
+	return items.map((item) => {
+		const base = baseGrams[item.id] ?? item.estimatedGrams;
+		// Не меньше грамма: ноль — это не порция, а удалённый компонент.
+		return rescaleItem(item, Math.max(1, Math.round(base * safeFactor)));
+	});
+}
+
 export function sumTotals(items: readonly FoodScanItem[]): FoodScanTotals {
 	const totals = items.reduce(
 		(acc, item) => ({

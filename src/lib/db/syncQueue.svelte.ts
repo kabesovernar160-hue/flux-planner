@@ -8,6 +8,7 @@ import {
 	SETTINGS_NEVER_SAVED
 } from './localDb';
 import { getDriver, STORES, type StoreName } from './storage';
+import { billing } from '$lib/state/billing.svelte';
 import { plannerStore } from '$lib/stores/plannerStore.svelte';
 import { telegram } from '$lib/telegram';
 import { nowIso } from '$lib/utils/date';
@@ -238,6 +239,14 @@ export class SyncQueue {
 			});
 
 			if (!pushResponse.ok) throw new Error(`push ${pushResponse.status}`);
+
+			// Первая запись приглашённого приносит ему дни Pro прямо сейчас:
+			// тариф перечитывается сразу, а не при следующем запуске, иначе
+			// обещанный на экране приглашения Pro появился бы только завтра.
+			const pushed = (await pushResponse.json().catch(() => null)) as {
+				referralRewardDays?: number;
+			} | null;
+			if (pushed?.referralRewardDays) void billing.refresh();
 
 			const pullUrl =
 				watermark.pulledAt && !fresh

@@ -19,9 +19,11 @@
 		"bot:setup": "node scripts/bot-setup.ts",
 		"db:migrate": "node scripts/migrate-db.ts",
 		"test": "vitest run --config vitest.config.ts",
-		"test:watch": "vitest --config vitest.config.ts"
+		"test:watch": "vitest --config vitest.config.ts",
+		"test:e2e": "playwright test"
 	},
 	"devDependencies": {
+		"@playwright/test": "~1.56.1",
 		"@sveltejs/adapter-node": "^5.5.7",
 		"@sveltejs/adapter-vercel": "^6.3.4",
 		"@sveltejs/kit": "^2.63.0",

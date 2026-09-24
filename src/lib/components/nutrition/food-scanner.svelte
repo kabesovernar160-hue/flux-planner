@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { Camera, Check, Images, PencilSimple, Star, Warning } from 'phosphor-svelte';
+	import { Camera, Check, Images, Minus, PencilSimple, Plus, Star, Warning } from 'phosphor-svelte';
 	import Sheet from '$lib/components/ui/sheet.svelte';
 	import FoodForm from './food-form.svelte';
 	import ScanItemCard from './scan-item-card.svelte';
-	import { addScannedFood } from '$lib/services/nutritionService';
+	import QuickFoods from './quick-foods.svelte';
+	import { addScannedFood, type FoodSnapshot } from '$lib/services/nutritionService';
 	import MealPicker from './meal-picker.svelte';
 	import { mealForTime, type MealType } from '$lib/utils/meals';
 	import { billing } from '$lib/state/billing.svelte';
@@ -16,6 +17,8 @@
 		CONFIDENCE_HINTS,
 		CONFIDENCE_LABELS,
 		confidenceLevel,
+		PORTION_FACTORS,
+		scalePortion,
 		sumTotals
 	} from '$lib/utils/foodScan';
 	import { formatMacro, formatNumber } from '$lib/utils/format';
@@ -49,6 +52,14 @@
 	};
 
 	let stage = $state<Stage>('idle');
+
+	/** Блюдо из быстрой записи, открытое для правки порции. */
+	let prefill = $state<FoodSnapshot | null>(null);
+
+	function editQuick(food: FoodSnapshot) {
+		prefill = food;
+		stage = 'manual';
+	}
 	let phase = $state<Phase>('uploading');
 
 	let file: File | null = null;
@@ -67,7 +78,53 @@
 	let galleryInput = $state<HTMLInputElement | null>(null);
 	let phaseTimers: ReturnType<typeof setTimeout>[] = [];
 
-	const totals = $derived(sumTotals(items));
+	/**
+	 * Порция всего блюда и исходный вес компонентов.
+	 *
+	 * Модель оценивает порцию по фото, а человек знает свою тарелку лучше:
+	 * «съел половину» или «добавка» — один множитель на всё блюдо вместо
+	 * правки каждого компонента. Пересчёт идёт от исходных граммов, поэтому
+	 * ×2 → ×1 возвращает ровно то, что было.
+	 */
+	let portion = $state(1);
+	let baseGrams = $state<Record<string, number>>({});
+
+	/**
+	 * Снятые галочки.
+	 *
+	 * Модель иногда видит лишнее — хлеб рядом с тарелкой, соус в чужой миске.
+	 * Снять галочку проще и обратимее, чем удалить компонент.
+	 */
+	let excluded = $state<Record<string, boolean>>({});
+
+	const selected = $derived(items.filter((item) => !excluded[item.id]));
+
+	const totals = $derived(sumTotals(selected));
+	const portionGrams = $derived(
+		Math.round(selected.reduce((total, item) => total + item.estimatedGrams, 0))
+	);
+
+	function setPortion(next: number) {
+		telegram.haptic.selection();
+		portion = next;
+		items = scalePortion(items, baseGrams, next);
+	}
+
+	function stepPortion(direction: -1 | 1) {
+		const index = PORTION_FACTORS.indexOf(portion as (typeof PORTION_FACTORS)[number]);
+		const next =
+			PORTION_FACTORS[Math.min(PORTION_FACTORS.length - 1, Math.max(0, index + direction))];
+		if (next !== undefined && next !== portion) setPortion(next);
+	}
+
+	function toggleItem(id: string) {
+		telegram.haptic.selection();
+		excluded[id] = !excluded[id];
+	}
+
+	function formatFactor(value: number): string {
+		return `×${String(value).replace('.', ',')}`;
+	}
 
 	/**
 	 * Итоговая уверенность пересчитывается по оставшимся компонентам:
@@ -111,7 +168,11 @@
 		clearTimers();
 		releasePreview();
 		stage = 'idle';
+		prefill = null;
 		items = [];
+		portion = 1;
+		baseGrams = {};
+		excluded = {};
 		reportedConfidence = 0;
 		errorMessage = '';
 		errorRecoverable = true;
@@ -212,6 +273,9 @@
 
 			const result = payload.result as FoodScanResult;
 			items = result.items;
+			portion = 1;
+			excluded = {};
+			baseGrams = Object.fromEntries(result.items.map((item) => [item.id, item.estimatedGrams]));
 			reportedConfidence = result.overallConfidence;
 			// Остаток приходит вместе с результатом — отдельный запрос не нужен.
 			billing.applyQuota(payload?.quota);
@@ -225,6 +289,9 @@
 
 	function updateItem(index: number, next: FoodScanItem) {
 		items[index] = next;
+		// Ручная правка компонента — новая основа: множитель дальше
+		// применяется к тому, что человек вписал, а не к оценке модели.
+		baseGrams[next.id] = next.estimatedGrams / portion;
 	}
 
 	function removeItem(index: number) {
@@ -245,9 +312,9 @@
 	let meal = $state<MealType>(mealForTime());
 
 	function confirm() {
-		if (items.length === 0) return;
+		if (selected.length === 0) return;
 
-		const result = addScannedFood($state.snapshot(items), undefined, meal);
+		const result = addScannedFood($state.snapshot(selected), undefined, meal);
 
 		if (!result.ok) {
 			fail(Object.values(result.errors)[0] ?? 'Не удалось сохранить записи');
@@ -276,7 +343,7 @@
 
 		if (stage === 'preview') {
 			telegram.setMainButton({ text: 'Распознать', onClick: analyze });
-		} else if (stage === 'result' && items.length > 0) {
+		} else if (stage === 'result' && selected.length > 0) {
 			telegram.setMainButton({ text: 'Добавить в дневник', onClick: confirm });
 		} else if (stage === 'analyzing') {
 			telegram.setMainButton({ text: 'Распознаём…', onClick: () => {}, loading: true });
@@ -316,6 +383,14 @@
 
 	{#if stage === 'idle'}
 		<div class="py-2">
+			<!--
+				То, что человек уже ел, — первым делом: повторить вчерашний
+				завтрак быстрее, чем сфотографировать его заново.
+			-->
+			<div class="mb-5">
+				<QuickFoods meal={mealForTime()} onlogged={handleClose} onedit={editQuick} />
+			</div>
+
 			<p class="mb-5 text-sm leading-relaxed text-muted-foreground">
 				Сфотографируйте блюдо целиком, сверху или под углом. Чем лучше видно порцию, тем точнее
 				оценка.
@@ -369,7 +444,7 @@
 			</p>
 		</div>
 	{:else if stage === 'manual'}
-		<FoodForm onsaved={handleClose} oncancel={reset} />
+		<FoodForm {prefill} onsaved={handleClose} oncancel={reset} />
 	{:else if stage === 'confirmed'}
 		<div class="flex flex-col items-center py-10 text-center">
 			<span class="grid size-14 place-items-center rounded-full bg-success/12">
@@ -504,10 +579,66 @@
 					{#each items as item, index (item.id)}
 						<ScanItemCard
 							{item}
+							selected={!excluded[item.id]}
+							ontoggle={items.length > 1 ? () => toggleItem(item.id) : undefined}
 							onchange={(next) => updateItem(index, next)}
 							onremove={() => removeItem(index)}
 						/>
 					{/each}
+				</div>
+
+				<!--
+					Порция всего блюда: степпер по шагам и сами шаги рядом —
+					видно, куда двигаешься, и можно прыгнуть сразу на ×2.
+				-->
+				<div class="tone-amber mt-4 rounded-card border border-line/70 bg-white/[0.02] p-3.5">
+					<div class="flex items-center gap-2">
+						<p class="flex-1 text-xs text-muted-foreground">Порция</p>
+						<p class="tabular text-xs">
+							<span class="font-medium text-tone">{formatFactor(portion)}</span>
+							<span class="text-muted-foreground">· {formatNumber(portionGrams)} г</span>
+						</p>
+					</div>
+					<div class="mt-2.5 flex items-center gap-2">
+						<button
+							type="button"
+							onclick={() => stepPortion(-1)}
+							disabled={portion === PORTION_FACTORS[0]}
+							aria-label="Меньше порция"
+							class="grid size-9 shrink-0 place-items-center rounded-full border border-line-strong
+							       transition-transform duration-500 ease-flux active:scale-90
+							       disabled:opacity-40 disabled:active:scale-100"
+						>
+							<Minus size={13} weight="bold" />
+						</button>
+						<div class="grid flex-1 grid-cols-6 gap-1" role="radiogroup" aria-label="Порция">
+							{#each PORTION_FACTORS as factor (factor)}
+								<button
+									type="button"
+									role="radio"
+									aria-checked={portion === factor}
+									onclick={() => setPortion(factor)}
+									class="tabular rounded-full py-1.5 text-[11px] transition-colors duration-400
+									       ease-flux {portion === factor
+										? 'bg-tone/15 font-medium text-tone'
+										: 'text-muted-foreground'}"
+								>
+									{formatFactor(factor)}
+								</button>
+							{/each}
+						</div>
+						<button
+							type="button"
+							onclick={() => stepPortion(1)}
+							disabled={portion === PORTION_FACTORS[PORTION_FACTORS.length - 1]}
+							aria-label="Больше порция"
+							class="grid size-9 shrink-0 place-items-center rounded-full border border-line-strong
+							       transition-transform duration-500 ease-flux active:scale-90
+							       disabled:opacity-40 disabled:active:scale-100"
+						>
+							<Plus size={13} weight="bold" />
+						</button>
+					</div>
 				</div>
 
 				<p class="mt-3 text-xs leading-relaxed text-muted-foreground">
@@ -546,6 +677,7 @@
 					<button
 						type="button"
 						onclick={confirm}
+						disabled={selected.length === 0}
 						class="flex flex-[1.4] items-center justify-center gap-2 rounded-full bg-lavender py-3
 						       text-sm font-medium text-void shadow-accent transition-transform duration-500
 						       ease-flux hover:bg-lavender-hi active:scale-[0.98]"

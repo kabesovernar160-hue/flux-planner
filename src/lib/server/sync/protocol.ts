@@ -1,3 +1,4 @@
+import { mergeFavorites } from '$lib/utils/favorites';
 import type { Repositories, SyncRow } from '../db/repositories';
 
 /**
@@ -103,13 +104,14 @@ export function parsePushPayload(body: unknown): ParsedPush {
 /**
  * Поля настроек, которые не исчезают.
  *
- * Пройденный первый запуск и заполненная анкета — события, а не мнения:
- * отменить их нельзя, в приложении нет такого действия. Поэтому пакет без них
+ * Пройденный первый запуск, заполненная анкета и показанные подсказки —
+ * события, а не мнения: отменить их нельзя, в приложении нет такого действия.
+ * Поэтому пакет без них
  * означает не «человек передумал», а «устройство ещё не знает» — например,
  * Telegram почистил хранилище или человек открыл приложение с другого
  * телефона. Такой пакет не должен стирать то, что уже известно о человеке.
  */
-const STICKY_SETTINGS_KEYS = ['onboardedAt', 'profile'] as const;
+const STICKY_SETTINGS_KEYS = ['onboardedAt', 'profile', 'hints'] as const;
 
 /**
  * Слияние настроек при отправке на сервер.
@@ -125,6 +127,12 @@ export function mergePlannerSettings(stored: unknown, incoming: unknown): unknow
 
 	for (const key of STICKY_SETTINGS_KEYS) {
 		if (merged[key] === undefined && stored[key] !== undefined) merged[key] = stored[key];
+	}
+
+	// Избранное сливается поштучно: звёздочка с телефона не должна пропадать
+	// оттого, что планшет в ту же минуту поменял цель калорий.
+	if (stored.favoriteFoods !== undefined || merged.favoriteFoods !== undefined) {
+		merged.favoriteFoods = mergeFavorites(stored.favoriteFoods, merged.favoriteFoods);
 	}
 
 	return merged;

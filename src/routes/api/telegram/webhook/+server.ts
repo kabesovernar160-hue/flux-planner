@@ -6,6 +6,7 @@ import { AiError } from '$lib/server/ai/types';
 import { getReadyDb } from '$lib/server/db/client';
 import { createRepositories, type Repositories } from '$lib/server/db/repositories';
 import { logServerError } from '$lib/server/errors';
+import { settleReferral } from '$lib/server/referrals/notify';
 import {
 	answerCallbackQuery,
 	answerPreCheckoutQuery,
@@ -341,6 +342,7 @@ async function handleCallback(query: TelegramCallbackQuery): Promise<void> {
 	}
 
 	await saveScan(repositories, userId, timezone, payload);
+	await settleReferral(await getReadyDb(), userId);
 	await answerCallbackQuery(query.id, 'Записал');
 	if (messageId) await editMessageReplyMarkup(chatId, messageId);
 	await sendMessage(chatId, formatSavedMessage(payload));
@@ -485,6 +487,9 @@ async function handleFreeText(
 		await sendMessage(chatId, HELP_TEXT, { replyMarkup: miniAppKeyboard(miniAppUrl()) });
 		return;
 	}
+
+	// Запись из чата засчитывает приглашение так же, как из приложения.
+	await settleReferral(await getReadyDb(), userId);
 
 	// У пункта плана есть ещё одно осмысленное действие прямо из чата:
 	// отметить выполненным, не открывая приложение.
