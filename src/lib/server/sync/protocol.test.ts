@@ -116,6 +116,16 @@ describe('mergePlannerSettings', () => {
 		expect(merged.calorieGoal).toBe(2100);
 	});
 
+	it('показанные подсказки не возвращаются после чистки хранилища', () => {
+		const hints = { createButton: '2026-01-10T08:05:00.000Z' };
+		const merged = mergePlannerSettings({ ...stored, hints }, { calorieGoal: 2100 }) as Record<
+			string,
+			unknown
+		>;
+
+		expect(merged.hints).toEqual(hints);
+	});
+
 	it('без сохранённых настроек отдаёт пришедшие как есть', () => {
 		expect(mergePlannerSettings(null, { calorieGoal: 2100 })).toEqual({ calorieGoal: 2100 });
 		expect(mergePlannerSettings(undefined, 'мусор')).toBe('мусор');

@@ -11,6 +11,32 @@ import { addDays, getToday } from '$lib/utils/date';
  * Сид срабатывает ровно один раз — только если хранилище действительно пустое.
  * Иначе он затирал бы то, что пользователь ввёл сам.
  */
+/** Ключ в localStorage, которым сид выключается до явного включения обратно. */
+const SEED_OFF_KEY = 'fx-dev-seed-off';
+
+/**
+ * Включён ли сид.
+ *
+ * Пустые состояния иначе не увидеть: сид заполняет хранилище раньше,
+ * чем на него успеваешь посмотреть. `?seed=off` выключает его и запоминает
+ * это в localStorage, чтобы переход по ссылкам внутри приложения не терял
+ * флаг; `?seed=on` возвращает как было. Хранилище может быть недоступно —
+ * тогда работает только параметр адреса.
+ */
+export function isDevSeedEnabled(url: URL): boolean {
+	const param = url.searchParams.get('seed');
+
+	try {
+		if (param === 'off') localStorage.setItem(SEED_OFF_KEY, '1');
+		if (param === 'on') localStorage.removeItem(SEED_OFF_KEY);
+		if (param === null) return localStorage.getItem(SEED_OFF_KEY) === null;
+	} catch {
+		// Приватный режим: решает один параметр.
+	}
+
+	return param !== 'off';
+}
+
 export function seedDevData(store: PlannerStoreLike): boolean {
 	const isEmpty =
 		store.foodEntries.length === 0 &&

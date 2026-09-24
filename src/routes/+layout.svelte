@@ -9,9 +9,12 @@
 	import WeightSheet from '$lib/components/weight/weight-sheet.svelte';
 	import OnboardingFlow from '$lib/components/onboarding/onboarding-flow.svelte';
 	import CreateSheet from '$lib/components/navigation/create-sheet.svelte';
+	import CreateHint from '$lib/components/navigation/create-hint.svelte';
+	import { page } from '$app/state';
 	import { untrack } from 'svelte';
 	import { syncQueue } from '$lib/db/syncQueue.svelte';
 	import { billing } from '$lib/state/billing.svelte';
+	import { firstRun } from '$lib/state/firstRun.svelte';
 	import { session } from '$lib/state/session.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
@@ -63,12 +66,41 @@
 	 */
 	let onboardingDismissed = $state(false);
 
-	const showOnboarding = $derived(
+	const needsOnboarding = $derived(
 		!onboardingDismissed &&
 			session.profileKnown &&
 			plannerStore.status !== 'idle' &&
 			plannerStore.status !== 'hydrating' &&
 			!plannerStore.doc.settings.onboardedAt
+	);
+
+	/**
+	 * Открытое приветствие держится до явного закрытия.
+	 *
+	 * Сохранение анкеты сразу ставит onboardedAt, и без защёлки слой исчезал
+	 * бы на том же кадре — последний шаг с первым действием никто бы не увидел.
+	 */
+	let showOnboarding = $state(false);
+
+	$effect(() => {
+		if (needsOnboarding) showOnboarding = true;
+	});
+
+	function closeOnboarding() {
+		onboardingDismissed = true;
+		showOnboarding = false;
+	}
+
+	/**
+	 * Подсказка у «+» — только на главной и только когда её есть кому увидеть:
+	 * не под приветствием, не под шторкой и не раньше, чем экран наполнился.
+	 */
+	const createHintActive = $derived(
+		page.url.pathname === '/' &&
+			firstRun.settled &&
+			!needsOnboarding &&
+			!showOnboarding &&
+			!ui.anySheetOpen
 	);
 
 	/**
@@ -99,7 +131,7 @@
 			// UI уже отрисован на безопасных значениях по умолчанию; гидратация
 			// из IndexedDB догоняет и перерисовывает его сама. Ждать её нельзя —
 			// это и есть local-first.
-			void plannerStore.initialize().then(async () => {
+			const seeded = plannerStore.initialize().then(async () => {
 				if (!import.meta.env.DEV) return;
 				// Внутри Telegram за dev-сервером стоит настоящий аккаунт (туннель):
 				// сид срабатывал на пустом устройстве раньше первой синхронизации,
@@ -107,8 +139,8 @@
 				// демо-привычек, трат и еды в чужие данные.
 				if (telegram.isEmbedded) return;
 				// Динамический импорт под DEV-флагом: в прод-бандл сид не попадает.
-				const { seedDevData } = await import('$lib/db/devSeed');
-				seedDevData(plannerStore);
+				const { isDevSeedEnabled, seedDevData } = await import('$lib/db/devSeed');
+				if (isDevSeedEnabled(new URL(window.location.href))) seedDevData(plannerStore);
 			});
 
 			// Очередь подписывается на изменения сама: стор ничего не знает
@@ -117,7 +149,18 @@
 
 			// Первая синхронизация при открытии — подтянуть то, что записано
 			// с другого устройства или из чата с ботом.
-			void plannerStore.initialize().then(() => syncQueue.syncNow());
+			const synced = plannerStore.initialize().then(() => syncQueue.syncNow());
+
+			// Пустое хранилище считается пустым только после всего сразу:
+			// гидратации, сида и первой синхронизации. Неудача любого шага
+			// не должна навсегда оставить главную без содержимого. По той же
+			// причине ожидание ограничено: на медленной сети новичок иначе
+			// смотрел бы на пустой экран, пока не истечёт запрос синхронизации.
+			const SETTLE_LIMIT_MS = 3_000;
+			void Promise.race([
+				Promise.allSettled([seeded, synced]),
+				new Promise((resolve) => setTimeout(resolve, SETTLE_LIMIT_MS))
+			]).then(() => (firstRun.settled = true));
 
 			return () => {
 				disposeTelegram();
@@ -158,9 +201,10 @@
 </div>
 
 <BottomNav oncreate={() => ui.openCreateSheet()} />
+<CreateHint active={createHintActive} />
 
 {#if showOnboarding}
-	<OnboardingFlow onclose={() => (onboardingDismissed = true)} />
+	<OnboardingFlow onclose={closeOnboarding} />
 {/if}
 
 <CreateSheet />
