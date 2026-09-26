@@ -10,6 +10,7 @@ import {
 	runHabitReminders,
 	runWeeklyReports
 } from '$lib/server/notifications/notificationService';
+import { runActivationNudges } from '$lib/server/notifications/activationNudges';
 import { purgeExpiredRateLimits } from '$lib/server/rateLimit';
 import type { RequestHandler } from './$types';
 
@@ -104,11 +105,23 @@ const run: RequestHandler = async ({ request, url }) => {
 		// а решение «у кого сейчас вечер воскресенья» функция принимает сама.
 		const weekly = kind === 'summary' ? await runWeeklyReports(db, users, { localHour }) : null;
 
+		// Напоминания новичкам — тем же проходом и по той же причине. Параметр
+		// hour к ним не относится: окна у них свои, по местному времени
+		// каждого, а отметки в базе не дают отправить одно напоминание дважды,
+		// как бы часто планировщик ни вызывался.
+		const nudges = kind === 'summary' ? await runActivationNudges(db, users) : null;
+
 		// Попутная уборка: таблица счётчиков иначе копит по строке
 		// на каждый новый ключ и никогда не уменьшается.
 		await purgeExpiredRateLimits({ db });
 
-		return json({ ...result, kind, total: users.length, ...(weekly ? { weekly } : {}) });
+		return json({
+			...result,
+			kind,
+			total: users.length,
+			...(weekly ? { weekly } : {}),
+			...(nudges ? { nudges } : {})
+		});
 	} catch (error) {
 		logServerError('cron/daily', error);
 		return apiError('INTERNAL', 'Рассылка не выполнена', 500);
