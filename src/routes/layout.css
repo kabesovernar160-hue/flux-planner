@@ -3,9 +3,14 @@
 @import '@fontsource-variable/geist';
 @import '@fontsource-variable/geist-mono';
 
-/* Тема зафиксирована тёмной: Mini App не переключает режим.
-   Вариант dark: оставлен рабочим, чтобы компоненты shadcn-svelte
-   вели себя предсказуемо. */
+/* Две темы: тёмная (значения в :root) и светлая ([data-theme='light'] ниже).
+   Атрибут ставит скрипт в app.html до первой отрисовки, дальше за ним
+   следит $lib/theme. Класс .dark держится в паре с атрибутом, чтобы
+   вариант dark: у компонентов shadcn-svelte вёл себя предсказуемо.
+
+   Компоненты не знают, какая тема включена: они красятся только токенами.
+   Белый и чёрный напрямую не используются — вместо bg-white/[…] есть
+   bg-ink/[…], вместо text-void на залитой кнопке — text-on-accent. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
@@ -45,6 +50,22 @@
 	--fx-text: oklch(1 0 0); /* #FFFFFF  основной текст */
 	--fx-text-dim: oklch(0.7089 0.0144 286.03); /* #A0A0AA  вторичный текст */
 
+	/* «Чернила» для полупрозрачных подложек, волосков и граберов.
+	   В тёмной теме это белый поверх тёмного, в светлой — тёмный поверх
+	   светлого. Прозрачность задаётся на месте: bg-ink/[0.03]. */
+	--fx-ink: oklch(1 0 0);
+
+	/* Текст и иконки на залитой акцентом кнопке (лаванда, тон раздела).
+	   В тёмной теме заливка светлая и текст тёмный, в светлой — наоборот. */
+	--fx-on-accent: oklch(0.1605 0.0063 285.67);
+
+	/* Затемнение под шторкой. */
+	--fx-scrim: oklch(0.1605 0.0063 285.67 / 0.7);
+
+	/* Цвет системного хрома Telegram (шапка, фон под окном, нижняя полоса).
+	   HEX, потому что клиент Telegram принимает только его. Совпадает с --fx-void. */
+	--fx-chrome: #0d0d10;
+
 	/* ─────────────────────────────────────────────────────────────
 	   СЕМАНТИЧЕСКИЕ ТОКЕНЫ shadcn-svelte
 	   ВНИМАНИЕ: в словаре shadcn --accent это НЕ брендовый акцент,
@@ -63,9 +84,10 @@
 	--popover-foreground: var(--fx-text);
 
 	/* Тёмный текст на лаванде: белый даёт 2.78:1 и проваливает WCAG AA.
-	   Тёмный — 6.97:1. Не менять на белый. */
+	   Тёмный — 6.97:1. Не менять на белый. В светлой теме лаванда
+	   затемнена, и --fx-on-accent там белый: 6.0:1. */
 	--primary: var(--fx-lavender);
-	--primary-foreground: var(--fx-void);
+	--primary-foreground: var(--fx-on-accent);
 
 	--secondary: var(--fx-surface-2);
 	--secondary-foreground: var(--fx-text);
@@ -77,9 +99,9 @@
 	--accent-foreground: var(--fx-text);
 
 	--destructive: oklch(0.6625 0.1926 22.29); /* #F2555A */
-	--destructive-foreground: var(--fx-void);
+	--destructive-foreground: var(--fx-on-accent);
 	--success: oklch(0.7797 0.1536 161.64); /* #3ED598 */
-	--success-foreground: var(--fx-void);
+	--success-foreground: var(--fx-on-accent);
 
 	--border: var(--fx-line);
 	--input: var(--fx-line);
@@ -107,6 +129,23 @@
 	--fx-shadow-lift:
 		0 1px 2px oklch(0.12 0.008 286 / 0.5), 0 18px 40px -20px oklch(0.06 0.02 286 / 0.95);
 	--fx-shadow-accent: 0 12px 32px -16px oklch(0.7022 0.1527 293.82 / 0.45);
+	/* Тень круглой кнопки «+» над навигацией. */
+	--fx-shadow-fab: 0 10px 30px -8px oklch(0.7022 0.1527 293.82 / 0.6);
+
+	/* Блик по верхней кромке карточки и шторки. */
+	--fx-glass-edge: oklch(1 0 0 / 0.2);
+
+	/* Мягкое свечение под кольцом прогресса. */
+	--fx-ring-glow: oklch(0.7022 0.1527 293.82 / 0.13);
+
+	/* Фоновые пятна и зерно (ambient-backdrop). */
+	--fx-backdrop-1: oklch(0.7022 0.1527 293.82 / 0.16);
+	--fx-backdrop-2: oklch(0.8 0.115 68 / 0.07);
+	--fx-backdrop-3: oklch(0.7022 0.1527 293.82 / 0.08);
+	--fx-grain-opacity: 0.035;
+	--fx-grain-blend: overlay;
+
+	--fx-selection: oklch(0.7022 0.1527 293.82 / 0.28);
 
 	/* Одна кривая на весь проект. linear и ease-in-out не используются. */
 	--fx-ease: cubic-bezier(0.32, 0.72, 0, 1);
@@ -125,6 +164,84 @@
 	);
 	--fx-safe-left: var(--tg-safe-area-inset-left, 0px);
 	--fx-safe-right: var(--tg-safe-area-inset-right, 0px);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   СВЕТЛАЯ ТЕМА
+   Тот же характер, что у тёмной: спокойный фон с лёгким лавандовым
+   оттенком, белые карточки, мягкие тени без черноты.
+
+   Тоны разделов затемнены до ≥4.5:1 к белой карточке — ими пишут
+   подписи и рисуют иконки, а светлые варианты из тёмной темы на белом
+   давали 1.8–2.2:1. Оттенок (hue) сохранён, поэтому раздел узнаётся
+   по тому же цвету. Контраст к белому / к фону (--fx-void):
+     лаванда 6.0 / 5.5 · янтарь 5.1 / 4.7 · мята 5.5 / 5.0 · небо 5.5 / 5.0
+     вторичный текст 6.0 / 5.5 · основной 17.4 / 15.8
+   Лаванда стала тёмной, поэтому текст на ней белый (--fx-on-accent):
+   6.0:1 при пороге 4.5.
+   ───────────────────────────────────────────────────────────────── */
+:root[data-theme='light'] {
+	color-scheme: light;
+
+	--fx-void: oklch(0.968 0.007 290); /* #F4F4F9  фон */
+	--fx-surface: oklch(0.988 0.003 290); /* #FBFBFD  карточка, низ градиента */
+	--fx-surface-2: oklch(1 0 0); /* #FFFFFF  карточка, верх градиента */
+	--fx-line: oklch(0.9 0.008 290); /* #DEDDE3  граница */
+	--fx-line-strong: oklch(0.83 0.012 290); /* #C7C6CF  граница полей и кнопок */
+
+	--fx-lavender: oklch(0.52 0.19 293); /* #7149CA */
+	--fx-lavender-hi: oklch(0.565 0.18 294); /* #7F59D3  hover */
+	--fx-lavender-lo: oklch(0.46 0.2 292); /* #6032BB  press */
+
+	--fx-amber: oklch(0.545 0.125 62); /* #A25C01 */
+	--fx-mint: oklch(0.51 0.1 168); /* #0D785B */
+	--fx-sky: oklch(0.52 0.13 248); /* #166DAF */
+
+	--fx-text: oklch(0.22 0.02 285); /* #191924 */
+	--fx-text-dim: oklch(0.5 0.016 286); /* #62626C */
+
+	--fx-ink: oklch(0.3 0.04 288);
+	--fx-on-accent: oklch(1 0 0);
+	--fx-scrim: oklch(0.25 0.03 288 / 0.32);
+	--fx-chrome: #f4f4f9;
+
+	--destructive: oklch(0.54 0.2 25); /* #C9222B */
+	--success: oklch(0.52 0.13 160); /* #007F4E */
+
+	--chart-2: oklch(0.55 0.13 259);
+	--chart-3: oklch(0.52 0.13 160);
+	--chart-4: oklch(0.56 0.14 68);
+	--chart-5: oklch(0.54 0.2 25);
+
+	/* Стекло на светлом — это молочная пластина, а не тёмное стекло:
+	   белый с прозрачностью и волосок чуть темнее фона. */
+	--fx-glass-tint: oklch(1 0 0 / 0.74);
+	--fx-glass-tint-solid: oklch(1 0 0 / 0.96);
+	--fx-glass-hairline: oklch(0.3 0.04 288 / 0.08);
+	--fx-glass-highlight: oklch(1 0 0 / 0.9);
+	--fx-glass-edge: oklch(1 0 0 / 0.9);
+
+	/* Тени тонированы в лаванду и заметно слабее: на светлом фоне
+	   плотная тень читается как грязь так же, как чёрная на тёмном. */
+	--fx-shadow-flat:
+		0 1px 2px oklch(0.3 0.04 288 / 0.05), 0 8px 22px -14px oklch(0.3 0.06 288 / 0.16);
+	--fx-shadow-lift:
+		0 1px 2px oklch(0.3 0.04 288 / 0.06), 0 18px 36px -20px oklch(0.3 0.08 288 / 0.24);
+	--fx-shadow-accent: 0 12px 28px -16px oklch(0.52 0.19 293 / 0.45);
+	--fx-shadow-fab: 0 10px 24px -8px oklch(0.52 0.19 293 / 0.45);
+
+	--fx-ring-glow: oklch(0.7 0.15 294 / 0.12);
+
+	/* Пятна бледнее и мягче: на светлом фоне та же прозрачность
+	   давала бы грязно-сиреневые разводы. Зерно ложится через multiply,
+	   overlay на почти белом его просто не показывает. */
+	--fx-backdrop-1: oklch(0.75 0.13 294 / 0.16);
+	--fx-backdrop-2: oklch(0.85 0.1 70 / 0.16);
+	--fx-backdrop-3: oklch(0.8 0.1 200 / 0.08);
+	--fx-grain-opacity: 0.025;
+	--fx-grain-blend: multiply;
+
+	--fx-selection: oklch(0.52 0.19 293 / 0.2);
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -173,6 +290,9 @@
 	--color-mint: var(--fx-mint);
 	--color-amber: var(--fx-amber);
 	--color-sky: var(--fx-sky);
+	--color-ink: var(--fx-ink);
+	--color-on-accent: var(--fx-on-accent);
+	--color-scrim: var(--fx-scrim);
 
 	--font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 	/* Моно-начертание только для крупных цифр (аналитика, серии привычек):
@@ -236,11 +356,12 @@
 
 	/* Нативное синее выделение выбивается из палитры. */
 	::selection {
-		background-color: oklch(0.7022 0.1527 293.82 / 0.28);
+		background-color: var(--fx-selection);
 		color: var(--fx-text);
 	}
 
-	/* Кольцо фокуса лавандовое: 6.47:1 к карточке, выше порога 3:1 для UI. */
+	/* Кольцо фокуса лавандовое: 6.47:1 к карточке в тёмной теме и 5.8:1
+	   в светлой, выше порога 3:1 для UI. */
 	:focus-visible {
 		outline: 2px solid var(--ring);
 		outline-offset: 2px;
