@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import {
+	activationNudges,
 	dailyFinance,
 	dailyNutrition,
 	financeEntries,
@@ -65,7 +66,9 @@ export async function deleteAccountData(db: Db, userId: string): Promise<DeleteR
 			// Ссылка-приглашение удалённого аккаунта больше ничего не приносит.
 			// Сами приглашения остаются: по ним считается лимит и видно,
 			// кого уже приглашали, — личных данных в них нет.
-			referralCodes
+			referralCodes,
+			// Отметки напоминаний новичкам обезличенному аккаунту не нужны.
+			activationNudges
 		];
 
 		for (const table of tables) {

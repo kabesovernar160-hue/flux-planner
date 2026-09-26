@@ -290,5 +290,24 @@ export const MIGRATIONS: Migration[] = [
 			`CREATE UNIQUE INDEX IF NOT EXISTS referrals_invitee_key_idx ON referrals (invitee_key)`,
 			`CREATE INDEX IF NOT EXISTS referrals_inviter_idx ON referrals (inviter_id, status)`
 		]
+	},
+	{
+		// Напоминания новичкам без записей. Отметка ставится до отправки
+		// условным UPDATE: два одновременных вызова планировщика не пришлют
+		// одно и то же сообщение дважды. blocked_at — Telegram ответил 403,
+		// и писать этому человеку больше нельзя никогда.
+		// Номер 0009 занят параллельной веткой, поэтому здесь сразу 0010:
+		// шаги применяются по имени, и пропуск в нумерации им не мешает.
+		name: '0010_activation_nudges',
+		statements: [
+			`CREATE TABLE IF NOT EXISTS activation_nudges (
+				user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+				first_sent_at TEXT,
+				second_sent_at TEXT,
+				blocked_at TEXT,
+				created_at TEXT NOT NULL,
+				updated_at TEXT NOT NULL
+			)`
+		]
 	}
 ];

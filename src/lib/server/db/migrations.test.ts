@@ -33,7 +33,8 @@ describe('миграции', () => {
 			'pending_scans',
 			'rate_limits',
 			'referral_codes',
-			'referrals'
+			'referrals',
+			'activation_nudges'
 		]) {
 			expect(names).toContain(table);
 		}
@@ -69,7 +70,13 @@ describe('миграции', () => {
 			args: [stamp, stamp]
 		});
 
-		expect(await runMigrations(db)).toEqual(['0008_referrals']);
+		// Поверх рефералов ложатся и следующие шаги: важно, что 0008
+		// применился к живой базе, а не то, что он последний.
+		expect(await runMigrations(db)).toEqual(
+			MIGRATIONS.filter((migration) => migration.name >= '0008_referrals').map(
+				(migration) => migration.name
+			)
+		);
 
 		const users = await client.execute('SELECT id FROM users');
 		const subscription = await client.execute('SELECT expires_at FROM subscriptions');
