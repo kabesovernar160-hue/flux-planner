@@ -3,6 +3,7 @@
 		ArrowsClockwise,
 		BellSimple,
 		CaretRight,
+		ChartBar,
 		CloudCheck,
 		CloudSlash,
 		Database,
@@ -684,6 +685,27 @@
 	</GlassCard>
 
 	<CaptureCard />
+
+	<!--
+		Статистика владельца. Строка видна только тем, кого сервер при входе
+		назвал администратором; сам экран всё равно спрашивает сервер заново.
+	-->
+	{#if session.isAdmin}
+		<GlassCard href="/admin" padding="sm">
+			<div class="flex items-center gap-3">
+				<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+					<ChartBar size={15} weight="regular" class="text-tone" />
+				</span>
+				<span class="min-w-0 flex-1">
+					<span class="block text-sm font-medium">Статистика</span>
+					<span class="block text-xs text-muted-foreground">
+						Воронка, возвраты и источники рекламы
+					</span>
+				</span>
+				<CaretRight size={14} weight="light" class="shrink-0 text-muted-foreground" />
+			</div>
+		</GlassCard>
+	{/if}
 
 	<GlassCard>
 		<div class="mb-1 flex items-center gap-2">

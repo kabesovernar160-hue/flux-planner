@@ -310,7 +310,10 @@ export function buildStats(input: StatsInput): AdminStats {
 /* ───────────────────────── Чтение из базы ───────────────────────── */
 
 /** Любой клиент SQLite: libSQL в приложении и в скрипте. */
-export type QueryFn = (sql: string, args?: (string | number)[]) => Promise<Record<string, unknown>[]>;
+export type QueryFn = (
+	sql: string,
+	args?: (string | number)[]
+) => Promise<Record<string, unknown>[]>;
 
 const num = (value: unknown) => Number(value ?? 0) || 0;
 const str = (value: unknown) => (value === null || value === undefined ? null : String(value));
@@ -337,9 +340,7 @@ export async function collectStats(query: QueryFn, now: Date = new Date()): Prom
 		 WHERE ${notTest}`
 	);
 
-	const [excluded] = await query(
-		`SELECT count(*) AS n FROM users u WHERE ${testAccountSql('u')}`
-	);
+	const [excluded] = await query(`SELECT count(*) AS n FROM users u WHERE ${testAccountSql('u')}`);
 
 	// Pro — по тем же правилам, что resolveEntitlement: отменённая
 	// и возвращённая подписки не в счёт, истёкшая тоже.

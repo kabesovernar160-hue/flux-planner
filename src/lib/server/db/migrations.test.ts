@@ -105,7 +105,12 @@ describe('миграции', () => {
 		for (const id of ['active', 'invited', 'idle']) {
 			await client.execute({
 				sql: `INSERT INTO users (id, telegram_user_id, created_at, updated_at) VALUES (?, ?, ?, ?)`,
-				args: [id, `${id.length}23456789`, joined, id === 'active' ? '2026-09-08T09:00:00.000Z' : joined]
+				args: [
+					id,
+					`${id.length}23456789`,
+					joined,
+					id === 'active' ? '2026-09-08T09:00:00.000Z' : joined
+				]
 			});
 		}
 		await client.execute({

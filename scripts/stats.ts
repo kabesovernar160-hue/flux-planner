@@ -48,11 +48,9 @@ const stats = await collectStats(async (sql, args = []) => {
 	return result.rows as unknown as Record<string, unknown>[];
 });
 
-const percent = (value: Rate) =>
-	value.rate === null ? '—' : `${Math.round(value.rate * 100)}%`;
+const percent = (value: Rate) => (value.rate === null ? '—' : `${Math.round(value.rate * 100)}%`);
 const share = (value: Rate) => `${value.count}/${value.of} (${percent(value)})`;
-const bar = (value: Rate) =>
-	'█'.repeat(Math.round((value.rate ?? 0) * 24)).padEnd(24, '·');
+const bar = (value: Rate) => '█'.repeat(Math.round((value.rate ?? 0) * 24)).padEnd(24, '·');
 
 function funnelLines(title: string, funnel: Funnel) {
 	console.log(`\n${title}`);
