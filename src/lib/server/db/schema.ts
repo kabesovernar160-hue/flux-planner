@@ -416,6 +416,27 @@ export const referrals = sqliteTable(
 	]
 );
 
+/**
+ * Напоминания новичкам, которые так и не сделали первую запись.
+ *
+ * Строка на человека, а не на сообщение: напоминаний ровно два за всю
+ * жизнь аккаунта, и отметка каждого — отдельная колонка. Заводится лениво,
+ * при первой попытке отправки, поэтому у большинства пользователей её нет.
+ */
+export const activationNudges = sqliteTable('activation_nudges', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	/** Первое напоминание: через час после знакомства с ботом. */
+	firstSentAt: text('first_sent_at'),
+	/** Второе и последнее: на третий день. */
+	secondSentAt: text('second_sent_at'),
+	/** Telegram ответил 403 — бот заблокирован, больше не пишем. */
+	blockedAt: text('blocked_at'),
+	createdAt: text('created_at').notNull(),
+	updatedAt: text('updated_at').notNull()
+});
+
 export type UserRow = typeof users.$inferSelect;
 export type FoodEntryRow = typeof foodEntries.$inferSelect;
 export type HabitRow = typeof habits.$inferSelect;

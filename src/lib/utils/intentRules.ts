@@ -477,10 +477,15 @@ export function parseIntentByRules(text: string, options: RuleOptions = {}): Rul
 
 	const grams = gramsMatch ? toNumber(gramsMatch[1]) : undefined;
 
+	// «кофе 300 ₽» — валюта названа прямо, и это деньги, а не калории, даже
+	// без глагола «потратил». Так пишут в заметках, и так выглядит пример
+	// под приветствием бота: он обязан записаться тратой и без модели.
+	const namesCurrency = MONEY_WITH_UNIT.test(lower);
+
 	const isFood =
 		includesAny(lower, FOOD_VERBS) ||
 		calorieMatch !== null ||
-		(leadingCalories !== null && !includesAny(lower, EXPENSE_VERBS)) ||
+		(leadingCalories !== null && !includesAny(lower, EXPENSE_VERBS) && !namesCurrency) ||
 		(meal !== undefined && (gramsMatch !== null || calorieMatch !== null));
 
 	if (isFood) {
@@ -503,6 +508,11 @@ export function parseIntentByRules(text: string, options: RuleOptions = {}): Rul
 
 	if (includesAny(lower, INCOME_WORDS) && amount) {
 		return { kind: 'income', title: title || 'Доход', dayOffset, amount, confidence: 0.85 };
+	}
+
+	// Доход проверен выше: «зарплата 90 000 ₽» с валютой остаётся доходом.
+	if (namesCurrency && amount) {
+		return { kind: 'expense', title: title || 'Трата', dayOffset, amount, confidence: 0.75 };
 	}
 
 	const looksLikePlan =

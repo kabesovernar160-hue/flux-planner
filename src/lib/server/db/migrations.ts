@@ -383,5 +383,22 @@ export const MIGRATIONS: Migration[] = [
 				END`
 			)
 		]
+	},
+	{
+		// Напоминания новичкам без записей. Отметка ставится до отправки
+		// условным UPDATE: два одновременных вызова планировщика не пришлют
+		// одно и то же сообщение дважды. blocked_at — Telegram ответил 403,
+		// и писать этому человеку больше нельзя никогда.
+		name: '0010_activation_nudges',
+		statements: [
+			`CREATE TABLE IF NOT EXISTS activation_nudges (
+				user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+				first_sent_at TEXT,
+				second_sent_at TEXT,
+				blocked_at TEXT,
+				created_at TEXT NOT NULL,
+				updated_at TEXT NOT NULL
+			)`
+		]
 	}
 ];

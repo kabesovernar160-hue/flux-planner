@@ -7,7 +7,9 @@ import { getReadyDb } from '$lib/server/db/client';
 import { createRepositories, type Repositories } from '$lib/server/db/repositories';
 import { logServerError } from '$lib/server/errors';
 import { trackBotStart } from '$lib/server/activity/activity';
+import { hasAnyRecord } from '$lib/server/notifications/activationNudges';
 import { settleReferral } from '$lib/server/referrals/notify';
+import { referralInviteeKey, registerReferral } from '$lib/server/referrals/referrals';
 import {
 	answerCallbackQuery,
 	answerPreCheckoutQuery,
@@ -34,6 +36,8 @@ import { PLANS } from '$lib/billing/plans';
 import {
 	APP_URL_MISSING_TEXT,
 	confirmScanKeyboard,
+	exampleFromCallback,
+	FIRST_RECORD_LINE,
 	formatSavedMessage,
 	formatScanMessage,
 	HELP_TEXT,
@@ -43,7 +47,10 @@ import {
 	SUBSCRIPTION_CANCEL_FAILED_TEXT,
 	SUBSCRIPTION_NONE_TEXT,
 	subscriptionCancelledText,
-	WELCOME_TEXT
+	tryExamplesKeyboard,
+	WELCOME_TEXT,
+	withOpenDayButton,
+	type InlineKeyboard
 } from '$lib/server/telegram/botMessages';
 import type { FoodScanResult } from '$lib/types/nutrition';
 import { getToday, nowIso } from '$lib/utils/date';
@@ -122,18 +129,25 @@ function miniAppUrl(): string | undefined {
 async function resolveUser(telegramUserId: string, from: TelegramMessage['from']) {
 	const repositories = createRepositories(await getReadyDb());
 
+	const now = nowIso();
 	const user = await repositories.users.upsertFromTelegram({
 		id: createId(),
 		telegramUserId,
 		username: from?.username,
 		firstName: from?.first_name,
-		now: nowIso()
+		now
 	});
 
-	return { userId: user.id, timezone: user.timezone, repositories };
+	return {
+		userId: user.id,
+		timezone: user.timezone,
+		repositories,
+		// Строку завёл этот самый вызов: у давнего пользователя createdAt прежний.
+		isNew: user.createdAt === now
+	};
 }
 
-/** Приветствие с кнопкой запуска Mini App — то, ради чего бот и существует. */
+/** Приветствие с примерами и кнопкой запуска Mini App. */
 async function sendWelcome(chatId: number): Promise<void> {
 	const url = miniAppUrl();
 
@@ -145,7 +159,91 @@ async function sendWelcome(chatId: number): Promise<void> {
 		return;
 	}
 
-	await sendMessage(chatId, WELCOME_TEXT, { replyMarkup: miniAppKeyboard(url) });
+	await sendMessage(chatId, WELCOME_TEXT, { replyMarkup: tryExamplesKeyboard(url) });
+}
+
+/**
+ * /start и /app.
+ *
+ * Учётная запись заводится уже здесь, а не при первом открытии приложения:
+ * момент знакомства с ботом нужен напоминаниям новичкам, а треть новичков
+ * приложение так и не открывает — без строки в базе бот о них не знал бы.
+ *
+ * Раз пользователь теперь может появиться до приложения, приглашение из
+ * /start ref_<код> записывается здесь по тем же правилам, что и при входе
+ * в Mini App: только если строку завёл этот самый вызов. Прочие метки
+ * (/start tiktok) ни на что не влияют.
+ *
+ * Сбой базы не должен стоить человеку приветствия: оно уходит в любом случае.
+ */
+async function handleStart(
+	text: string,
+	chatId: number,
+	fromId: number,
+	from: TelegramMessage['from']
+) {
+	try {
+		const { userId, isNew } = await resolveUser(String(fromId), from);
+		const payload = text.split(/\s+/)[1];
+		const botToken = env.TELEGRAM_BOT_TOKEN?.trim();
+
+		if (isNew && payload && botToken) {
+			await registerReferral(await getReadyDb(), {
+				inviteeId: userId,
+				inviteeKey: referralInviteeKey(String(fromId), botToken),
+				startParam: payload,
+				isNewUser: true
+			});
+		}
+	} catch (error) {
+		logServerError('telegram/start', error);
+	}
+
+	// Источник для воронки — после приглашения, а не до: trackBotStart тоже
+	// заводит строку, и вызванный первым он сделал бы человека «не новым»,
+	// а приглашение по /start ref_… перестало бы засчитываться.
+	await trackBotStart(fromId, from, text);
+
+	await sendWelcome(chatId);
+}
+
+/**
+ * Ответ на запись из чата, с поправкой на самую первую.
+ *
+ * Первая запись — момент, когда человек понял, как это работает. Самое
+ * время показать, где она живёт: одна строка и кнопка «Открыть мой день».
+ * К остальным записям это не добавляется — повторяющаяся реклама
+ * приложения под каждым «450 борщ» быстро станет шумом.
+ */
+async function replyRecorded(
+	chatId: number,
+	text: string,
+	keyboard: InlineKeyboard | undefined,
+	firstRecord: boolean
+): Promise<void> {
+	if (!firstRecord) {
+		await sendMessage(chatId, text, keyboard ? { replyMarkup: keyboard } : {});
+		return;
+	}
+
+	await sendMessage(chatId, `${text}\n\n${FIRST_RECORD_LINE}`, {
+		replyMarkup: withOpenDayButton(keyboard, miniAppUrl())
+	});
+}
+
+/**
+ * Первая ли это будет запись.
+ *
+ * Спрашивается до записи: после неё ответ всегда «нет». Ошибка проверки
+ * не мешает записи — просто ответ выйдет обычным.
+ */
+async function isFirstRecord(userId: string): Promise<boolean> {
+	try {
+		return !(await hasAnyRecord(await getReadyDb(), userId));
+	} catch (error) {
+		logServerError('telegram/first-record', error);
+		return false;
+	}
 }
 
 async function saveScan(
@@ -292,6 +390,18 @@ async function handleCallback(query: TelegramCallbackQuery): Promise<void> {
 
 	if (!query.id || !chatId || !fromId) return;
 
+	const example = exampleFromCallback(query.data);
+	if (example !== null) {
+		// Пример под приветствием или напоминанием: записывается ровно так,
+		// как если бы человек набрал этот текст сам, — тем же разбором.
+		// На нажатие отвечаем сразу: разбор моделью занимает секунды,
+		// а индикатор на кнопке крутится, пока ответа нет.
+		await answerCallbackQuery(query.id);
+		const { userId, timezone, repositories } = await resolveUser(String(fromId), query.from);
+		await handleFreeText(example, chatId, userId, timezone, repositories);
+		return;
+	}
+
 	if (parts[0] === 'done') {
 		const [, , id] = parts;
 		const { userId, timezone, repositories } = await resolveUser(String(fromId), query.from);
@@ -342,11 +452,12 @@ async function handleCallback(query: TelegramCallbackQuery): Promise<void> {
 		return;
 	}
 
+	const firstRecord = await isFirstRecord(userId);
 	await saveScan(repositories, userId, timezone, payload);
 	await settleReferral(await getReadyDb(), userId);
 	await answerCallbackQuery(query.id, 'Записал');
 	if (messageId) await editMessageReplyMarkup(chatId, messageId);
-	await sendMessage(chatId, formatSavedMessage(payload));
+	await replyRecorded(chatId, formatSavedMessage(payload), undefined, firstRecord);
 }
 
 /**
@@ -474,6 +585,7 @@ async function handleFreeText(
 	timezone: string,
 	repositories: Repositories
 ): Promise<void> {
+	const firstRecord = await isFirstRecord(userId);
 	const intent = await resolveIntentProvider().parseIntent(text);
 	let applied = await applyIntent(intent, { repositories, userId, timezone });
 
@@ -501,9 +613,12 @@ async function handleFreeText(
 		buttons.unshift({ text: '✅ Готово', callback_data: `done:plan:${applied.id}` });
 	}
 
-	await sendMessage(chatId, `Записал. ${describeApplied(applied)}`, {
-		replyMarkup: { inline_keyboard: [buttons] }
-	});
+	await replyRecorded(
+		chatId,
+		`Записал. ${describeApplied(applied)}`,
+		{ inline_keyboard: [buttons] },
+		firstRecord
+	);
 }
 
 /**
@@ -530,6 +645,7 @@ async function saveWeight(
 
 	const timestamp = nowIso();
 	const rounded = weightKg;
+	const firstRecord = await isFirstRecord(userId);
 
 	await repositories.weight.upsertMany(userId, [
 		{
@@ -542,7 +658,7 @@ async function saveWeight(
 		} as never
 	]);
 
-	await sendMessage(chatId, `Записал вес: ${formatWeight(rounded)} кг.`);
+	await replyRecorded(chatId, `Записал вес: ${formatWeight(rounded)} кг.`, undefined, firstRecord);
 }
 
 /**
@@ -593,10 +709,9 @@ async function handleMessage(message: TelegramMessage, chatId: number, fromId: n
 	const text = (message.text ?? message.caption ?? '').trim();
 	const name = command(text);
 
-	// Приветствие не требует ни базы, ни распознавания: отвечаем сразу.
+	// Приветствие не требует распознавания: отвечаем сразу.
 	if (name === '/start' || name === '/app') {
-		await trackBotStart(fromId, message.from, text);
-		await sendWelcome(chatId);
+		await handleStart(text, chatId, fromId, message.from);
 		return;
 	}
 

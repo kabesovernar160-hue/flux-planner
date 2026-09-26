@@ -41,7 +41,8 @@ const TABLES = [
 	'payments',
 	'capture_tokens',
 	'referral_codes',
-	'referrals'
+	'referrals',
+	'activation_nudges'
 ];
 
 /**
