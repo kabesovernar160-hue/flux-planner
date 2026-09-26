@@ -30,17 +30,24 @@
 	}
 </script>
 
+<!--
+	Подпись и переключатель в одну строку не помещались: «Как в Telegram»
+	на ширине телефона наезжало на подпись. Переключатель — во всю ширину
+	под ней, варианты делят её поровну.
+-->
 <GlassCard padding="sm">
-	<div class="flex items-center gap-3 px-1.5">
-		<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
-			<Palette size={15} weight="regular" class="text-tone" />
-		</span>
-		<span id="theme-label" class="min-w-0 flex-1 text-sm font-medium">Тема</span>
+	<div class="flex flex-col gap-2.5 px-1.5">
+		<div class="flex items-center gap-2">
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+				<Palette size={15} weight="regular" class="text-tone" />
+			</span>
+			<span id="theme-label" class="min-w-0 flex-1 text-sm font-medium">Тема</span>
+		</div>
 
 		<div
 			role="radiogroup"
 			aria-labelledby="theme-label"
-			class="flex shrink-0 gap-0.5 rounded-full border border-line-strong p-0.5"
+			class="flex gap-0.5 rounded-full border border-line-strong p-0.5"
 		>
 			{#each OPTIONS as option (option.value)}
 				{@const active = option.value === current}
@@ -49,7 +56,7 @@
 					role="radio"
 					aria-checked={active}
 					onclick={() => choose(option.value)}
-					class="rounded-full px-2.5 py-1.5 text-xs whitespace-nowrap
+					class="flex-1 rounded-full px-2 py-1.5 text-xs whitespace-nowrap
 					       transition-[background-color,color,transform] duration-400 ease-flux active:scale-95
 					       {active ? 'bg-tone/12 font-medium text-tone' : 'text-muted-foreground'}"
 				>

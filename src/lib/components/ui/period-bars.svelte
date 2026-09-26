@@ -66,7 +66,7 @@
 				height={revealed ? barHeight : 0}
 				rx={Math.min(3, barWidth / 2)}
 				class={over ? 'fill-destructive/80' : 'fill-tone/85'}
-				style="transition: y 0.7s var(--fx-ease) {index * 18}ms, height 0.7s var(--fx-ease) {index *
+				style="fill-opacity: var(--fx-chart-fill); transition: y 0.7s var(--fx-ease) {index * 18}ms, height 0.7s var(--fx-ease) {index *
 					18}ms;"
 			/>
 		{/each}
