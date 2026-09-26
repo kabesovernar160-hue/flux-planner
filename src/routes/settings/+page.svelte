@@ -20,6 +20,7 @@
 	import CaptureCard from '$lib/components/capture/capture-card.svelte';
 	import InviteCard from '$lib/components/referrals/invite-card.svelte';
 	import OnboardingFlow from '$lib/components/onboarding/onboarding-flow.svelte';
+	import ThemeRow from '$lib/components/settings/theme-row.svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import { syncQueue } from '$lib/db/syncQueue.svelte';
@@ -512,6 +513,8 @@
 			</p>
 		{/if}
 	</GlassCard>
+
+	<ThemeRow />
 
 	<SubscriptionCard />
 

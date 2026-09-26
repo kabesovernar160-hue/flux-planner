@@ -21,8 +21,21 @@
 	import { ui } from '$lib/state/ui.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { telegram } from '$lib/telegram';
+	import { theme } from '$lib/theme';
 
 	let { children } = $props();
+
+	/**
+	 * Выбор темы из настроек — только после гидратации.
+	 *
+	 * До неё в сторе значения по умолчанию, где темы нет, и «как в Telegram»
+	 * перебило бы выбранную тему, которую скрипт в app.html уже поставил
+	 * по кешу: экран мигнул бы.
+	 */
+	$effect(() => {
+		if (plannerStore.status === 'idle' || plannerStore.status === 'hydrating') return;
+		theme.setPreference(plannerStore.doc.settings.theme);
+	});
 
 	/**
 	 * Что открыть сразу после запуска.
@@ -124,6 +137,8 @@
 			// init() возвращает функцию отписки — иначе обработчики Telegram
 			// копились бы при каждом HMR-обновлении.
 			const disposeTelegram = telegram.init();
+			// После Telegram: тема окружения зависит от того, встроены ли мы в клиент.
+			const disposeTheme = theme.init();
 
 			// Вход на сервере: подпись initData проверяется там, и только после
 			// ответа пользователь считается авторизованным. Ждать этого интерфейсу
@@ -171,6 +186,7 @@
 
 			return () => {
 				disposeTelegram();
+				disposeTheme();
 				unsubscribe();
 				syncQueue.dispose();
 				plannerStore.dispose();
