@@ -290,5 +290,98 @@ export const MIGRATIONS: Migration[] = [
 			`CREATE UNIQUE INDEX IF NOT EXISTS referrals_invitee_key_idx ON referrals (invitee_key)`,
 			`CREATE INDEX IF NOT EXISTS referrals_inviter_idx ON referrals (inviter_id, status)`
 		]
+	},
+	{
+		// Воронка активации: откуда пришёл, открыл ли приложение, сделал ли
+		// первую запись, вернулся ли. Колонки в users, а не отдельная таблица:
+		// каждая — один факт на человека, который ставится один раз.
+		name: '0009_activity',
+		statements: [
+			`ALTER TABLE users ADD COLUMN source TEXT`,
+			`ALTER TABLE users ADD COLUMN app_opened_at TEXT`,
+			`ALTER TABLE users ADD COLUMN first_record_at TEXT`,
+
+			// День, а не каждый вход: для возврата на первый и седьмой день
+			// больше не нужно, а таблица растёт не быстрее, чем число
+			// активных людей на число дней. WITHOUT ROWID — ключ и есть данные.
+			`CREATE TABLE IF NOT EXISTS user_activity (
+				user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				date TEXT NOT NULL,
+				PRIMARY KEY (user_id, date)
+			) WITHOUT ROWID`,
+
+			// Задним числом — то, что выводится из уже накопленного.
+			//
+			// Источник: приглашённых видно по referrals, про остальных до этой
+			// миграции ничего не записывалось. 'unknown', а не пусто: пустое
+			// значение приложение заполнило бы при следующем входе, и давний
+			// пользователь вдруг оказался бы «пришедшим напрямую» сегодня.
+			`UPDATE users SET source = CASE
+				WHEN EXISTS (SELECT 1 FROM referrals r WHERE r.invitee_id = users.id) THEN 'referral'
+				ELSE 'unknown'
+			END
+			WHERE source IS NULL`,
+
+			// Открытие приложения. До этой миграции /start строку не заводил:
+			// она появлялась при входе в Mini App или при сообщении боту,
+			// и второе — редкость. Поэтому момент заведения и есть первое
+			// открытие, с малой погрешностью в пользу воронки.
+			`UPDATE users SET app_opened_at = created_at WHERE app_opened_at IS NULL`,
+
+			// Первая запись — самая ранняя строка любого вида, но не раньше
+			// заведения пользователя: восстановленный из файла дневник несёт
+			// старые даты, а сделан был сегодня. max() с NULL даёт NULL —
+			// у кого записей нет, у того и отметки нет.
+			`UPDATE users SET first_record_at = (
+				SELECT max(users.created_at, min(t.created_at)) FROM (
+					SELECT created_at FROM food_entries WHERE user_id = users.id
+					UNION ALL SELECT created_at FROM habits WHERE user_id = users.id
+					UNION ALL SELECT created_at FROM finance_entries WHERE user_id = users.id
+					UNION ALL SELECT created_at FROM plan_items WHERE user_id = users.id
+					UNION ALL SELECT created_at FROM weight_entries WHERE user_id = users.id
+				) t
+			)
+			WHERE first_record_at IS NULL`,
+
+			// Дни присутствия: день заведения, день последнего входа и дни,
+			// когда появлялись записи. Это приближение — запись могла прийти
+			// и от бота, — но без него возврат по старым когортам был бы нулём,
+			// а это заведомо неправда. Даты до заведения и из будущего
+			// (сбитые часы телефона) отбрасываются.
+			`INSERT OR IGNORE INTO user_activity (user_id, date)
+			SELECT d.user_id, d.day FROM (
+				SELECT id AS user_id, substr(created_at, 1, 10) AS day FROM users
+				UNION SELECT id, substr(updated_at, 1, 10) FROM users
+				UNION SELECT user_id, substr(created_at, 1, 10) FROM food_entries
+				UNION SELECT user_id, substr(created_at, 1, 10) FROM habits
+				UNION SELECT user_id, substr(created_at, 1, 10) FROM habit_completions
+				UNION SELECT user_id, substr(created_at, 1, 10) FROM finance_entries
+				UNION SELECT user_id, substr(created_at, 1, 10) FROM plan_items
+				UNION SELECT user_id, substr(created_at, 1, 10) FROM weight_entries
+				UNION SELECT user_id, substr(created_at, 1, 10) FROM daily_nutrition
+				UNION SELECT user_id, substr(created_at, 1, 10) FROM daily_finance
+			) d
+			JOIN users u ON u.id = d.user_id
+			WHERE d.day >= substr(u.created_at, 1, 10) AND d.day <= date('now')`,
+
+			// Первая запись отмечается триггером, а не кодом эндпоинтов.
+			// Писать в дневник умеют синхронизация, бот, быстрая запись
+			// и ассистент, и завтра появится ещё кто-то: условие в каждом из них
+			// рано или поздно забыли бы. Триггер срабатывает только на вставку
+			// живой строки, а после первой записи UPDATE по первичному ключу
+			// с условием IS NULL ничего не меняет — это доли микросекунды.
+			// Время — момент записи на сервере, а не createdAt с телефона:
+			// часы клиента могут врать, а восстановление из файла — нести
+			// даты годичной давности.
+			...['food_entries', 'habits', 'finance_entries', 'plan_items', 'weight_entries'].map(
+				(table) => `CREATE TRIGGER IF NOT EXISTS ${table}_first_record
+				AFTER INSERT ON ${table}
+				WHEN NEW.deleted_at IS NULL
+				BEGIN
+					UPDATE users SET first_record_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+					WHERE id = NEW.user_id AND first_record_at IS NULL;
+				END`
+			)
+		]
 	}
 ];

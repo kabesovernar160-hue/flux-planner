@@ -1,4 +1,12 @@
-import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import {
+	index,
+	integer,
+	primaryKey,
+	real,
+	sqliteTable,
+	text,
+	uniqueIndex
+} from 'drizzle-orm/sqlite-core';
 
 /**
  * Схема серверной базы.
@@ -22,9 +30,37 @@ export const users = sqliteTable(
 		firstName: text('first_name'),
 		timezone: text('timezone').notNull().default('UTC'),
 		createdAt: text('created_at').notNull(),
-		updatedAt: text('updated_at').notNull()
+		updatedAt: text('updated_at').notNull(),
+		/**
+		 * Откуда человек пришёл впервые: метка рекламы, referral или direct.
+		 * Пишется один раз и не перезаписывается — иначе вторая ссылка
+		 * присвоила бы себе человека, которого привела первая.
+		 */
+		source: text('source'),
+		/** Первое открытие Mini App. Пусто у тех, кто нажал /start и не дошёл до приложения. */
+		appOpenedAt: text('app_opened_at'),
+		/** Первая запись любого вида. Ставит триггер в базе — см. миграцию 0009. */
+		firstRecordAt: text('first_record_at')
 	},
 	(table) => [uniqueIndex('users_telegram_id_idx').on(table.telegramUserId)]
+);
+
+/**
+ * Дни, в которые человек открывал приложение.
+ *
+ * Одна строка на пользователя и день (UTC): из неё считается возврат на
+ * следующий день и через неделю. Хранится день, а не каждый вход — таблица
+ * растёт не быстрее числа активных пользователей на число дней.
+ */
+export const userActivity = sqliteTable(
+	'user_activity',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		date: text('date').notNull()
+	},
+	(table) => [primaryKey({ columns: [table.userId, table.date] })]
 );
 
 /** Singleton-документ пользователя: настройки и версия схемы. */
@@ -395,3 +431,4 @@ export type ReferralRow = typeof referrals.$inferSelect;
 export type RateLimitRow = typeof rateLimits.$inferSelect;
 export type SubscriptionRow = typeof subscriptions.$inferSelect;
 export type PaymentRow = typeof payments.$inferSelect;
+export type UserActivityRow = typeof userActivity.$inferSelect;
