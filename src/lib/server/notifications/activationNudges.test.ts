@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { anonymousTelegramId } from '../account/deleteAccount';
 import { createTestDb, type Db } from '../db/client';
 import { createRepositories } from '../db/repositories';
 import { activationNudges, users as usersTable, type UserRow } from '../db/schema';
-import { BotApiError } from '../telegram/botApi';
-import { FIRST_NUDGE_TEXT, SECOND_NUDGE_TEXT } from '../telegram/botMessages';
+import { BotApiError, type SendMessageOptions } from '../telegram/botApi';
+import { FIRST_NUDGE_TEXT, SECOND_NUDGE_TEXT, type InlineKeyboard } from '../telegram/botMessages';
 import {
 	claimNudge,
 	hasAnyRecord,
@@ -102,8 +102,8 @@ describe('когда какое напоминание', () => {
 
 describe('проход планировщика', () => {
 	let db: Db;
-	let send: ReturnType<typeof vi.fn>;
-	let sleep: ReturnType<typeof vi.fn>;
+	let send: Mock<(chatId: string, text: string, options: SendMessageOptions) => Promise<void>>;
+	let sleep: Mock<(ms: number) => Promise<void>>;
 
 	beforeEach(async () => {
 		db = await createTestDb();
@@ -157,10 +157,8 @@ describe('проход планировщика', () => {
 		expect(result.sent).toBe(1);
 		expect(send).toHaveBeenCalledWith('100', FIRST_NUDGE_TEXT, expect.anything());
 
-		const markup = send.mock.calls[0][2].replyMarkup;
-		const callbacks = markup.inline_keyboard
-			.flat()
-			.map((b: { callback_data?: string }) => b.callback_data);
+		const markup = send.mock.calls[0][2].replyMarkup as InlineKeyboard;
+		const callbacks = markup.inline_keyboard.flat().map((button) => button.callback_data);
 		expect(callbacks).toContain('try:0');
 	});
 
