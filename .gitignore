@@ -34,3 +34,6 @@ promo/out
 /test-results
 /playwright-report
 /blob-report
+
+# Рабочие копии фоновых агентов
+.claude/worktrees/
