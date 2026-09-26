@@ -28,6 +28,11 @@ class SessionState {
 	status = $state<SessionStatus>('idle');
 	user = $state<SessionUser | null>(null);
 	error = $state<string | null>(null);
+	/**
+	 * Показывать ли строку «Статистика». Это подсказка интерфейсу,
+	 * а не доступ: сервер отвечает на /api/admin/stats по своему списку.
+	 */
+	isAdmin = $state(false);
 
 	/**
 	 * Известно ли, что сервер помнит об этом человеке.
@@ -91,8 +96,10 @@ class SessionState {
 			const payload = (await response.json()) as {
 				user: SessionUser;
 				state?: { settings: unknown; settingsUpdatedAt: string | null } | null;
+				admin?: boolean;
 			};
 			this.user = payload.user;
+			this.isAdmin = payload.admin === true;
 			this.status = 'authenticated';
 
 			await this.#restoreSettings(payload.state);
