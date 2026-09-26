@@ -254,7 +254,7 @@
 		<ul class="mb-3 flex flex-col gap-1.5">
 			{#each items as item (item.id)}
 				{@const Icon = ICONS[item.kind]}
-				<li class="flex items-center gap-3 rounded-xl border border-line/70 bg-white/[0.02] p-3">
+				<li class="flex items-center gap-3 rounded-xl border border-line/70 bg-ink/[0.02] p-3">
 					<button
 						type="button"
 						onclick={() => toggle(item.id)}
@@ -266,7 +266,7 @@
 						       {item.done ? 'border-lavender bg-lavender' : 'border-line-strong'}"
 					>
 						{#if item.done}
-							<CheckCircle size={13} weight="bold" class="text-void" />
+							<CheckCircle size={13} weight="bold" class="text-on-accent" />
 						{/if}
 					</button>
 
@@ -320,7 +320,7 @@
 			autocomplete="off"
 			{placeholder}
 			disabled={busy}
-			class="min-w-0 flex-1 rounded-full border border-line-strong bg-white/[0.03] px-4 py-2.5
+			class="min-w-0 flex-1 rounded-full border border-line-strong bg-ink/[0.03] px-4 py-2.5
 			       text-sm transition-colors duration-300 ease-flux outline-none
 			       placeholder:text-muted-foreground/50 focus:border-lavender disabled:opacity-60"
 		/>
@@ -328,7 +328,7 @@
 			type="submit"
 			disabled={busy || draft.trim().length === 0}
 			aria-label="Добавить в план"
-			class="grid size-10 shrink-0 place-items-center rounded-full bg-lavender text-void
+			class="grid size-10 shrink-0 place-items-center rounded-full bg-lavender text-on-accent
 			       shadow-accent transition-transform duration-500 ease-flux active:scale-90
 			       disabled:pointer-events-none disabled:opacity-40"
 		>

@@ -45,7 +45,7 @@
 			<button
 				type="button"
 				onclick={option.open}
-				class="flex items-center gap-3.5 rounded-card border border-line/70 bg-white/[0.02] p-4
+				class="flex items-center gap-3.5 rounded-card border border-line/70 bg-ink/[0.02] p-4
 				       text-left transition-[transform,border-color] duration-500 ease-flux
 				       hover:border-line-strong active:scale-[0.98]"
 			>

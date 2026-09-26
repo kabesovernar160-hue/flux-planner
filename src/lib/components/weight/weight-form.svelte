@@ -108,7 +108,7 @@
 			autocomplete="off"
 			placeholder="78,4"
 			aria-invalid={Boolean(error)}
-			class="tabular min-w-0 flex-1 rounded-xl border bg-white/[0.03] px-3 py-3 text-center
+			class="tabular min-w-0 flex-1 rounded-xl border bg-ink/[0.03] px-3 py-3 text-center
 			       text-2xl font-semibold transition-colors duration-300 ease-flux outline-none
 			       placeholder:text-muted-foreground/40 focus:border-lavender
 			       {error ? 'border-destructive' : 'border-line-strong'}"
@@ -150,7 +150,7 @@
 		{/if}
 		<button
 			type="submit"
-			class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-void
+			class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-on-accent
 			       shadow-accent transition-transform duration-500 ease-flux
 			       hover:bg-lavender-hi active:scale-[0.98]"
 		>
@@ -164,7 +164,7 @@
 			цифры, к которым нет доверия. Предложение появляется только когда
 			разница заметна, и пересчёт идёт по кнопке, а не молча.
 		-->
-		<div class="mt-4 rounded-xl border border-line/70 bg-white/[0.02] p-3">
+		<div class="mt-4 rounded-xl border border-line/70 bg-ink/[0.02] p-3">
 			<p class="text-xs leading-relaxed text-muted-foreground">
 				В анкете {formatWeight(plannerStore.doc.settings.profile?.weightKg ?? 0)} кг, на весах
 				{formatWeight(plannerStore.latestWeight?.weightKg ?? 0)} кг. Цели считаются от веса — пересчитать?

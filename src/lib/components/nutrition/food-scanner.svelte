@@ -136,7 +136,7 @@
 	const LEVEL_CLASS: Record<string, string> = {
 		high: 'bg-success/12 text-success',
 		medium: 'bg-lavender/12 text-lavender',
-		low: 'bg-white/[0.06] text-muted-foreground'
+		low: 'bg-ink/[0.06] text-muted-foreground'
 	};
 
 	/**
@@ -398,7 +398,7 @@
 
 			{#if !scanAvailable}
 				<p
-					class="mb-4 rounded-card border border-line/70 bg-white/[0.02] p-3.5 text-xs
+					class="mb-4 rounded-card border border-line/70 bg-ink/[0.02] p-3.5 text-xs
 				          leading-relaxed text-muted-foreground"
 				>
 					Распознавание по фото работает внутри Telegram: снимок обрабатывается на сервере, а вход
@@ -409,7 +409,7 @@
 					type="button"
 					onclick={() => cameraInput?.click()}
 					class="flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-3
-					       text-sm font-medium text-void shadow-accent transition-transform duration-500
+					       text-sm font-medium text-on-accent shadow-accent transition-transform duration-500
 					       ease-flux hover:bg-lavender-hi active:scale-[0.98]"
 				>
 					<Camera size={17} weight="light" />
@@ -497,7 +497,7 @@
 					<button
 						type="button"
 						onclick={analyze}
-						class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-void
+						class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-on-accent
 						       shadow-accent transition-transform duration-500 ease-flux
 						       hover:bg-lavender-hi active:scale-[0.98]"
 					>
@@ -532,7 +532,7 @@
 						href="/settings"
 						onclick={handleClose}
 						class="flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-3
-						       text-sm font-medium text-void shadow-accent transition-transform duration-500
+						       text-sm font-medium text-on-accent shadow-accent transition-transform duration-500
 						       ease-flux active:scale-[0.98]"
 					>
 						<Star size={15} weight="fill" />
@@ -559,7 +559,7 @@
 						reset();
 						stage = 'manual';
 					}}
-					class="mt-2 w-full rounded-full bg-lavender py-3 text-sm font-medium text-void
+					class="mt-2 w-full rounded-full bg-lavender py-3 text-sm font-medium text-on-accent
 					       shadow-accent transition-transform duration-500 ease-flux
 					       hover:bg-lavender-hi active:scale-[0.98]"
 				>
@@ -591,7 +591,7 @@
 					Порция всего блюда: степпер по шагам и сами шаги рядом —
 					видно, куда двигаешься, и можно прыгнуть сразу на ×2.
 				-->
-				<div class="tone-amber mt-4 rounded-card border border-line/70 bg-white/[0.02] p-3.5">
+				<div class="tone-amber mt-4 rounded-card border border-line/70 bg-ink/[0.02] p-3.5">
 					<div class="flex items-center gap-2">
 						<p class="flex-1 text-xs text-muted-foreground">Порция</p>
 						<p class="tabular text-xs">
@@ -649,7 +649,7 @@
 					<MealPicker value={meal} onpick={(next) => (meal = next)} />
 				</div>
 
-				<div class="mt-5 rounded-card border border-line/70 bg-white/[0.02] p-4">
+				<div class="mt-5 rounded-card border border-line/70 bg-ink/[0.02] p-4">
 					<p class="tabular text-4xl leading-none font-semibold tracking-tight">
 						{formatNumber(totals.calories)}
 						<span class="text-base font-normal text-muted-foreground">ккал</span>
@@ -657,7 +657,7 @@
 
 					<div class="mt-3.5 grid grid-cols-3 gap-2">
 						{#each [['Белки', totals.protein], ['Жиры', totals.fat], ['Углеводы', totals.carbs]] as [label, value] (label)}
-							<div class="rounded-xl bg-white/[0.03] px-2 py-2.5 text-center">
+							<div class="rounded-xl bg-ink/[0.03] px-2 py-2.5 text-center">
 								<p class="text-[11px] text-muted-foreground">{label}</p>
 								<p class="tabular mt-0.5 text-sm font-medium">{formatMacro(value as number)} г</p>
 							</div>
@@ -679,7 +679,7 @@
 						onclick={confirm}
 						disabled={selected.length === 0}
 						class="flex flex-[1.4] items-center justify-center gap-2 rounded-full bg-lavender py-3
-						       text-sm font-medium text-void shadow-accent transition-transform duration-500
+						       text-sm font-medium text-on-accent shadow-accent transition-transform duration-500
 						       ease-flux hover:bg-lavender-hi active:scale-[0.98]"
 					>
 						<Check size={16} weight="bold" />

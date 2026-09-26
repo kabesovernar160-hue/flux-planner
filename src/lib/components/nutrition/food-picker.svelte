@@ -77,7 +77,7 @@
 			type="text"
 			autocomplete="off"
 			placeholder="Овсянка, курица, банан…"
-			class="w-full rounded-xl border border-line-strong bg-white/[0.03] py-2.5 pr-3 pl-9
+			class="w-full rounded-xl border border-line-strong bg-ink/[0.03] py-2.5 pr-3 pl-9
 			       text-sm transition-colors duration-300 ease-flux outline-none
 			       placeholder:text-muted-foreground/50 focus:border-lavender"
 		/>
@@ -94,7 +94,7 @@
 							type="button"
 							onclick={() => repeat(food)}
 							class="flex w-full items-center gap-3 rounded-xl border border-lavender/30
-							       bg-white/[0.02] px-3 py-2.5 text-left transition-[transform,border-color]
+							       bg-ink/[0.02] px-3 py-2.5 text-left transition-[transform,border-color]
 							       duration-500 ease-flux hover:border-lavender/60 active:scale-[0.98]"
 						>
 							<span class="min-w-0 flex-1 truncate text-sm">{food.name}</span>
@@ -130,7 +130,7 @@
 							type="button"
 							onclick={() => pick(food)}
 							class="flex w-full items-center gap-3 rounded-xl border border-line/70
-							       bg-white/[0.02] px-3 py-2.5 text-left transition-[transform,border-color]
+							       bg-ink/[0.02] px-3 py-2.5 text-left transition-[transform,border-color]
 							       duration-500 ease-flux hover:border-lavender/60 active:scale-[0.98]"
 						>
 							<span class="min-w-0 flex-1 truncate text-sm">{food.name}</span>

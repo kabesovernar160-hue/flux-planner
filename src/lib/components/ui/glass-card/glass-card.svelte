@@ -103,7 +103,7 @@
 	<span
 		aria-hidden="true"
 		class="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent
-		       via-white/20 to-transparent"
+		       via-[var(--fx-glass-edge)] to-transparent"
 	></span>
 
 	{#if tone}
@@ -149,7 +149,7 @@
 		onclick={isInteractive ? handleClick : undefined}
 		class={cn(
 			'group relative block w-full rounded-[1.75rem] p-1.5 text-left',
-			'border border-white/[0.04] bg-white/[0.02]',
+			'border border-ink/[0.04] bg-ink/[0.02]',
 			'transition-transform duration-500 ease-flux',
 			isInteractive && 'active:scale-[0.985]',
 			toneClass,

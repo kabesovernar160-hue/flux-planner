@@ -117,7 +117,7 @@
 	}
 
 	const FIELD =
-		'w-full rounded-xl border bg-white/[0.03] px-3 py-2.5 text-sm outline-none ' +
+		'w-full rounded-xl border bg-ink/[0.03] px-3 py-2.5 text-sm outline-none ' +
 		'transition-colors duration-300 ease-flux placeholder:text-muted-foreground/50 ' +
 		'focus:border-lavender';
 </script>
@@ -182,7 +182,7 @@
 					type="button"
 					onclick={() => next('body')}
 					class="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-3.5
-					       text-sm font-medium text-void shadow-accent transition-transform duration-500
+					       text-sm font-medium text-on-accent shadow-accent transition-transform duration-500
 					       ease-flux active:scale-[0.98]"
 				>
 					Посчитать цели
@@ -213,7 +213,7 @@
 						}}
 						aria-pressed={sex === value}
 						class="flex-1 rounded-full py-2.5 text-xs font-medium transition-colors duration-300
-						       ease-flux {sex === value ? 'bg-lavender text-void' : 'text-muted-foreground'}"
+						       ease-flux {sex === value ? 'bg-lavender text-on-accent' : 'text-muted-foreground'}"
 					>
 						{label}
 					</button>
@@ -238,7 +238,7 @@
 				<button
 					type="button"
 					onclick={goToActivity}
-					class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-void
+					class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-on-accent
 					       shadow-accent transition-transform duration-500 ease-flux active:scale-[0.98]"
 				>
 					Дальше
@@ -261,7 +261,7 @@
 						       transition-[transform,border-color] duration-500 ease-flux active:scale-[0.98]
 						       {activity === value
 							? 'border-lavender bg-lavender/[0.08]'
-							: 'border-line/70 bg-white/[0.02]'}"
+							: 'border-line/70 bg-ink/[0.02]'}"
 					>
 						<span
 							class="grid size-4 shrink-0 place-items-center rounded-full border
@@ -293,7 +293,7 @@
 						       duration-500 ease-flux active:scale-95
 						       {goal === value
 							? 'border-lavender bg-lavender/12 text-lavender'
-							: 'border-line/70 bg-white/[0.02] text-muted-foreground'}"
+							: 'border-line/70 bg-ink/[0.02] text-muted-foreground'}"
 					>
 						{option.title}
 					</button>
@@ -312,7 +312,7 @@
 				<button
 					type="button"
 					onclick={() => next('result')}
-					class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-void
+					class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-on-accent
 					       shadow-accent transition-transform duration-500 ease-flux active:scale-[0.98]"
 				>
 					Показать цели
@@ -328,7 +328,7 @@
 				десятую часть, поэтому цели всегда можно поправить в настройках.
 			</p>
 
-			<div class="mt-5 rounded-card border border-line/70 bg-white/[0.02] p-4">
+			<div class="mt-5 rounded-card border border-line/70 bg-ink/[0.02] p-4">
 				<p class="tabular text-4xl leading-none font-semibold tracking-tight">
 					{formatNumber(preview.calorieGoal)}
 					<span class="text-base font-normal text-muted-foreground">ккал в день</span>
@@ -339,7 +339,7 @@
 
 				<div class="mt-4 grid grid-cols-3 gap-2">
 					{#each [['Белки', preview.proteinGoal], ['Жиры', preview.fatGoal], ['Углеводы', preview.carbsGoal]] as [label, value] (label)}
-						<div class="rounded-xl bg-white/[0.03] px-2 py-2.5 text-center">
+						<div class="rounded-xl bg-ink/[0.03] px-2 py-2.5 text-center">
 							<p class="text-[11px] text-muted-foreground">{label}</p>
 							<p class="tabular mt-0.5 text-sm font-medium">{value} г</p>
 						</div>
@@ -364,7 +364,7 @@
 					type="button"
 					onclick={apply}
 					class="flex flex-[1.4] items-center justify-center gap-2 rounded-full bg-lavender py-3
-					       text-sm font-medium text-void shadow-accent transition-transform duration-500
+					       text-sm font-medium text-on-accent shadow-accent transition-transform duration-500
 					       ease-flux active:scale-[0.98]"
 				>
 					<Check size={16} weight="bold" />

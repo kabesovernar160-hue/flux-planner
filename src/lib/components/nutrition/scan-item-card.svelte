@@ -76,7 +76,7 @@
 </script>
 
 <div
-	class="rounded-card border border-line/70 bg-white/[0.02] p-3.5 transition-opacity duration-400
+	class="rounded-card border border-line/70 bg-ink/[0.02] p-3.5 transition-opacity duration-400
 	       ease-flux {selected ? '' : 'opacity-50'}"
 >
 	<div class="flex items-start gap-3">
@@ -89,7 +89,7 @@
 				onclick={ontoggle}
 				class="tone-amber mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border
 				       transition-[background-color,border-color] duration-400 ease-flux
-				       {selected ? 'border-tone bg-tone text-void' : 'border-line-strong'}"
+				       {selected ? 'border-tone bg-tone text-on-accent' : 'border-line-strong'}"
 			>
 				{#if selected}<Check size={12} weight="bold" />{/if}
 			</button>
@@ -133,7 +133,7 @@
 				oninput={(event) => onNameInput(event.currentTarget.value)}
 				type="text"
 				autocomplete="off"
-				class="mt-1.5 w-full rounded-xl border border-line-strong bg-white/[0.03] px-3 py-2.5
+				class="mt-1.5 w-full rounded-xl border border-line-strong bg-ink/[0.03] px-3 py-2.5
 				       text-sm transition-colors duration-300 ease-flux outline-none focus:border-lavender"
 			/>
 
@@ -157,7 +157,7 @@
 					type="text"
 					inputmode="numeric"
 					autocomplete="off"
-					class="tabular min-w-0 flex-1 rounded-xl border border-line-strong bg-white/[0.03]
+					class="tabular min-w-0 flex-1 rounded-xl border border-line-strong bg-ink/[0.03]
 					       px-3 py-2.5 text-center text-sm transition-colors duration-300 ease-flux
 					       outline-none focus:border-lavender"
 				/>
@@ -176,7 +176,7 @@
 			<!-- Пересчёт мгновенный: пользователь видит цену своей правки сразу. -->
 			<div class="tabular mt-3 grid grid-cols-4 gap-1.5 text-center text-[11px]">
 				{#each [['Ккал', formatNumber(item.calories)], ['Б', formatMacro(item.protein)], ['Ж', formatMacro(item.fat)], ['У', formatMacro(item.carbs)]] as [label, value] (label)}
-					<div class="rounded-lg bg-white/[0.03] px-1 py-1.5">
+					<div class="rounded-lg bg-ink/[0.03] px-1 py-1.5">
 						<p class="text-muted-foreground">{label}</p>
 						<p class="mt-0.5 font-medium">{value}</p>
 					</div>

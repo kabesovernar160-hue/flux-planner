@@ -37,7 +37,7 @@
 		</h2>
 		<span
 			class="rounded-full px-2.5 py-1 text-[11px]
-			       {billing.isPro ? 'bg-lavender/12 text-lavender' : 'bg-white/[0.06] text-muted-foreground'}"
+			       {billing.isPro ? 'bg-lavender/12 text-lavender' : 'bg-ink/[0.06] text-muted-foreground'}"
 		>
 			{billing.isPro ? 'активна' : free.title}
 		</span>
@@ -54,7 +54,7 @@
 				узнать о лимите в момент, когда очень нужно распознать обед, —
 				худший момент из возможных.
 			-->
-			<div class="mb-4 rounded-card border border-line/70 bg-white/[0.02] p-3.5">
+			<div class="mb-4 rounded-card border border-line/70 bg-ink/[0.02] p-3.5">
 				<div class="flex items-baseline gap-2">
 					<p class="tabular text-2xl leading-none font-semibold">
 						{scans.remaining}
@@ -106,7 +106,7 @@
 				}}
 				disabled={billing.purchase === 'creating' || billing.purchase === 'awaiting'}
 				class="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-3
-				       text-sm font-medium text-void shadow-accent transition-transform duration-500
+				       text-sm font-medium text-on-accent shadow-accent transition-transform duration-500
 				       ease-flux hover:bg-lavender-hi active:scale-[0.98]
 				       disabled:pointer-events-none disabled:opacity-60"
 			>

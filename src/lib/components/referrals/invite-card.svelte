@@ -53,11 +53,11 @@
 		</p>
 	{:else if referral.status !== 'ready' || !referral.link}
 		<!-- Заглушка той же высоты, что и ссылка: экран не прыгает, когда она приходит. -->
-		<div class="mt-2 h-10 animate-pulse rounded-xl bg-white/[0.04]" aria-hidden="true"></div>
+		<div class="mt-2 h-10 animate-pulse rounded-xl bg-ink/[0.04]" aria-hidden="true"></div>
 	{:else}
 		<p
 			data-selectable
-			class="mt-2 truncate rounded-xl border border-line/70 bg-white/[0.03] px-3 py-2.5 text-xs
+			class="mt-2 truncate rounded-xl border border-line/70 bg-ink/[0.03] px-3 py-2.5 text-xs
 			       text-foreground/90"
 		>
 			{referral.link}
@@ -68,7 +68,7 @@
 				type="button"
 				onclick={() => referral.link && shareInvite(referral.link)}
 				class="flex items-center justify-center gap-2 rounded-full bg-lavender py-2.5 text-sm
-				       font-medium text-void shadow-accent transition-transform duration-500 ease-flux
+				       font-medium text-on-accent shadow-accent transition-transform duration-500 ease-flux
 				       hover:bg-lavender-hi active:scale-[0.98]"
 			>
 				<ShareFat size={15} weight="fill" />

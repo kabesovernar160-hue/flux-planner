@@ -61,7 +61,7 @@
 					aria-label={habit.name}
 					class="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left
 					       transition-[background-color,border-color] duration-400 ease-flux active:scale-[0.97]
-					       {checked ? 'border-tone/50 bg-tone/15' : 'border-line/70 bg-white/[0.02]'}"
+					       {checked ? 'border-tone/50 bg-tone/15' : 'border-line/70 bg-ink/[0.02]'}"
 				>
 					<Icon
 						size={16}

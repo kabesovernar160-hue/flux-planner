@@ -24,10 +24,10 @@
 	onclick={handle}
 	aria-label={label}
 	class="group flex w-full items-center gap-3 rounded-full bg-lavender py-2.5 pr-5 pl-2.5
-	       text-void shadow-accent transition-transform duration-500 ease-flux
+	       text-on-accent shadow-accent transition-transform duration-500 ease-flux
 	       hover:bg-lavender-hi active:scale-[0.98]"
 >
-	<span class="relative grid size-10 shrink-0 place-items-center rounded-full bg-void/12">
+	<span class="relative grid size-10 shrink-0 place-items-center rounded-full bg-on-accent/12">
 		<!-- Рамка видоискателя. На наведении расходится наружу — жест «навожусь на кадр». -->
 		<svg
 			viewBox="0 0 40 40"

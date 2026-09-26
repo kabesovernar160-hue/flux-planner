@@ -54,7 +54,7 @@
 			viewBox="0 0 24 24"
 			class="relative size-4"
 			fill="none"
-			stroke="var(--fx-void)"
+			stroke="var(--fx-on-accent)"
 			stroke-width="3"
 			stroke-linecap="round"
 			stroke-linejoin="round"

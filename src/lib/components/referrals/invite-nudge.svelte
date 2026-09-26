@@ -73,7 +73,7 @@
 					type="button"
 					onclick={share}
 					aria-label="Поделиться приглашением"
-					class="grid size-9 shrink-0 place-items-center rounded-full bg-lavender text-void
+					class="grid size-9 shrink-0 place-items-center rounded-full bg-lavender text-on-accent
 					       transition-transform duration-500 ease-flux active:scale-90"
 				>
 					<ShareFat size={15} weight="fill" />

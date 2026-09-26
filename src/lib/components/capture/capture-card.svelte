@@ -123,7 +123,7 @@
 					type="button"
 					onclick={() => copy(token ?? '')}
 					class="flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-2.5
-					       text-xs font-medium text-void transition-transform duration-500 ease-flux
+					       text-xs font-medium text-on-accent transition-transform duration-500 ease-flux
 					       active:scale-[0.98]"
 				>
 					<Copy size={13} weight="light" />

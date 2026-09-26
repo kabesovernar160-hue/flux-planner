@@ -86,7 +86,7 @@
 	<div
 		class="flex shrink-0 items-center gap-1.5 rounded-full border border-lavender/25
 		       bg-lavender/12 py-1.5 pr-3 pl-2.5"
-		style="box-shadow: 0 0 22px -6px oklch(0.7022 0.1527 293.82 / 0.55);"
+		style="box-shadow: 0 0 22px -6px color-mix(in oklch, var(--fx-lavender) 55%, transparent);"
 		title="{streak} {pluralDays(streak)} подряд"
 	>
 		<Flame size={15} weight="fill" class="text-lavender" />
@@ -108,9 +108,9 @@
 			onclick={() => telegram.haptic.impact('light')}
 			class="flex flex-col items-center gap-1 rounded-xl py-2 transition-colors duration-400
 			       ease-flux active:scale-95
-			       {isCurrentDay ? 'bg-lavender text-void' : 'hover:bg-white/[0.03]'}"
+			       {isCurrentDay ? 'bg-lavender text-on-accent' : 'hover:bg-ink/[0.03]'}"
 		>
-			<span class="text-[10px] {isCurrentDay ? 'text-void/70' : 'text-muted-foreground'}">
+			<span class="text-[10px] {isCurrentDay ? 'text-on-accent/70' : 'text-muted-foreground'}">
 				{WEEKDAY_LETTERS[index]}
 			</span>
 			<span class="tabular text-xs font-medium {isCurrentDay ? '' : 'text-foreground'}">
@@ -118,13 +118,13 @@
 			</span>
 			<span class="flex h-1 items-center gap-0.5" aria-hidden="true">
 				{#if activity.calories > 0}
-					<span class="size-1 rounded-full {isCurrentDay ? 'bg-void/60' : 'bg-amber'}"></span>
+					<span class="size-1 rounded-full {isCurrentDay ? 'bg-on-accent/60' : 'bg-amber'}"></span>
 				{/if}
 				{#if activity.habitsDone > 0}
-					<span class="size-1 rounded-full {isCurrentDay ? 'bg-void/60' : 'bg-mint'}"></span>
+					<span class="size-1 rounded-full {isCurrentDay ? 'bg-on-accent/60' : 'bg-mint'}"></span>
 				{/if}
 				{#if activity.spent > 0}
-					<span class="size-1 rounded-full {isCurrentDay ? 'bg-void/60' : 'bg-sky'}"></span>
+					<span class="size-1 rounded-full {isCurrentDay ? 'bg-on-accent/60' : 'bg-sky'}"></span>
 				{/if}
 			</span>
 		</a>
