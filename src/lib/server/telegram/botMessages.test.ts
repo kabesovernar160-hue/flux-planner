@@ -2,7 +2,16 @@ import { describe, expect, it } from 'vitest';
 import type { FoodScanResult } from '$lib/types/nutrition';
 import {
 	confirmScanKeyboard,
+	exampleFromCallback,
+	FIRST_NUDGE_TEXT,
+	FIRST_RECORD_LINE,
 	formatSavedMessage,
+	OPEN_DAY_BUTTON,
+	SECOND_NUDGE_TEXT,
+	TRY_EXAMPLES,
+	tryExampleCallback,
+	tryExamplesKeyboard,
+	withOpenDayButton,
 	formatScanMessage,
 	isValidMiniAppUrl,
 	miniAppKeyboard,
@@ -45,17 +54,86 @@ const result: FoodScanResult = {
 };
 
 describe('приветствие', () => {
-	it('называет приложение и зовёт его открыть', () => {
+	it('зовёт попробовать прямо здесь, не открывая приложение', () => {
 		expect(WELCOME_TEXT).toContain('Flux Planner');
-		expect(WELCOME_TEXT).toContain('Откройте приложение');
+		expect(WELCOME_TEXT).toContain('не открывая приложение');
+		expect(WELCOME_TEXT).toContain('пример ниже');
 	});
 
 	it('показывает все три способа записи', () => {
 		// Приветствие — единственное место, где человек узнаёт про фото
 		// и про фразу. Потеряется способ в тексте — потеряется и в голове.
-		expect(WELCOME_TEXT).toContain('фото');
-		expect(WELCOME_TEXT).toContain('фраза');
+		expect(WELCOME_TEXT).toContain('фото еды');
+		expect(WELCOME_TEXT).toContain('фразу');
 		expect(WELCOME_TEXT).toContain('голосом');
+	});
+
+	it('без восклицательных знаков', () => {
+		expect(WELCOME_TEXT).not.toContain('!');
+	});
+});
+
+describe('примеры под приветствием', () => {
+	const url = 'https://flux.example.com';
+
+	it('каждая кнопка возвращает ровно свой текст', () => {
+		const buttons = tryExamplesKeyboard(url).inline_keyboard.flat();
+		const examples = buttons
+			.filter((button) => button.callback_data)
+			.map((button) => exampleFromCallback(button.callback_data));
+
+		expect(examples).toEqual([...TRY_EXAMPLES]);
+	});
+
+	it('примеры разного вида: еда, трата, дело', () => {
+		expect(TRY_EXAMPLES).toEqual(['450 борщ', 'кофе 300 ₽', 'зарядка в 8:00']);
+	});
+
+	it('callback_data укладывается в 64 байта Telegram', () => {
+		for (const [index] of TRY_EXAMPLES.entries()) {
+			expect(new TextEncoder().encode(tryExampleCallback(index)).length).toBeLessThanOrEqual(64);
+		}
+	});
+
+	it('кнопка приложения остаётся последней строкой', () => {
+		const rows = tryExamplesKeyboard(url).inline_keyboard;
+		expect(rows.at(-1)).toEqual([{ text: OPEN_APP_BUTTON, web_app: { url } }]);
+	});
+
+	it('без рабочего адреса примеры остаются, кнопки приложения нет', () => {
+		const buttons = tryExamplesKeyboard('http://insecure').inline_keyboard.flat();
+		expect(buttons.some((button) => button.web_app)).toBe(false);
+		expect(buttons).toHaveLength(TRY_EXAMPLES.length);
+	});
+
+	it('чужие и выдуманные callback_data не превращаются в запись', () => {
+		expect(exampleFromCallback('try:9')).toBeNull();
+		expect(exampleFromCallback('try:-1')).toBeNull();
+		expect(exampleFromCallback('try:0 DROP')).toBeNull();
+		expect(exampleFromCallback('scan:save:1')).toBeNull();
+		expect(exampleFromCallback(undefined)).toBeNull();
+	});
+});
+
+describe('первая запись из чата', () => {
+	it('добавляет «Открыть мой день» под существующими кнопками', () => {
+		const undo = { text: '✖️ Отменить', callback_data: 'undo:food:1' };
+		const keyboard = withOpenDayButton({ inline_keyboard: [[undo]] }, 'https://flux.example.com');
+
+		expect(keyboard?.inline_keyboard).toEqual([
+			[undo],
+			[{ text: OPEN_DAY_BUTTON, web_app: { url: 'https://flux.example.com' } }]
+		]);
+	});
+
+	it('без адреса приложения клавиатура не меняется', () => {
+		expect(withOpenDayButton(undefined, undefined)).toBeUndefined();
+	});
+
+	it('строка про первую запись и напоминания — без нажима', () => {
+		for (const text of [FIRST_RECORD_LINE, FIRST_NUDGE_TEXT, SECOND_NUDGE_TEXT]) {
+			expect(text).not.toContain('!');
+		}
 	});
 });
 
