@@ -98,7 +98,7 @@
 	-->
 	{#if plannerStore.dailyIncome > 0}
 		<div
-			class="mt-3 flex items-center gap-2 rounded-xl border border-line/70 bg-white/[0.02] px-3 py-2.5"
+			class="mt-3 flex items-center gap-2 rounded-xl border border-line/70 bg-ink/[0.02] px-3 py-2.5"
 		>
 			<ArrowDown size={14} weight="bold" class="shrink-0 text-success" />
 			<span class="min-w-0 flex-1 text-xs text-muted-foreground">Доход сегодня</span>
@@ -123,7 +123,7 @@
 				type="button"
 				onclick={() => pickCategory(category.id)}
 				aria-label="{category.title}: потрачено {money(amount)}"
-				class="flex shrink-0 items-center gap-1.5 rounded-full border border-line/70 bg-white/[0.02]
+				class="flex shrink-0 items-center gap-1.5 rounded-full border border-line/70 bg-ink/[0.02]
 				       py-2 pr-3.5 pl-2.5 transition-[transform,border-color] duration-500 ease-flux
 				       hover:border-line-strong active:scale-[0.97]"
 			>

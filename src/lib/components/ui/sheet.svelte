@@ -57,7 +57,7 @@
 			type="button"
 			aria-label="Закрыть"
 			onclick={close}
-			class="absolute inset-0 bg-void/70 backdrop-blur-sm"
+			class="absolute inset-0 bg-scrim backdrop-blur-sm"
 		></button>
 
 		<div
@@ -74,12 +74,12 @@
 			<span
 				aria-hidden="true"
 				class="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r
-				       from-transparent via-white/20 to-transparent"
+				       from-transparent via-[var(--fx-glass-edge)] to-transparent"
 			></span>
 
 			<!-- Грабер: подсказывает, что шторку можно закрыть свайпом вниз. -->
 			<div class="flex justify-center pt-2.5" aria-hidden="true">
-				<span class="h-1 w-9 rounded-full bg-white/15"></span>
+				<span class="h-1 w-9 rounded-full bg-ink/15"></span>
 			</div>
 
 			<header class="flex items-center gap-3 px-5 pt-3 pb-3">
@@ -88,7 +88,7 @@
 					type="button"
 					onclick={close}
 					aria-label="Закрыть"
-					class="grid size-8 shrink-0 place-items-center rounded-full bg-white/[0.06]
+					class="grid size-8 shrink-0 place-items-center rounded-full bg-ink/[0.06]
 					       transition-transform duration-500 ease-flux active:scale-90"
 				>
 					<X size={15} weight="light" />

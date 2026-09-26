@@ -37,7 +37,7 @@
 	     blur здесь стоил бы перерисовки на каждом кадре анимации. -->
 	<div
 		class="pointer-events-none absolute inset-3 rounded-full"
-		style="background: radial-gradient(circle, oklch(0.7022 0.1527 293.82 / 0.13), transparent 68%);"
+		style="background: radial-gradient(circle, var(--fx-ring-glow), transparent 68%);"
 	></div>
 
 	<svg

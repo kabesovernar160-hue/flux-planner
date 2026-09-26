@@ -8,8 +8,18 @@ import type {
 	TelegramWebApp
 } from './types';
 
-/** Цвет системного хрома Telegram. Должен совпадать с --fx-void. */
-const CHROME_COLOR = '#0D0D10';
+/**
+ * Цвет системного хрома Telegram по умолчанию — тёмный фон.
+ * Настоящее значение берётся из токена --fx-chrome текущей темы.
+ */
+const FALLBACK_CHROME_COLOR = '#0D0D10';
+
+/** HEX фона текущей темы: тот, что Telegram покажет в шапке и под окном. */
+function readChromeColor(): string {
+	if (!browser) return FALLBACK_CHROME_COLOR;
+	const value = getComputedStyle(document.documentElement).getPropertyValue('--fx-chrome').trim();
+	return /^#[0-9a-f]{6}$/i.test(value) ? value : FALLBACK_CHROME_COLOR;
+}
 
 function getWebApp(): TelegramWebApp | null {
 	if (!browser) return null;
@@ -47,11 +57,53 @@ class TelegramSession {
 	}
 
 	/**
-	 * Тема клиента. Приложение остаётся тёмным в любом случае — значение нужно
-	 * тем местам, где мы отдаём цвет системному хрому Telegram.
+	 * Тема клиента Telegram, реактивно.
+	 *
+	 * Свойство WebApp.colorScheme обычное, а не реактивное: без копии
+	 * в $state смена темы в клиенте не доходила бы до интерфейса.
+	 * Обновляется по событию themeChanged. Какую тему показывать,
+	 * решает $lib/theme — там же учитывается выбор в настройках.
 	 */
+	#colorScheme = $state<'light' | 'dark'>('dark');
+
 	get colorScheme(): 'light' | 'dark' {
-		return this.webApp?.colorScheme ?? 'dark';
+		return this.#colorScheme;
+	}
+
+	/** Цвет шапки, фона под окном и нижней полосы клиента. */
+	#chromeColor: string | null = null;
+
+	/**
+	 * Покрасить системный хром Telegram в фон приложения.
+	 *
+	 * Шапка и полоса под окном рисуются клиентом, а не нами: без этого
+	 * при смене темы они оставались бы прежнего цвета, и окно выглядело бы
+	 * склеенным из двух приложений. Методы появились в разных версиях
+	 * Bot API, поэтому каждый вызывается через проверку версии.
+	 */
+	setChromeColor(color: string): void {
+		this.#chromeColor = color;
+
+		const wa = getWebApp();
+		if (!wa || !this.isEmbedded) return;
+
+		const atLeast = (version: string): boolean => {
+			try {
+				return wa.isVersionAtLeast(version);
+			} catch {
+				return false;
+			}
+		};
+
+		try {
+			if (atLeast('6.1')) {
+				wa.setHeaderColor?.(color);
+				wa.setBackgroundColor?.(color);
+			}
+			if (atLeast('7.10')) wa.setBottomBarColor?.(color);
+		} catch {
+			/* старый клиент: хром останется своего цвета, это не ломает сценарий */
+		}
 	}
 
 	get themeParams(): TelegramThemeParams {
@@ -227,17 +279,16 @@ class TelegramSession {
 			}
 		};
 
-		if (atLeast('6.1')) {
-			wa.setHeaderColor?.(CHROME_COLOR);
-			wa.setBackgroundColor?.(CHROME_COLOR);
-		}
+		this.setChromeColor(this.#chromeColor ?? readChromeColor());
 		if (atLeast('7.7')) {
 			// Без этого свайп по вертикали внутри списка закрывает Mini App.
 			wa.disableVerticalSwipes?.();
 		}
-		if (atLeast('7.10')) {
-			wa.setBottomBarColor?.(CHROME_COLOR);
-		}
+
+		const syncColorScheme = () => {
+			this.#colorScheme = wa.colorScheme === 'light' ? 'light' : 'dark';
+		};
+		syncColorScheme();
 
 		const syncViewport = () => {
 			this.viewportHeight = wa.viewportStableHeight || wa.viewportHeight || 0;
@@ -265,6 +316,7 @@ class TelegramSession {
 		wa.onEvent('viewportChanged', syncViewport);
 		wa.onEvent('safeAreaChanged', syncInsets);
 		wa.onEvent('contentSafeAreaChanged', syncInsets);
+		wa.onEvent('themeChanged', syncColorScheme);
 
 		this.isReady = true;
 
@@ -272,6 +324,7 @@ class TelegramSession {
 			wa.offEvent('viewportChanged', syncViewport);
 			wa.offEvent('safeAreaChanged', syncInsets);
 			wa.offEvent('contentSafeAreaChanged', syncInsets);
+			wa.offEvent('themeChanged', syncColorScheme);
 		};
 	}
 }

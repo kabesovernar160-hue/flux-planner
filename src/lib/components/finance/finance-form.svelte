@@ -135,7 +135,7 @@
 	}
 
 	const FIELD =
-		'w-full rounded-xl border bg-white/[0.03] px-3 py-2.5 text-sm outline-none ' +
+		'w-full rounded-xl border bg-ink/[0.03] px-3 py-2.5 text-sm outline-none ' +
 		'transition-colors duration-300 ease-flux placeholder:text-muted-foreground/50 ' +
 		'focus:border-lavender';
 </script>
@@ -151,8 +151,8 @@
 				class="flex-1 rounded-full py-2 text-xs font-medium transition-colors duration-300 ease-flux
 				       {type === value
 					? value === 'income'
-						? 'bg-success text-void'
-						: 'bg-lavender text-void'
+						? 'bg-success text-on-accent'
+						: 'bg-lavender text-on-accent'
 					: 'text-muted-foreground'}"
 			>
 				{label}
@@ -260,7 +260,7 @@
 		{/if}
 		<button
 			type="submit"
-			class="flex-[1.4] rounded-full py-3 text-sm font-medium text-void shadow-accent
+			class="flex-[1.4] rounded-full py-3 text-sm font-medium text-on-accent shadow-accent
 			       transition-transform duration-500 ease-flux active:scale-[0.98]
 			       {type === 'income' ? 'bg-success hover:brightness-110' : 'bg-lavender hover:bg-lavender-hi'}"
 		>

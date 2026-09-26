@@ -112,7 +112,7 @@
 		autocomplete="off"
 		placeholder="Зарядка"
 		aria-invalid={Boolean(errors.name)}
-		class="mt-1.5 w-full rounded-xl border bg-white/[0.03] px-3 py-2.5 text-sm transition-colors
+		class="mt-1.5 w-full rounded-xl border bg-ink/[0.03] px-3 py-2.5 text-sm transition-colors
 		       duration-300 ease-flux outline-none placeholder:text-muted-foreground/50
 		       focus:border-lavender {errors.name ? 'border-destructive' : 'border-line-strong'}"
 	/>
@@ -137,7 +137,7 @@
 				       duration-500 ease-flux active:scale-90
 				       {icon === key
 					? 'border-lavender bg-lavender/12 text-lavender'
-					: 'border-line/70 bg-white/[0.02] text-muted-foreground'}"
+					: 'border-line/70 bg-ink/[0.02] text-muted-foreground'}"
 			>
 				<Icon size={18} weight="light" />
 			</button>
@@ -158,7 +158,7 @@
 				       transition-[transform,border-color] duration-500 ease-flux active:scale-[0.98]
 				       {frequency === option.id
 					? 'border-lavender bg-lavender/[0.08]'
-					: 'border-line/70 bg-white/[0.02]'}"
+					: 'border-line/70 bg-ink/[0.02]'}"
 			>
 				<span
 					class="grid size-4 shrink-0 place-items-center rounded-full border
@@ -187,7 +187,7 @@
 					       duration-500 ease-flux active:scale-90
 					       {targetDays.includes(day)
 						? 'border-lavender bg-lavender/12 text-lavender'
-						: 'border-line/70 bg-white/[0.02] text-muted-foreground'}"
+						: 'border-line/70 bg-ink/[0.02] text-muted-foreground'}"
 				>
 					{label}
 				</button>
@@ -211,7 +211,7 @@
 		{/if}
 		<button
 			type="submit"
-			class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-void
+			class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-on-accent
 			       shadow-accent transition-transform duration-500 ease-flux
 			       hover:bg-lavender-hi active:scale-[0.98]"
 		>

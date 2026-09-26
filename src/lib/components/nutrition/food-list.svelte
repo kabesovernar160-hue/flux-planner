@@ -69,7 +69,7 @@
 					экрана удобнее двух кружков, а место под кнопками уходит
 					на цифры, которые без него переносились на вторую строку.
 				-->
-				<li class="flex items-center rounded-xl border border-line/70 bg-white/[0.02]">
+				<li class="flex items-center rounded-xl border border-line/70 bg-ink/[0.02]">
 					<button
 						type="button"
 						onclick={() => {

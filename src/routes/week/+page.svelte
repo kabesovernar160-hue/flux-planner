@@ -95,7 +95,7 @@
 			или плохо, зависит от цели человека, а не от знака.
 		-->
 		<span
-			class="tabular shrink-0 rounded-full bg-white/[0.05] px-2 py-0.5 text-[11px] text-muted-foreground"
+			class="tabular shrink-0 rounded-full bg-ink/[0.05] px-2 py-0.5 text-[11px] text-muted-foreground"
 			title="К прошлой неделе"
 		>
 			{label.arrow}
@@ -119,7 +119,7 @@
 
 <!-- Переключатель недель: неделя — единица отчёта, поэтому листается целиком. -->
 <div
-	class="fx-rise mb-4 flex items-center gap-2 rounded-full border border-line/70 bg-white/[0.02] p-1"
+	class="fx-rise mb-4 flex items-center gap-2 rounded-full border border-line/70 bg-ink/[0.02] p-1"
 	style="--fx-step: 0;"
 >
 	<button
@@ -165,7 +165,7 @@
 						type="button"
 						onclick={() => ui.openCreateSheet()}
 						class="mt-5 flex items-center gap-2 rounded-full bg-lavender px-5 py-2.5 text-sm
-						       font-medium text-void shadow-accent transition-transform duration-500 ease-flux
+						       font-medium text-on-accent shadow-accent transition-transform duration-500 ease-flux
 						       active:scale-[0.98]"
 					>
 						<Plus size={15} weight="bold" />
@@ -216,7 +216,7 @@
 					type="button"
 					onclick={() => shareWeek(report)}
 					class="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-2.5
-					       text-sm font-medium text-void shadow-accent transition-transform duration-500
+					       text-sm font-medium text-on-accent shadow-accent transition-transform duration-500
 					       ease-flux hover:bg-lavender-hi active:scale-[0.98]"
 				>
 					<ShareFat size={15} weight="fill" />
@@ -259,7 +259,7 @@
 					{@render sectionTitle(CheckCircle, 'Привычки')}
 					{#if previousHabitsPercent !== null && habitsPercent !== null}
 						<span
-							class="tabular shrink-0 rounded-full bg-white/[0.05] px-2 py-0.5 text-[11px] text-muted-foreground"
+							class="tabular shrink-0 rounded-full bg-ink/[0.05] px-2 py-0.5 text-[11px] text-muted-foreground"
 						>
 							было {previousHabitsPercent} %
 						</span>

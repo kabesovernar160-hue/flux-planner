@@ -158,7 +158,7 @@
 
 <PageHeader title="Аналитика" subtitle="Записей за период: {trackedDays}" />
 
-<div class="mb-4 flex gap-1.5 rounded-full border border-line/70 bg-white/[0.02] p-1">
+<div class="mb-4 flex gap-1.5 rounded-full border border-line/70 bg-ink/[0.02] p-1">
 	{#each PERIODS as period (period.days)}
 		<button
 			type="button"
@@ -186,7 +186,7 @@
 		<a
 			href="/settings"
 			class="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-2.5
-			       text-sm font-medium text-void shadow-accent transition-transform duration-500
+			       text-sm font-medium text-on-accent shadow-accent transition-transform duration-500
 			       ease-flux active:scale-[0.98]"
 		>
 			<Star size={15} weight="fill" />
@@ -233,7 +233,7 @@
 
 			<div class="mt-4 grid grid-cols-3 gap-2">
 				{#each [['Белки', macros.protein], ['Жиры', macros.fat], ['Углеводы', macros.carbs]] as [label, value] (label)}
-					<div class="rounded-xl border border-line/70 bg-white/[0.02] px-2 py-2.5 text-center">
+					<div class="rounded-xl border border-line/70 bg-ink/[0.02] px-2 py-2.5 text-center">
 						<p class="text-[11px] text-muted-foreground">{label}</p>
 						<p class="tabular mt-0.5 text-sm font-medium">{formatMacro(value as number)} г</p>
 					</div>
@@ -432,11 +432,11 @@
 					не отвечает на вопрос, хорошо это или плохо.
 				-->
 				<div class="mt-4 grid grid-cols-2 gap-2">
-					<div class="rounded-xl border border-line/70 bg-white/[0.02] px-3 py-2.5">
+					<div class="rounded-xl border border-line/70 bg-ink/[0.02] px-3 py-2.5">
 						<p class="text-[11px] text-muted-foreground">Доход</p>
 						<p class="tabular mt-0.5 text-sm font-medium text-success">+{money(totalIncome)}</p>
 					</div>
-					<div class="rounded-xl border border-line/70 bg-white/[0.02] px-3 py-2.5">
+					<div class="rounded-xl border border-line/70 bg-ink/[0.02] px-3 py-2.5">
 						<p class="text-[11px] text-muted-foreground">Баланс</p>
 						<p class="tabular mt-0.5 text-sm font-medium {balance < 0 ? 'text-destructive' : ''}">
 							{balance >= 0 ? '+' : '−'}{money(Math.abs(balance))}

@@ -70,7 +70,7 @@
 			type="button"
 			onclick={() => ui.openHabitSheet()}
 			aria-label="Новая привычка"
-			class="grid size-9 shrink-0 place-items-center rounded-full bg-mint text-void
+			class="grid size-9 shrink-0 place-items-center rounded-full bg-mint text-on-accent
 			       shadow-accent transition-transform duration-500 ease-flux active:scale-90"
 		>
 			<Plus size={16} weight="bold" />

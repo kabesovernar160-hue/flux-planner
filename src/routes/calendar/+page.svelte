@@ -236,7 +236,7 @@
 					aria-disabled={closed ? 'true' : undefined}
 					class="relative grid aspect-square place-items-center rounded-lg text-xs
 					       transition-[background-color,color,transform] duration-400 ease-flux active:scale-90
-					       {isSelected ? 'bg-lavender font-semibold text-void' : ''}
+					       {isSelected ? 'bg-lavender font-semibold text-on-accent' : ''}
 					       {!isSelected && cell.date === today ? 'border border-lavender/50' : ''}
 					       {!isSelected && cell.inMonth && !closed ? 'text-foreground' : ''}
 					       {!cell.inMonth ? 'text-muted-foreground/35' : ''}
@@ -278,7 +278,7 @@
 				<a
 					href="/settings"
 					class="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-2.5
-					       text-sm font-medium text-void shadow-accent transition-transform duration-500
+					       text-sm font-medium text-on-accent shadow-accent transition-transform duration-500
 					       ease-flux active:scale-[0.98]"
 				>
 					<Star size={15} weight="fill" />
@@ -292,17 +292,17 @@
 		<h2 class="mb-3 text-sm font-medium">{fullLabel(selected)}</h2>
 
 		<div class="grid grid-cols-3 gap-2">
-			<div class="rounded-xl border border-line/70 bg-white/[0.02] px-2 py-2.5 text-center">
+			<div class="rounded-xl border border-line/70 bg-ink/[0.02] px-2 py-2.5 text-center">
 				<p class="text-[11px] text-muted-foreground">Калории</p>
 				<p class="tabular mt-0.5 text-sm font-medium">{formatNumber(summary.calories)}</p>
 			</div>
-			<div class="rounded-xl border border-line/70 bg-white/[0.02] px-2 py-2.5 text-center">
+			<div class="rounded-xl border border-line/70 bg-ink/[0.02] px-2 py-2.5 text-center">
 				<p class="text-[11px] text-muted-foreground">Привычки</p>
 				<p class="tabular mt-0.5 text-sm font-medium">
 					{summary.habitsDone}/{summary.habitsPlanned}
 				</p>
 			</div>
-			<div class="rounded-xl border border-line/70 bg-white/[0.02] px-2 py-2.5 text-center">
+			<div class="rounded-xl border border-line/70 bg-ink/[0.02] px-2 py-2.5 text-center">
 				<p class="text-[11px] text-muted-foreground">Траты</p>
 				<p class="tabular mt-0.5 text-sm font-medium">{money(summary.spent)}</p>
 			</div>
@@ -314,7 +314,7 @@
 			<h2 class="mb-3 text-sm font-medium">План</h2>
 			<ul class="flex flex-col gap-1.5">
 				{#each dayPlan as item (item.id)}
-					<li class="flex items-center gap-3 rounded-xl border border-line/70 bg-white/[0.02] p-3">
+					<li class="flex items-center gap-3 rounded-xl border border-line/70 bg-ink/[0.02] p-3">
 						<button
 							type="button"
 							onclick={() => {
@@ -450,7 +450,7 @@
 		{:else}
 			<ul class="flex flex-col gap-1.5">
 				{#each dayFinance as entry (entry.id)}
-					<li class="flex items-center gap-3 rounded-xl border border-line/70 bg-white/[0.02] p-3">
+					<li class="flex items-center gap-3 rounded-xl border border-line/70 bg-ink/[0.02] p-3">
 						<!--
 							Тап по записи открывает ту же форму, что и создание: правка
 							суммы или категории не должна требовать «удалить и завести заново».

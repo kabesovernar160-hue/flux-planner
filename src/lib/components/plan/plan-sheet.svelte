@@ -110,7 +110,7 @@
 	}
 
 	const FIELD =
-		'w-full rounded-xl border bg-white/[0.03] px-3 py-2.5 text-sm outline-none ' +
+		'w-full rounded-xl border bg-ink/[0.03] px-3 py-2.5 text-sm outline-none ' +
 		'transition-colors duration-300 ease-flux placeholder:text-muted-foreground/50 ' +
 		'focus:border-lavender';
 
@@ -214,7 +214,7 @@
 					       active:scale-95
 					       {kind === value
 						? 'border-lavender bg-lavender/12 text-lavender'
-						: 'border-line/70 bg-white/[0.02] text-muted-foreground'}"
+						: 'border-line/70 bg-ink/[0.02] text-muted-foreground'}"
 				>
 					<Icon size={17} weight="light" />
 					<span class="text-[10px]">{PLAN_KIND_LABELS[value]}</span>
@@ -254,7 +254,7 @@
 			</button>
 			<button
 				type="submit"
-				class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-void
+				class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-on-accent
 				       shadow-accent transition-transform duration-500 ease-flux hover:bg-lavender-hi
 				       active:scale-[0.98]"
 			>

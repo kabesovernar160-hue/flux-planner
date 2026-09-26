@@ -111,10 +111,10 @@
 				onclick={create}
 				aria-label="Создать запись"
 				class="absolute -top-5 left-1/2 grid size-14 -translate-x-1/2 place-items-center
-				       rounded-full border border-white/15 bg-lavender text-void
+				       rounded-full border border-white/15 bg-lavender text-on-accent
 				       transition-transform duration-500 ease-flux hover:bg-lavender-hi
 				       active:scale-90"
-				style="box-shadow: 0 10px 30px -8px oklch(0.7022 0.1527 293.82 / 0.6);"
+				style="box-shadow: var(--fx-shadow-fab);"
 			>
 				<svg
 					viewBox="0 0 24 24"

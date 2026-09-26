@@ -173,7 +173,7 @@
 			</div>
 		{/if}
 
-		<div class="flex gap-1 rounded-full border border-line/70 bg-white/[0.02] p-1" role="tablist">
+		<div class="flex gap-1 rounded-full border border-line/70 bg-ink/[0.02] p-1" role="tablist">
 			{#each TABS as [value, label] (value)}
 				<button
 					type="button"
@@ -202,7 +202,7 @@
 			<ul class="mt-2 flex flex-col gap-1">
 				{#each items as food (favoriteKey(food.name))}
 					{@const starred = favoriteKeys.has(favoriteKey(food.name))}
-					<li class="flex items-center rounded-xl border border-line/70 bg-white/[0.02]">
+					<li class="flex items-center rounded-xl border border-line/70 bg-ink/[0.02]">
 						<button
 							type="button"
 							onclick={() => star(food)}

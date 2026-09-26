@@ -62,14 +62,14 @@
 			font-size="38"
 			font-weight="600"
 			letter-spacing="0.5"
-			fill="var(--fx-void)"
+			fill="var(--fx-on-accent)"
 			font-family="var(--font-sans)"
 		>
 			{initials}
 		</text>
 	</svg>
 
-	<!-- Волосяное кольцо поверх: отделяет аватар от тёмной подложки без грубой рамки. -->
-	<span class="pointer-events-none absolute inset-0 rounded-full ring-1 ring-white/12 ring-inset"
+	<!-- Волосяное кольцо поверх: отделяет аватар от подложки без грубой рамки. -->
+	<span class="pointer-events-none absolute inset-0 rounded-full ring-1 ring-ink/12 ring-inset"
 	></span>
 </div>

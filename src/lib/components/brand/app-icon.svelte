@@ -35,6 +35,6 @@
 	style="
 		width: {size}px;
 		height: {size}px;
-		box-shadow: 0 0 22px -2px oklch(0.7022 0.1527 293.82 / 0.2);
+		box-shadow: 0 0 22px -2px color-mix(in oklch, var(--fx-lavender) 20%, transparent);
 	"
 />

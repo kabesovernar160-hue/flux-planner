@@ -49,7 +49,7 @@
 			     остаются в логах, наружу уходит только описание и номер запроса,
 			     по которому обращение находится в поддержке. -->
 			<p
-				class="mt-3 rounded-xl border border-line/70 bg-white/[0.02] px-3 py-2 text-xs text-muted-foreground"
+				class="mt-3 rounded-xl border border-line/70 bg-ink/[0.02] px-3 py-2 text-xs text-muted-foreground"
 			>
 				{page.error.message}
 			</p>

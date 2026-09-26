@@ -92,7 +92,7 @@
 					<button
 						type="button"
 						onclick={() => addPreset(preset.name, preset.icon)}
-						class="flex items-center gap-2 rounded-xl border border-line/70 bg-white/[0.02] px-3
+						class="flex items-center gap-2 rounded-xl border border-line/70 bg-ink/[0.02] px-3
 						       py-3 text-left transition-[transform,border-color] duration-500 ease-flux
 						       hover:border-tone/60 active:scale-[0.97]"
 					>
