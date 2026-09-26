@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { isAdminTelegramId } from '$lib/server/admin/access';
 import { AuthError, requireUser } from '$lib/server/auth/session';
 import { apiError, logServerError } from '$lib/server/errors';
 import { checkRateLimit } from '$lib/server/rateLimit';
@@ -39,7 +40,10 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 				username: user.username,
 				timezone: user.timezone
 			},
-			state: state ? { settings: state.settings, settingsUpdatedAt: state.updatedAt } : null
+			state: state ? { settings: state.settings, settingsUpdatedAt: state.updatedAt } : null,
+			// Только чтобы показать строку «Статистика» в настройках. Сама
+			// статистика проверяет права заново: флаг из ответа ничего не открывает.
+			...(isAdminTelegramId(user.telegramUserId) ? { admin: true } : {})
 		});
 	} catch (error) {
 		if (error instanceof AuthError) {

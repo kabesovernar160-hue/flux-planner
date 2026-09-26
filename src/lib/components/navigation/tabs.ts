@@ -23,6 +23,9 @@ export const TABS: Tab[] = [
  * пункты, и человек теряет, где он находится.
  */
 export function activeTab(pathname: string): string {
+	// Статистика открывается строкой в настройках и живёт вне их пути.
+	if (pathname.startsWith('/admin')) return '/settings';
+
 	const match = TABS.filter((tab) => tab.href !== '/').find((tab) => pathname.startsWith(tab.href));
 	return match?.href ?? '/';
 }

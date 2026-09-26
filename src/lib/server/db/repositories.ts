@@ -220,7 +220,12 @@ export function createRepositories(db: Db): Repositories {
 				firstName: input.firstName ?? null,
 				timezone: input.timezone ?? 'UTC',
 				createdAt: input.now,
-				updatedAt: input.now
+				updatedAt: input.now,
+				// Отметки воронки ставятся отдельными условными UPDATE —
+				// см. server/activity. Здесь строка рождается без них.
+				source: null,
+				appOpenedAt: null,
+				firstRecordAt: null
 			};
 
 			await db.insert(users).values(row);

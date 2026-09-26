@@ -68,6 +68,7 @@ daily_finance     + date, budget
 | POST  | `/api/capture`           | Запись строкой по личному ключу   |
 | POST  | `/api/capture/token`     | Выдать, посмотреть, отозвать ключ |
 | GET   | `/api/health`            | Живость для мониторинга           |
+| GET   | `/api/admin/stats`       | Воронка и источники для владельца |
 
 Все эндпоинты, кроме вебхука и крона, требуют подписи Telegram в заголовке
 `X-Telegram-Init-Data`. Это относится и к `/api/nutrition/analyze`: он тратит
@@ -141,3 +142,22 @@ daily_finance     + date, budget
 на старте (`hooks.server.ts`). Проблемы делятся на fatal и warning: без токена
 бота приложение бесполезно целиком и не поднимается, а без ключа ИИ просто
 работает без распознавания по фото.
+
+## Воронка активации
+
+Миграция `0009_activity`. В `users` — `source` (первое касание: метка из
+`/start <payload>` или `start_param`, `ref_*` → `referral`, без метки →
+`direct`, до миграции → `unknown`), `app_opened_at` и `first_record_at`.
+Таблица `user_activity(user_id, date)` — дни открытия приложения по UTC, из неё
+считаются D1 и D7.
+
+`first_record_at` ставит триггер на вставку живой строки в `food_entries`,
+`habits`, `finance_entries`, `plan_items`, `weight_entries`: писать в дневник
+умеют синхронизация, бот, быстрая запись и ассистент, и условие в каждом из них
+рано или поздно забыли бы. Хранится, а не считается в запросе: статистика
+читает одну строку на человека, сколько бы записей ни накопилось.
+
+Цифры отдаёт `GET /api/admin/stats` (только id из `ADMIN_TELEGRAM_IDS`,
+по умолчанию владелец; остальным — 404), экран `/admin` и
+`node scripts/stats.ts` — расчёт у них общий, `src/lib/stats/metrics.ts`.
+Тестовые аккаунты (`local_test*`, id короче 8 цифр) не считаются.

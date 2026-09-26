@@ -6,6 +6,7 @@ import { AiError } from '$lib/server/ai/types';
 import { getReadyDb } from '$lib/server/db/client';
 import { createRepositories, type Repositories } from '$lib/server/db/repositories';
 import { logServerError } from '$lib/server/errors';
+import { trackBotStart } from '$lib/server/activity/activity';
 import { settleReferral } from '$lib/server/referrals/notify';
 import {
 	answerCallbackQuery,
@@ -594,6 +595,7 @@ async function handleMessage(message: TelegramMessage, chatId: number, fromId: n
 
 	// Приветствие не требует ни базы, ни распознавания: отвечаем сразу.
 	if (name === '/start' || name === '/app') {
+		await trackBotStart(fromId, message.from, text);
 		await sendWelcome(chatId);
 		return;
 	}

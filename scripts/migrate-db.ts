@@ -27,6 +27,7 @@ import { MIGRATIONS } from '../src/lib/server/db/migrations.ts';
 /** Родители первыми. Порядок менять нельзя: на нём держатся внешние ключи. */
 const TABLES = [
 	'users',
+	'user_activity',
 	'planner_state',
 	'food_entries',
 	'habits',

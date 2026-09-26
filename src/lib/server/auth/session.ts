@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/private';
 import { createId } from '$lib/utils/id';
 import { nowIso } from '$lib/utils/date';
 import { getReadyDb } from '../db/client';
+import { recordAppVisit } from '../activity/activity';
 import { logServerError } from '../errors';
 import { referralInviteeKey, registerReferral } from '../referrals/referrals';
 import { createRepositories, type Repositories } from '../db/repositories';
@@ -77,13 +78,26 @@ export async function requireUser(request: Request): Promise<Session> {
 		now
 	});
 
+	// День присутствия и первое открытие — для воронки. Здесь, а не в
+	// эндпоинте входа, по той же причине, что и приглашение ниже: первым
+	// запросом может оказаться синхронизация.
+	let firstOpen = false;
+	try {
+		({ firstOpen } = await recordAppVisit(db, user, result.data.startParam));
+	} catch (error) {
+		// Статистика не должна стоить человеку входа.
+		logServerError('activity/visit', error);
+	}
+
 	// Приглашение записывается здесь, а не в эндпоинте входа: первым
 	// запросом нового человека может оказаться и синхронизация — клиент
 	// шлёт их параллельно, — и пропустить её значило бы потерять друга.
-	// Пользователь новый, если строку завёл этот самый вызов: у давнего
-	// createdAt остаётся прежним. Параметр запуска подписан вместе с
-	// initData, поэтому подменить код в чужой ссылке нельзя.
-	if (result.data.startParam && user.createdAt === now) {
+	// Пользователь новый, если строку завёл этот самый вызов (у давнего
+	// createdAt остаётся прежним) или если это первое открытие приложения:
+	// строку теперь заводит и /start в боте, а нажавший /start ещё ничем
+	// не пользовался. Параметр запуска подписан вместе с initData,
+	// поэтому подменить код в чужой ссылке нельзя.
+	if (result.data.startParam && (user.createdAt === now || firstOpen)) {
 		try {
 			await registerReferral(db, {
 				inviteeId: user.id,
