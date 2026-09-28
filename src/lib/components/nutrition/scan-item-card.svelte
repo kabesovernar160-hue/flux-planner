@@ -35,7 +35,7 @@
 
 	const DOT_CLASS: Record<string, string> = {
 		high: 'bg-success',
-		medium: 'bg-lavender',
+		medium: 'bg-tone',
 		low: 'bg-muted-foreground'
 	};
 
@@ -75,23 +75,33 @@
 	}
 </script>
 
+<!-- tone-amber на самой карточке: компонент блюда — всегда про еду. -->
 <div
-	class="rounded-card border border-line/70 bg-white/[0.02] p-3.5 transition-opacity duration-400
-	       ease-flux {selected ? '' : 'opacity-50'}"
+	class="tone-amber rounded-card border border-line/70 bg-white/[0.02] p-3.5 transition-opacity
+	       duration-400 ease-flux {selected ? '' : 'opacity-50'}"
 >
 	<div class="flex items-start gap-3">
 		{#if ontoggle}
+			<!--
+				Видимая галочка — 20 пикселей, мишень — 40: иначе промах
+				пальцем попадает в название, а не в галочку.
+			-->
 			<button
 				type="button"
 				role="checkbox"
 				aria-checked={selected}
 				aria-label="Добавлять «{item.name}»"
 				onclick={ontoggle}
-				class="tone-amber mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border
-				       transition-[background-color,border-color] duration-400 ease-flux
-				       {selected ? 'border-tone bg-tone text-void' : 'border-line-strong'}"
+				class="-m-2.5 grid size-10 shrink-0 place-items-center transition-transform duration-500
+				       ease-flux active:scale-90"
 			>
-				{#if selected}<Check size={12} weight="bold" />{/if}
+				<span
+					class="grid size-5 place-items-center rounded-md border
+					       transition-[background-color,border-color] duration-400 ease-flux
+					       {selected ? 'border-tone bg-tone text-void' : 'border-line-strong'}"
+				>
+					{#if selected}<Check size={12} weight="bold" />{/if}
+				</span>
 			</button>
 		{:else}
 			<span aria-hidden="true" class="mt-1.5 size-2 shrink-0 rounded-full {DOT_CLASS[level]}"
@@ -134,7 +144,7 @@
 				type="text"
 				autocomplete="off"
 				class="mt-1.5 w-full rounded-xl border border-line-strong bg-white/[0.03] px-3 py-2.5
-				       text-sm transition-colors duration-300 ease-flux outline-none focus:border-lavender"
+				       text-sm transition-colors duration-300 ease-flux outline-none focus:border-tone"
 			/>
 
 			<label for="{uid}-grams" class="mt-3 block text-xs text-muted-foreground">Порция, г</label>
@@ -159,7 +169,7 @@
 					autocomplete="off"
 					class="tabular min-w-0 flex-1 rounded-xl border border-line-strong bg-white/[0.03]
 					       px-3 py-2.5 text-center text-sm transition-colors duration-300 ease-flux
-					       outline-none focus:border-lavender"
+					       outline-none focus:border-tone"
 				/>
 
 				<button

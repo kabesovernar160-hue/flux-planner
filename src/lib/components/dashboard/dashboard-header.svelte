@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ArrowUUpLeft, Flame } from 'phosphor-svelte';
 	import AppIcon from '$lib/components/brand/app-icon.svelte';
+	import HeaderAvatar from './header-avatar.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { telegram } from '$lib/telegram';
 	import { dayActivity } from '$lib/utils/analytics';
@@ -11,7 +12,24 @@
 	// не выглядел сломанным во время локальной разработки.
 	const name = $derived(telegram.user?.first_name ?? 'Гость');
 
+	/**
+	 * Внутри Telegram на месте марки — сам человек: главная про его день,
+	 * и своё лицо в углу говорит об этом быстрее приветствия. Вне Telegram
+	 * пользователя нет, и там остаётся знак приложения.
+	 */
+	const user = $derived(telegram.isEmbedded ? telegram.user : null);
+
 	const streak = $derived(plannerStore.currentStreak);
+
+	/**
+	 * Три ступени заметности серии.
+	 *
+	 * Ноль, горящий так же ярко, как десятидневная серия, обесценивал
+	 * свечение: глаз привыкал к нему и переставал замечать настоящую серию.
+	 * Поэтому ноль приглушён, короткая серия — в тоне раздела без свечения,
+	 * и только с трёх дней подряд плашка начинает светиться.
+	 */
+	const streakLevel = $derived(streak === 0 ? 'none' : streak < 3 ? 'short' : 'long');
 
 	/**
 	 * Дашборд показывает выбранный день, а не обязательно сегодняшний:
@@ -70,27 +88,45 @@
 	});
 </script>
 
-<header class="mb-6 flex items-center gap-3">
-	<AppIcon size={44} />
+<header class="mb-4 flex items-center gap-3">
+	{#if user}
+		<HeaderAvatar name={user.first_name} photoUrl={user.photo_url} size={44} />
+	{:else}
+		<AppIcon size={44} />
+	{/if}
 
 	<div class="min-w-0 flex-1">
-		<p class="truncate text-[11px] tracking-wide text-muted-foreground">{greeting()}</p>
+		<p class="truncate text-xs text-muted-foreground">{greeting()}</p>
 		<h1 class="truncate text-lg leading-tight font-semibold tracking-tight">{name}</h1>
 	</div>
 
 	<!--
-		Стрик — не эмодзи, а иконка Phosphor: в тёмном стеклянном интерфейсе
-		эмодзи приезжает чужим цветом от системного шрифта и выбивается
-		из палитры. Иконка наследует лаванду.
+		Серия — это привычки, поэтому плашка мятная, а не лавандовая.
+		Иконка Phosphor, а не эмодзи: эмодзи приезжает чужим цветом
+		системного шрифта и выбивается из палитры.
 	-->
 	<div
-		class="flex shrink-0 items-center gap-1.5 rounded-full border border-lavender/25
-		       bg-lavender/12 py-1.5 pr-3 pl-2.5"
-		style="box-shadow: 0 0 22px -6px oklch(0.7022 0.1527 293.82 / 0.55);"
+		class="tone-mint flex shrink-0 items-center gap-1.5 rounded-full border py-1.5 pr-3 pl-2.5
+		       transition-[background-color,border-color,box-shadow] duration-500 ease-flux
+		       {streakLevel === 'none'
+			? 'border-line/70 bg-white/[0.02]'
+			: streakLevel === 'short'
+				? 'border-tone/20 bg-tone/[0.08]'
+				: 'border-tone/35 bg-tone/15 shadow-[0_0_22px_-6px_var(--fx-tone)]'}"
+		role="img"
 		title="{streak} {pluralDays(streak)} подряд"
+		aria-label="Серия: {streak} {pluralDays(streak)} подряд"
 	>
-		<Flame size={15} weight="fill" class="text-lavender" />
-		<span class="tabular text-xs font-semibold text-lavender">{streak}</span>
+		<Flame
+			size={15}
+			weight={streakLevel === 'none' ? 'light' : 'fill'}
+			class={streakLevel === 'none' ? 'text-muted-foreground' : 'text-tone'}
+		/>
+		<span
+			class="tabular text-xs font-semibold {streakLevel === 'none'
+				? 'text-muted-foreground'
+				: 'text-tone'}">{streak}</span
+		>
 	</div>
 </header>
 
@@ -99,7 +135,7 @@
 	с данными. Точки под числом дублируют логику календаря, чтобы цвета
 	раздела не разъезжались между экранами.
 -->
-<nav class="mb-5 grid grid-cols-7 gap-1" aria-label="Дни недели">
+<nav class="mb-4 grid grid-cols-7 gap-1" aria-label="Дни недели">
 	{#each weekDays as date, index (date)}
 		{@const activity = weekActivity[index]}
 		{@const isCurrentDay = date === today}
@@ -110,7 +146,7 @@
 			       ease-flux active:scale-95
 			       {isCurrentDay ? 'bg-lavender text-void' : 'hover:bg-white/[0.03]'}"
 		>
-			<span class="text-[10px] {isCurrentDay ? 'text-void/70' : 'text-muted-foreground'}">
+			<span class="text-[11px] {isCurrentDay ? 'text-void/70' : 'text-muted-foreground'}">
 				{WEEKDAY_LETTERS[index]}
 			</span>
 			<span class="tabular text-xs font-medium {isCurrentDay ? '' : 'text-foreground'}">

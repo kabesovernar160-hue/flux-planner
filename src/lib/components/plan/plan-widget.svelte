@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Barbell, CheckCircle, ForkKnife, ListChecks, Plus, Wallet } from 'phosphor-svelte';
+	import { Barbell, CaretDown, Check, ForkKnife, ListChecks, Plus, Wallet } from 'phosphor-svelte';
 	import type { Component } from 'svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import { addPlanItem, togglePlanItem } from '$lib/services/planService';
@@ -24,6 +24,19 @@
 
 	const items = $derived(plannerStore.todayPlan);
 	const done = $derived(plannerStore.donePlanItems.length);
+
+	/**
+	 * На главной — не больше четырёх дел, остальные по «ещё N».
+	 *
+	 * Длинный план выталкивал еду, привычки и деньги за третий экран,
+	 * а главная обязана помещаться в два. Пятое дело нужно реже, чем
+	 * взгляд на остальной день. Ровно одно лишнее не прячем: кнопка
+	 * «ещё 1» занимала бы столько же места, сколько сама строка.
+	 */
+	const PREVIEW = 4;
+	let expanded = $state(false);
+	const collapsible = $derived(items.length > PREVIEW + 1);
+	const visible = $derived(collapsible && !expanded ? items.slice(0, PREVIEW) : items);
 
 	/**
 	 * Дела завтрашнего дня.
@@ -214,7 +227,23 @@
 	}
 
 	const EXAMPLES = ['ужин в 19:00', '450 борщ', '1,5к на такси'];
+
+	function openFullForm() {
+		telegram.haptic.impact('light');
+		ui.openPlanSheet();
+	}
 </script>
+
+{#snippet fullFormButton()}
+	<button
+		type="button"
+		onclick={openFullForm}
+		class="text-xs text-muted-foreground transition-colors duration-400 ease-flux
+		       hover:text-foreground"
+	>
+		Со временем и типом
+	</button>
+{/snippet}
 
 <GlassCard>
 	<div class="mb-3 flex items-center gap-2">
@@ -226,11 +255,19 @@
 			<span class="tabular text-sm font-semibold">
 				{done}<span class="font-normal text-muted-foreground">&nbsp;из {items.length}</span>
 			</span>
+		{:else}
+			<!--
+				В пустом плане место справа от заголовка свободно — ссылка на
+				полную форму встаёт сюда, и отдельная строка под полем не нужна.
+			-->
+			{@render fullFormButton()}
 		{/if}
 	</div>
 
 	{#if items.length === 0}
-		<p class="mb-2.5 text-sm text-muted-foreground">Пишите как есть — разберу сам, например:</p>
+		<p class="-mt-1 mb-2.5 text-xs text-muted-foreground">
+			Пишите как есть — разберу сам, например:
+		</p>
 		<!--
 			Примеры нажимаются и встают в поле: так видно, что фраза
 			может уйти в план, в еду или в траты, и не надо набирать её заново.
@@ -252,7 +289,7 @@
 		</div>
 	{:else}
 		<ul class="mb-3 flex flex-col gap-1.5">
-			{#each items as item (item.id)}
+			{#each visible as item (item.id)}
 				{@const Icon = ICONS[item.kind]}
 				<li class="flex items-center gap-3 rounded-xl border border-line/70 bg-white/[0.02] p-3">
 					<button
@@ -266,7 +303,7 @@
 						       {item.done ? 'border-lavender bg-lavender' : 'border-line-strong'}"
 					>
 						{#if item.done}
-							<CheckCircle size={13} weight="bold" class="text-void" />
+							<Check size={12} weight="bold" class="text-void" />
 						{/if}
 					</button>
 
@@ -311,6 +348,27 @@
 				</li>
 			{/each}
 		</ul>
+
+		{#if collapsible}
+			<button
+				type="button"
+				onclick={() => {
+					telegram.haptic.selection();
+					expanded = !expanded;
+				}}
+				aria-expanded={expanded}
+				class="-mt-1.5 mb-2 flex w-full items-center justify-center gap-1.5 rounded-full py-2
+				       text-xs text-muted-foreground transition-colors duration-400 ease-flux
+				       hover:text-foreground"
+			>
+				{expanded ? 'Свернуть' : `Ещё ${items.length - PREVIEW}`}
+				<CaretDown
+					size={12}
+					weight="light"
+					class="transition-transform duration-400 ease-flux {expanded ? 'rotate-180' : ''}"
+				/>
+			</button>
+		{/if}
 	{/if}
 
 	<form onsubmit={submit} class="flex gap-2">
@@ -340,23 +398,17 @@
 		<p class="mt-2 text-xs text-muted-foreground">{hint}</p>
 	{/if}
 
-	<div class="mt-2 flex items-center gap-3">
-		<button
-			type="button"
-			onclick={() => {
-				telegram.haptic.impact('light');
-				ui.openPlanSheet();
-			}}
-			class="text-xs text-muted-foreground transition-colors duration-400 ease-flux
-			       hover:text-foreground"
-		>
-			Со временем и типом
-		</button>
+	{#if items.length > 0 || tomorrow.length > 0}
+		<div class="mt-2 flex items-center gap-3">
+			{#if items.length > 0}
+				{@render fullFormButton()}
+			{/if}
 
-		{#if tomorrow.length > 0}
-			<span class="ml-auto text-xs text-muted-foreground">
-				Завтра: {tomorrow.length}
-			</span>
-		{/if}
-	</div>
+			{#if tomorrow.length > 0}
+				<span class="ml-auto text-xs text-muted-foreground">
+					Завтра: {tomorrow.length}
+				</span>
+			{/if}
+		</div>
+	{/if}
 </GlassCard>

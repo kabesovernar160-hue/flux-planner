@@ -7,7 +7,7 @@ test.describe('первый запуск', () => {
 
 		// Пропуск — не «закрыть до следующего раза»: отметка лежит в настройках.
 		await page.reload();
-		await expect(page.getByRole('heading', { name: 'Начни с одного' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Начните с одного' })).toBeVisible();
 		await expect(page.getByRole('heading', { name: 'Flux Planner' })).toBeHidden();
 	});
 
@@ -15,7 +15,7 @@ test.describe('первый запуск', () => {
 		await openAsNewcomer(page);
 		await skipOnboarding(page);
 
-		await expect(page.getByRole('heading', { name: 'Начни с одного' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Начните с одного' })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Сфоткать еду' })).toBeVisible();
 		await expect(page.getByRole('heading', { name: 'Добавить привычку' })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Записать трату' })).toBeVisible();
@@ -30,7 +30,7 @@ test.describe('первый запуск', () => {
 
 		await page.getByRole('button', { name: 'Зарядка' }).click();
 
-		await expect(page.getByRole('heading', { name: 'Начни с одного' })).toBeHidden();
+		await expect(page.getByRole('heading', { name: 'Начните с одного' })).toBeHidden();
 		await expect(page.getByRole('checkbox', { name: 'Зарядка' })).toBeVisible();
 		await expect(page.getByRole('status')).toContainText('Первая запись есть');
 
@@ -84,7 +84,7 @@ test.describe('подсказка у «+»', () => {
 		await expect(bubble).toBeHidden();
 
 		await page.reload();
-		await expect(page.getByRole('heading', { name: 'Начни с одного' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Начните с одного' })).toBeVisible();
 		await expect(page.getByRole('button', { name: hint })).toHaveCount(0);
 	});
 

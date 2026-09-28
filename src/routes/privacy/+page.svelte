@@ -9,12 +9,18 @@
 	<title>Конфиденциальность — Flux Planner</title>
 </svelte:head>
 
-<PageHeader title="Конфиденциальность" subtitle="Обновлено {LEGAL_UPDATED}" back="/settings" />
+<PageHeader
+	title="Конфиденциальность"
+	subtitle="Обновлено {LEGAL_UPDATED}"
+	back="/settings/about"
+/>
 
-<div class="space-y-3 pb-4">
+<div class="flex flex-col gap-4 pb-4">
 	<GlassCard>
 		<h2 class="mb-2 flex items-center gap-2 text-sm font-medium">
-			<ShieldCheck size={15} weight="light" class="text-lavender" />
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+				<ShieldCheck size={15} weight="regular" class="text-tone" />
+			</span>
 			Коротко
 		</h2>
 		<p class="text-xs leading-relaxed text-muted-foreground">
@@ -82,16 +88,20 @@
 	<GlassCard>
 		<h2 class="mb-2 text-sm font-medium">Ваши данные — ваши</h2>
 		<p class="mb-2 text-xs leading-relaxed text-muted-foreground">
-			В настройках есть выгрузка: JSON — полный снимок, CSV — таблица о еде. Ничего просить для
-			этого не нужно.
+			В <a href="/settings/data" class="text-lavender underline-offset-2 hover:underline"
+				>настройках данных</a
+			> есть выгрузка: JSON — полный снимок, CSV — таблица о еде. Ничего просить для этого не нужно.
 		</p>
 		<p class="text-xs leading-relaxed text-muted-foreground">
 			Кнопка «Стереть локальные данные» очищает устройство. Удалённая запись помечается удалённой и
 			на сервере — так удаление доезжает до других ваших устройств. Кнопка «Удалить учётную запись»
-			в настройках стирает всё и на сервере: записи исчезают насовсем, а сама учётная запись
-			обезличивается. Ждать ответа поддержки для этого не нужно — но если что-то пошло не так,
-			напишите <span class="text-foreground">{SUPPORT_CONTACT}</span>. Записи о платежах остаются:
-			их хранение требует закон.
+			в <a href="/settings/data" class="text-lavender underline-offset-2 hover:underline"
+				>настройках данных</a
+			>
+			стирает всё и на сервере: записи исчезают насовсем, а сама учётная запись обезличивается. Ждать
+			ответа поддержки для этого не нужно — но если что-то пошло не так, напишите
+			<span class="text-foreground">{SUPPORT_CONTACT}</span>. Записи о платежах остаются: их
+			хранение требует закон.
 		</p>
 	</GlassCard>
 

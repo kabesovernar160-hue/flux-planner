@@ -84,7 +84,7 @@ export function habitRateByDay(
 	days: number
 ): DayValue[] {
 	return dateRange(end, days).map((date) => {
-		const planned = scheduledHabits(habits, date);
+		const planned = plannedOn(habits, completions, date);
 		if (planned.length === 0) return { date, value: 0 };
 
 		const done = planned.filter((habit) =>
@@ -99,6 +99,29 @@ export function habitRateByDay(
 
 		return { date, value: done / planned.length };
 	});
+}
+
+/**
+ * Привычки, запланированные на день, — без дней до их создания.
+ *
+ * Привычку, заведённую в среду, нельзя было выполнить в понедельник: без этого
+ * фильтра понедельник выглядел бы проваленным, а календарь и аналитика — хуже,
+ * чем неделя была на самом деле. Правило то же, что у движка серий (дата
+ * создания по UTC-префиксу), но отметка важнее даты: после импорта или
+ * синхронизации createdAt бывает новее самих отметок.
+ */
+function plannedOn(habits: Habit[], completions: HabitCompletion[], date: DateKey): Habit[] {
+	return scheduledHabits(habits, date).filter(
+		(habit) =>
+			habit.createdAt.slice(0, 10) <= date ||
+			completions.some(
+				(completion) =>
+					completion.habitId === habit.id &&
+					completion.date === date &&
+					completion.completed &&
+					!completion.deletedAt
+			)
+	);
 }
 
 /** Среднее по дням. Пустой период — ноль, а не деление на ноль. */
@@ -217,7 +240,7 @@ export function dayActivity(
 		(entry) => entry.amount
 	);
 
-	const planned = scheduledHabits(data.habits, date);
+	const planned = plannedOn(data.habits, data.completions, date);
 	const habitsDone = planned.filter((habit) =>
 		data.completions.some(
 			(completion) =>

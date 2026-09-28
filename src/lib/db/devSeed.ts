@@ -102,6 +102,10 @@ export function seedDevData(store: PlannerStoreLike): boolean {
 		// неделю дал бы нулевую серию — данные были бы несогласованными.
 		const stored = store.habits.find((entry) => entry.id === habit.id);
 		if (stored) stored.createdAt = `${addDays(today, -HISTORY_DAYS)}T08:00:00.000Z`;
+		// Правка прокси сама в хранилище не попадает: createHabit уже сохранил
+		// исходный объект с сегодняшней датой. Пустое обновление сохраняет
+		// текущий снимок — иначе после перезагрузки серия снова была бы в один день.
+		store.updateHabit(habit.id, {});
 
 		if (item.done) store.completeHabit(habit.id, today);
 
