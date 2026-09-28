@@ -222,6 +222,27 @@ describe('averageMacros', () => {
 });
 
 describe('dayActivity', () => {
+	it('дни до создания привычки не считаются пропущенными', () => {
+		const created = habit('a', { createdAt: '2026-01-15T08:00:00.000Z' });
+
+		const before = dayActivity('2026-01-13', {
+			foodEntries: [],
+			financeEntries: [],
+			habits: [created],
+			completions: []
+		});
+		expect(before.habitsPlanned).toBe(0);
+
+		// Но отметка важнее даты: после импорта createdAt бывает новее отметок.
+		const imported = dayActivity('2026-01-13', {
+			foodEntries: [],
+			financeEntries: [],
+			habits: [created],
+			completions: [completion('a', '2026-01-13')]
+		});
+		expect(imported).toMatchObject({ habitsPlanned: 1, habitsDone: 1 });
+	});
+
 	it('собирает сводку дня за один проход', () => {
 		const result = dayActivity('2026-01-15', {
 			foodEntries: [food('2026-01-15', 600), food('2026-01-14', 100)],
