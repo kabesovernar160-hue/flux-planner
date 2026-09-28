@@ -68,13 +68,14 @@
 			/>
 		</span>
 		<!--
-			11px — нижняя граница читаемого на телефоне. «Аналитика» и «Настройки»
-			на узком экране (320px) влезают впритык, поэтому трекинг чуть поджат,
-			а не размер уменьшен.
+			11px — нижняя граница читаемого на телефоне. «Календарь» и «Настройки»
+			на узком экране (320px) влезают впритык, поэтому там поджат трекинг
+			и поля панели, а не уменьшен размер.
 		-->
 		<span
-			class="max-w-full truncate text-[11px] leading-none tracking-[-0.01em] transition-colors
-			       duration-400 ease-flux
+			class="max-w-full truncate text-[11px] leading-none tracking-[-0.01em]
+			       transition-colors duration-400
+			       ease-flux max-[359px]:tracking-[-0.035em]
 			       {isActive ? 'font-medium text-lavender' : 'text-muted-foreground'}"
 		>
 			{tab.label}
@@ -90,10 +91,10 @@
 -->
 <div class="pointer-events-none fixed inset-x-0 bottom-0 z-40">
 	<div
-		class="mx-auto w-full max-w-md"
+		class="mx-auto w-full max-w-md [--fx-nav-gutter:1rem] max-[359px]:[--fx-nav-gutter:0.5rem]"
 		style="
-			padding-left: calc(var(--fx-safe-left) + 1rem);
-			padding-right: calc(var(--fx-safe-right) + 1rem);
+			padding-left: calc(var(--fx-safe-left) + var(--fx-nav-gutter));
+			padding-right: calc(var(--fx-safe-right) + var(--fx-nav-gutter));
 			padding-bottom: calc(var(--fx-safe-bottom) + 0.75rem);
 		"
 	>

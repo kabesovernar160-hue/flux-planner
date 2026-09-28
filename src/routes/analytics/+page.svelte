@@ -358,8 +358,8 @@
 			type="button"
 			onclick={() => pickPeriod(period.days)}
 			aria-pressed={days === period.days}
-			class="relative flex h-9 items-center justify-center gap-1 rounded-full text-sm
-			       transition-colors duration-400 ease-flux
+			class="relative flex h-9 items-center justify-center gap-1 rounded-full text-sm transition-colors
+			       duration-400 ease-flux max-[359px]:text-xs
 			       {days === period.days
 				? 'font-medium text-lavender-hi'
 				: locked(period.days)

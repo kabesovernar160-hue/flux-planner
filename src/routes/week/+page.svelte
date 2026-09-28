@@ -174,6 +174,16 @@
 	{/if}
 {/snippet}
 
+<!--
+	Разряды — узким зазором, а не пробелом: в моно-начертании пробел шириной
+	в цифру, и «12 100 ₽» распадалось на три отдельных числа.
+-->
+{#snippet num(value: string)}
+	{#each value.split(/[\s\u00a0\u202f]/) as group, index (index)}
+		{#if index > 0}<span class="inline-block w-[0.22em]"></span>{/if}{group}
+	{/each}
+{/snippet}
+
 {#snippet sectionTitle(Icon: Component, title: string)}
 	<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
 		<Icon size={15} weight="regular" class="text-tone" />
@@ -463,10 +473,15 @@
 						<p class="text-sm text-muted-foreground">На этой неделе еду не записывали.</p>
 					{/if}
 				{:else}
-					<div class="flex items-end gap-4">
+					<!--
+						Цифра и мини-график рядом — карточка вдвое короче. На узком
+						экране (меньше 380px) сумма не влезла бы рядом с графиком,
+						и график уходит под цифру на всю ширину.
+					-->
+					<div class="flex flex-col gap-4 min-[380px]:flex-row min-[380px]:items-end">
 						<div class="min-w-0 flex-1">
 							<p class="fx-num text-3xl leading-none">
-								{formatNumber(Math.round(report.nutrition.avgCalories))}
+								{@render num(formatNumber(Math.round(report.nutrition.avgCalories)))}
 							</p>
 							<p class="mt-1.5 text-xs text-muted-foreground">ккал в среднем за день</p>
 							<!-- «В цели 0 из 3» — упрёк, а не вывод: без попаданий — просто число дней. -->
@@ -484,7 +499,7 @@
 								{/if}
 							</p>
 						</div>
-						<div class="w-[8.5rem] shrink-0">
+						<div class="w-full shrink-0 min-[380px]:w-[8.5rem]">
 							<PeriodBars
 								values={report.nutrition.byDay}
 								goal={report.nutrition.goal}
@@ -516,7 +531,7 @@
 				{#if habitsPercent === null}
 					<p class="text-sm text-muted-foreground">На неделе не было запланированных привычек.</p>
 				{:else}
-					<div class="flex items-end gap-4">
+					<div class="flex flex-col gap-4 min-[380px]:flex-row min-[380px]:items-end">
 						<div class="min-w-0 flex-1">
 							<p class="fx-num text-3xl leading-none">
 								{habitsPercent}<span class="font-sans text-lg font-normal text-muted-foreground"
@@ -535,7 +550,7 @@
 								</p>
 							{/if}
 						</div>
-						<div class="w-[8.5rem] shrink-0">
+						<div class="w-full shrink-0 min-[380px]:w-[8.5rem]">
 							<PeriodBars
 								values={report.habits.byDay}
 								goal={100}
@@ -561,9 +576,11 @@
 				{#if report.finance.spent === 0}
 					<p class="text-sm text-muted-foreground">Трат на этой неделе не записано.</p>
 				{:else}
-					<div class="flex items-end gap-4">
+					<div class="flex flex-col gap-4 min-[380px]:flex-row min-[380px]:items-end">
 						<div class="min-w-0 flex-1">
-							<p class="fx-num truncate text-3xl leading-none">{money(report.finance.spent)}</p>
+							<p class="fx-num truncate text-3xl leading-none">
+								{@render num(money(report.finance.spent))}
+							</p>
 							<p class="mt-1.5 text-xs text-muted-foreground">
 								{isCurrent ? 'лимит по сегодня' : 'лимит недели'}
 								{money(report.finance.budget)}
@@ -582,7 +599,7 @@
 								{/if}
 							</p>
 						</div>
-						<div class="w-[8.5rem] shrink-0">
+						<div class="w-full shrink-0 min-[380px]:w-[8.5rem]">
 							<PeriodBars
 								values={report.finance.byDay}
 								goal={report.finance.dailyBudget}
