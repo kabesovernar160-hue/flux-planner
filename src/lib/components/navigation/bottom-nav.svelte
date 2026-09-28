@@ -38,28 +38,44 @@
 		onclick={() => telegram.haptic.impact('light')}
 		aria-label={tab.label}
 		aria-current={isActive ? 'page' : undefined}
-		class="relative flex flex-col items-center gap-1 py-3
+		class="relative flex min-w-0 flex-col items-center gap-1 py-2
 		       transition-transform duration-500 ease-flux active:scale-95"
 	>
-		{#if isActive}
-			<!-- Плашка под иконкой: активный таб читается силуэтом, а не только цветом. -->
-			<span class="pointer-events-none absolute top-1 size-9 rounded-2xl bg-lavender/12"></span>
-		{/if}
+		<!-- Высота панели держится ≈59px: под неё рассчитан нижний отступ в +layout.svelte. -->
+		<span class="relative grid h-7 w-12 place-items-center">
+			{#if isActive}
+				<!--
+					Плашка шире иконки: активный таб читается силуэтом, а не только
+					цветом, — это важно при дальтонизме и на ярком солнце. Появляется
+					с короткой отдачей, в покое не шевелится.
+				-->
+				<span
+					class="fx-pop pointer-events-none absolute inset-0 rounded-full bg-lavender/14
+					       shadow-[inset_0_1px_0_0_oklch(1_0_0/0.06)]"
+				></span>
+			{/if}
 
+			<!--
+				Активный таб переключается на weight="fill". Это не нарушает правило
+				единой толщины линий: заливка здесь работает как состояние,
+				а не как вторая иконочная семья.
+			-->
+			<Icon
+				size={21}
+				weight={isActive ? 'fill' : 'light'}
+				class="relative transition-colors duration-400 ease-flux
+				       {isActive ? 'text-lavender' : 'text-muted-foreground'}"
+			/>
+		</span>
 		<!--
-			Активный таб переключается на weight="fill". Это не нарушает правило
-			единой толщины линий: заливка здесь работает как состояние,
-			а не как вторая иконочная семья.
+			11px — нижняя граница читаемого на телефоне. «Аналитика» и «Настройки»
+			на узком экране (320px) влезают впритык, поэтому трекинг чуть поджат,
+			а не размер уменьшен.
 		-->
-		<Icon
-			size={21}
-			weight={isActive ? 'fill' : 'light'}
-			class="relative transition-colors duration-400 ease-flux
-			       {isActive ? 'text-lavender' : 'text-muted-foreground'}"
-		/>
 		<span
-			class="text-[9.5px] leading-none transition-colors duration-400 ease-flux
-			       {isActive ? 'text-lavender' : 'text-muted-foreground'}"
+			class="max-w-full truncate text-[11px] leading-none tracking-[-0.01em] transition-colors
+			       duration-400 ease-flux
+			       {isActive ? 'font-medium text-lavender' : 'text-muted-foreground'}"
 		>
 			{tab.label}
 		</span>
@@ -111,11 +127,22 @@
 				onclick={create}
 				aria-label="Создать запись"
 				class="absolute -top-5 left-1/2 grid size-14 -translate-x-1/2 place-items-center
-				       rounded-full border border-white/15 bg-lavender text-void
-				       transition-transform duration-500 ease-flux hover:bg-lavender-hi
-				       active:scale-90"
-				style="box-shadow: 0 10px 30px -8px oklch(0.7022 0.1527 293.82 / 0.6);"
+				       rounded-full border border-white/20 text-void
+				       transition-transform duration-500 ease-flux active:scale-90"
+				style="
+					background: linear-gradient(180deg, var(--fx-lavender-hi), var(--fx-lavender) 60%, var(--fx-lavender-lo));
+					box-shadow:
+						inset 0 1px 0 0 oklch(1 0 0 / 0.35),
+						0 0 0 4px var(--fx-void),
+						0 12px 30px -8px oklch(0.7022 0.1527 293.82 / 0.6);
+				"
 			>
+				<!--
+					Кольцо цвета фона вокруг кнопки вырезает её из панели: FAB
+					читается как отдельный предмет над стеклом, а не как наклейка
+					на нём. Градиент сверху вниз и блик по кромке — тот же свет,
+					что и у карточек.
+				-->
 				<svg
 					viewBox="0 0 24 24"
 					class="size-6"
