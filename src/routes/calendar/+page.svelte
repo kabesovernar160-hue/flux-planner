@@ -436,7 +436,7 @@
 					не делись — они на устройстве и в выгрузке, и снова откроются на Pro.
 				</p>
 				<a
-					href="/settings"
+					href="/settings/plan"
 					class="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-2.5
 					       text-sm font-medium text-void shadow-accent transition-transform duration-500
 					       ease-flux active:scale-[0.98]"
