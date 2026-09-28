@@ -180,6 +180,17 @@ docker compose exec app node scripts/bot-setup.ts
 `kind=habits` — дневное напоминание о незакрытых привычках, `kind` по
 умолчанию — итоги дня. Без `hour` рассылка уходит всем сразу, как раньше.
 
+### Автовыкат из GitHub
+
+Выкат можно не запускать руками: `.github/workflows/deploy.yml` на каждый
+пуш в `main` гоняет проверки и, если они прошли, заходит на сервер по SSH,
+снимает копию базы и делает `git pull && docker compose up -d --build`.
+Нужны секреты репозитория (Settings → Secrets and variables → Actions):
+`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_URL` и, если проект
+лежит не в `/opt/flux-planner`, `DEPLOY_PATH`. Ключ лучше завести отдельный,
+только для выката. Пока секретов нет, выкат пропускается, проверки работают.
+Запустить вручную — вкладка Actions → «Проверка и выкат» → Run workflow.
+
 ### Обновление и обслуживание
 
 ```bash
