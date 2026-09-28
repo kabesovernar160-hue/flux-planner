@@ -16,8 +16,20 @@
 			background:
 				radial-gradient(60rem 42rem at 10% -12%, oklch(0.7022 0.1527 293.82 / 0.16), transparent 62%),
 				radial-gradient(44rem 34rem at 98% 6%, oklch(0.8 0.115 68 / 0.07), transparent 64%),
-				radial-gradient(52rem 40rem at 46% 112%, oklch(0.7022 0.1527 293.82 / 0.08), transparent 66%);
+				radial-gradient(52rem 40rem at 46% 112%, oklch(0.7022 0.1527 293.82 / 0.08), transparent 66%),
+				radial-gradient(36rem 28rem at -8% 58%, oklch(0.76 0.1 245 / 0.045), transparent 64%);
 		"
+	></div>
+
+	<!--
+		Затемнение к низу экрана. Нижняя панель — стекло с блюром, и под ней
+		должно быть темнее, чем под шапкой: иначе подписи меню ложатся на
+		самое светлое место фона и теряют контраст. Заодно появляется глубина —
+		свет сверху, тень снизу, как в комнате с окном.
+	-->
+	<div
+		class="absolute inset-0"
+		style="background: linear-gradient(180deg, transparent 55%, oklch(0.1605 0.0063 285.67 / 0.7) 100%);"
 	></div>
 
 	<div

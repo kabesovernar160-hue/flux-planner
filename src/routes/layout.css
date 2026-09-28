@@ -101,9 +101,18 @@
 	--fx-glass-hairline: oklch(1 0 0 / 0.08);
 	--fx-glass-highlight: oklch(1 0 0 / 0.06);
 	--fx-glass-blur: 20px;
+	/* Мягкий свет сверху внутри карточки. Плоский градиент сверху вниз
+	   читается как пластик; пятно света у верхней кромки — как толща
+	   стекла, в которую свет заходит под углом. Яркость на пределе
+	   заметного: на OLED сильнее — и карточки начинают «светиться». */
+	--fx-glass-sheen: radial-gradient(
+		120% 80% at 50% -20%,
+		oklch(1 0 0 / 0.05),
+		oklch(1 0 0 / 0) 62%
+	);
 
 	--fx-shadow-flat:
-		0 1px 2px oklch(0.12 0.008 286 / 0.5), 0 6px 20px -14px oklch(0.08 0.01 286 / 0.9);
+		0 1px 2px oklch(0.12 0.008 286 / 0.5), 0 10px 26px -16px oklch(0.08 0.01 286 / 0.95);
 	--fx-shadow-lift:
 		0 1px 2px oklch(0.12 0.008 286 / 0.5), 0 18px 40px -20px oklch(0.06 0.02 286 / 0.95);
 	--fx-shadow-accent: 0 12px 32px -16px oklch(0.7022 0.1527 293.82 / 0.45);
@@ -313,6 +322,79 @@
 .fx-rise {
 	animation: fx-rise 0.44s var(--fx-ease) backwards;
 	animation-delay: calc(var(--fx-step, 0) * 55ms);
+}
+
+/* Рост столбца графика от базовой линии.
+
+   transform, а не атрибуты y/height: их переход в SVG пересчитывает
+   геометрию на каждом кадре, а scaleY отдаётся композитору. fill-box
+   ставит точку опоры в низ самого столбца, а не в угол всего SVG.
+   Порядок задаётся --fx-i, как --fx-step у карточек. */
+@keyframes fx-grow {
+	from {
+		transform: scaleY(0);
+	}
+
+	to {
+		transform: scaleY(1);
+	}
+}
+
+.fx-grow {
+	transform-box: fill-box;
+	transform-origin: 50% 100%;
+	animation: fx-grow 0.5s var(--fx-ease) backwards;
+	animation-delay: calc(120ms + var(--fx-i, 0) * 14ms);
+}
+
+/* Прорисовка линии графика. Путь размечается pathLength="1", поэтому
+   одна и та же пара значений подходит линии любой длины. */
+@keyframes fx-draw {
+	from {
+		stroke-dashoffset: 1;
+	}
+
+	to {
+		stroke-dashoffset: 0;
+	}
+}
+
+.fx-draw {
+	stroke-dasharray: 1;
+	animation: fx-draw 0.5s var(--fx-ease) 120ms backwards;
+}
+
+/* Проявление: заливка под линией, подписи графика, подсказка значения. */
+@keyframes fx-fade {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+.fx-fade {
+	animation: fx-fade 0.4s var(--fx-ease) backwards;
+	animation-delay: calc(var(--fx-step, 0) * 55ms);
+}
+
+/* Появление плашки выбранного пункта: короткая отдача на касание. */
+@keyframes fx-pop {
+	from {
+		opacity: 0;
+		transform: scale(0.7);
+	}
+
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+.fx-pop {
+	animation: fx-pop 0.36s var(--fx-ease) backwards;
 }
 
 /* Обязательное уважение к prefers-reduced-motion.
