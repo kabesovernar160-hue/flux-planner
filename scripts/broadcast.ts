@@ -40,7 +40,7 @@ const DEFAULT_TEXT = [
 ].join('\n');
 
 const BUTTON_TEXT = '🚀 Открыть Flux Planner';
-const PRODUCTION_APP_URL ='https://flux-planner-ten.vercel.app';
+const PRODUCTION_APP_URL = 'https://flux-planner-ten.vercel.app';
 
 /** Telegram пускает около 30 сообщений в секунду; держимся с запасом. */
 const DELAY_MS = 60;
@@ -79,7 +79,12 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type SendResult = 'sent' | 'blocked' | 'failed';
 
-async function send(token: string, chatId: string, text: string, appUrl: string): Promise<SendResult> {
+async function send(
+	token: string,
+	chatId: string,
+	text: string,
+	appUrl: string
+): Promise<SendResult> {
 	for (let attempt = 0; attempt < 3; attempt++) {
 		const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
 			method: 'POST',
@@ -130,8 +135,7 @@ async function main(): Promise<void> {
 	const testIndex = args.indexOf('--test');
 	const testId = testIndex >= 0 ? args[testIndex + 1] : undefined;
 	const textIndex = args.indexOf('--text-file');
-	const text =
-		textIndex >= 0 ? readFileSync(args[textIndex + 1], 'utf8').trim() : DEFAULT_TEXT;
+	const text = textIndex >= 0 ? readFileSync(args[textIndex + 1], 'utf8').trim() : DEFAULT_TEXT;
 
 	if (testIndex >= 0 && !testId) fail('После --test нужен telegram id.');
 
