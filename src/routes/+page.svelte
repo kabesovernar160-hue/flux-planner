@@ -72,8 +72,10 @@
 {:else if blank}
 	<section aria-labelledby="start-title">
 		<div class="fx-rise mb-4" style="--fx-step: 1;">
-			<h2 id="start-title" class="text-xl font-semibold tracking-tight">Начни с одного</h2>
-			<p class="mt-1 text-sm leading-relaxed text-muted-foreground">
+			<p class="text-xs font-medium text-lavender">Первый день</p>
+			<h2 id="start-title" class="mt-1 text-xl font-semibold tracking-tight">Начни с одного</h2>
+			<!-- text-pretty: без него «картину» уезжала на вторую строку одна. -->
+			<p class="mt-1 text-sm leading-relaxed text-pretty text-muted-foreground">
 				Одна запись — и день начнёт складываться в картину.
 			</p>
 		</div>

@@ -62,7 +62,7 @@
 					<Camera size={22} weight="light" class="text-tone" />
 				</span>
 				<span class="min-w-0 flex-1">
-					<span class="block text-base font-medium">Сфоткать еду</span>
+					<span class="block text-sm font-medium">Сфоткать еду</span>
 					<span class="block text-xs leading-relaxed text-muted-foreground">
 						Калории посчитаются по фото
 					</span>
@@ -79,7 +79,7 @@
 					<CheckCircle size={22} weight="light" class="text-tone" />
 				</span>
 				<div class="min-w-0 flex-1">
-					<h3 class="text-base font-medium">Добавить привычку</h3>
+					<h3 class="text-sm font-medium">Добавить привычку</h3>
 					<p class="text-xs leading-relaxed text-muted-foreground">
 						Одно касание — и она уже на главной
 					</p>
@@ -121,7 +121,7 @@
 					<Wallet size={22} weight="light" class="text-tone" />
 				</span>
 				<span class="min-w-0 flex-1">
-					<span class="block text-base font-medium">Записать трату</span>
+					<span class="block text-sm font-medium">Записать трату</span>
 					<span class="block text-xs leading-relaxed text-muted-foreground">
 						Два поля: сумма и категория
 					</span>
