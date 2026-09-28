@@ -114,8 +114,15 @@
 		'transition-colors duration-300 ease-flux placeholder:text-muted-foreground/50 ' +
 		'focus:border-lavender';
 
+	const today = $derived(getToday(plannerStore.doc.user.timezone));
+
+	const CHIP =
+		'h-8 rounded-full border px-3 text-[11px] transition-[transform,border-color,color] ' +
+		'duration-500 ease-flux active:scale-95';
+	const CHIP_ON = 'border-lavender/60 bg-lavender/12 text-lavender';
+	const CHIP_OFF = 'border-line-strong text-muted-foreground';
+
 	const dateLabel = $derived.by(() => {
-		const today = getToday(plannerStore.doc.user.timezone);
 		if (date === today) return 'сегодня';
 		if (date === addDays(today, 1)) return 'завтра';
 		if (date === addDays(today, -1)) return 'вчера';
@@ -171,28 +178,25 @@
 			</div>
 		</div>
 
+		<!--
+			Быстрые варианты подсвечиваются, когда совпадают с выбранным:
+			так видно, что «сегодня» уже стоит, и второй раз его не жмут.
+		-->
 		<div class="mt-2 flex gap-1.5">
 			<button
 				type="button"
-				onclick={() => (date = getToday(plannerStore.doc.user.timezone))}
-				class="rounded-full border border-line-strong px-3 py-1 text-[11px] text-muted-foreground
-				       transition-transform duration-500 ease-flux active:scale-95"
+				onclick={() => (date = today)}
+				aria-pressed={date === today}
+				class="{CHIP} {date === today ? CHIP_ON : CHIP_OFF}"
 			>
 				Сегодня
 			</button>
-			<button
-				type="button"
-				onclick={() => moveTo(1)}
-				class="rounded-full border border-line-strong px-3 py-1 text-[11px] text-muted-foreground
-				       transition-transform duration-500 ease-flux active:scale-95"
-			>
-				+1 день
-			</button>
+			<button type="button" onclick={() => moveTo(1)} class="{CHIP} {CHIP_OFF}">+1 день</button>
 			<button
 				type="button"
 				onclick={() => (time = '')}
-				class="ml-auto rounded-full border border-line-strong px-3 py-1 text-[11px]
-				       text-muted-foreground transition-transform duration-500 ease-flux active:scale-95"
+				aria-pressed={time === ''}
+				class="ml-auto {CHIP} {time === '' ? CHIP_ON : CHIP_OFF}"
 			>
 				Без времени
 			</button>
@@ -216,8 +220,8 @@
 						? 'border-lavender bg-lavender/12 text-lavender'
 						: 'border-line/70 bg-white/[0.02] text-muted-foreground'}"
 				>
-					<Icon size={17} weight="light" />
-					<span class="text-[10px]">{PLAN_KIND_LABELS[value]}</span>
+					<Icon size={18} weight={kind === value ? 'fill' : 'light'} />
+					<span class="text-[11px]">{PLAN_KIND_LABELS[value]}</span>
 				</button>
 			{/each}
 		</div>
