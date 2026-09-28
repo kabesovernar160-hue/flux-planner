@@ -16,16 +16,20 @@
 </script>
 
 <!--
-	Текст тёмный, а не белый: белый на лаванде даёт 2.78:1 и проваливает
-	WCAG AA. Тёмный — 6.97:1.
+	Кнопка берёт тон карточки, в которой стоит: внутри янтарного раздела
+	еды лавандовая заливка читалась как вход в чужой раздел (docs/design.md,
+	«Цвета разделов»). Тень тоже в тоне — лавандовое свечение только у бренда.
+
+	Текст тёмный, а не белый: на светлых тонах палитры белый проваливает
+	WCAG AA, тёмный держит контраст выше 7:1.
 -->
 <button
 	type="button"
 	onclick={handle}
 	aria-label={label}
-	class="group flex w-full items-center gap-3 rounded-full bg-lavender py-2.5 pr-5 pl-2.5
-	       text-void shadow-accent transition-transform duration-500 ease-flux
-	       hover:bg-lavender-hi active:scale-[0.98]"
+	class="group flex w-full items-center gap-3 rounded-full bg-tone py-1.5 pr-5 pl-1.5
+	       text-void shadow-[0_12px_32px_-16px_var(--fx-tone)] transition-[transform,filter]
+	       duration-500 ease-flux hover:brightness-105 active:scale-[0.98]"
 >
 	<span class="relative grid size-10 shrink-0 place-items-center rounded-full bg-void/12">
 		<!-- Рамка видоискателя. На наведении расходится наружу — жест «навожусь на кадр». -->
