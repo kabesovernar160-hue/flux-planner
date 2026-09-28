@@ -9,7 +9,6 @@
 	} from '$lib/services/nutritionService';
 	import FoodPicker from './food-picker.svelte';
 	import MealPicker from './meal-picker.svelte';
-	import QuickFoods from './quick-foods.svelte';
 	import type { FoodEntry, FoodReference } from '$lib/types/nutrition';
 	import { telegram } from '$lib/telegram';
 	import { nutritionForGrams } from '$lib/utils/foodScan';
@@ -207,7 +206,7 @@
 	const FIELD =
 		'w-full rounded-xl border bg-white/[0.03] px-3 py-2.5 text-sm outline-none ' +
 		'transition-colors duration-300 ease-flux placeholder:text-muted-foreground/50 ' +
-		'focus:border-lavender';
+		'focus:border-tone';
 </script>
 
 <!-- Подпись над полем, ошибка под ним. Плейсхолдер вместо подписи не используется. -->
@@ -242,19 +241,18 @@
 	</div>
 {/snippet}
 
-<form onsubmit={submit} class="py-1">
+<!-- Форма еды — всегда янтарная, в какой бы шторке её ни открыли. -->
+<form onsubmit={submit} class="tone-amber py-1">
 	{#if !entry}
-		<!--
-			Быстрая запись выше поиска: человек ест одно и то же, и чаще всего
-			нужная строка уже здесь — искать её по справочнику незачем.
-		-->
-		<div class="mb-4">
-			<QuickFoods {meal} onlogged={onsaved} onedit={repeat} />
-		</div>
-
 		<!--
 			Поиск только при создании: при правке записи название уже выбрано,
 			а подстановка чужих значений поверх правки сбивала бы с толку.
+
+			Быстрой записи («Часто / Недавно») здесь нет намеренно: она стоит
+			на первом экране шторки, откуда человек сюда и пришёл, а второй
+			её экземпляр над формой сдвигал поля за край экрана — особенно
+			когда форма открыта карандашом, чтобы поправить порцию. Свои
+			прошлые блюда ищутся тем же поиском.
 		-->
 		<div class="mb-4">
 			<FoodPicker onpick={pickReference} onrepeat={repeat} />
@@ -285,8 +283,12 @@
 				<button
 					type="button"
 					onclick={() => pickGrams(value)}
-					class="rounded-full border border-line-strong px-3 py-1 text-[11px] text-muted-foreground
-					       transition-transform duration-500 ease-flux active:scale-95"
+					aria-pressed={toNumber(grams) === value}
+					class="rounded-full border px-3 py-1.5 text-[11px] transition-[transform,border-color]
+					       duration-500 ease-flux active:scale-95
+					       {toNumber(grams) === value
+						? 'border-tone/70 bg-tone/12 text-tone'
+						: 'border-line-strong text-muted-foreground'}"
 				>
 					{value} г
 				</button>
@@ -337,9 +339,9 @@
 		{/if}
 		<button
 			type="submit"
-			class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-void
-			       shadow-accent transition-transform duration-500 ease-flux
-			       hover:bg-lavender-hi active:scale-[0.98]"
+			class="flex-[1.4] rounded-full bg-tone py-3 text-sm font-medium text-void
+			       shadow-[0_12px_32px_-16px_var(--fx-tone)] transition-transform duration-500
+			       ease-flux hover:brightness-105 active:scale-[0.98]"
 		>
 			{entry ? 'Сохранить' : 'Добавить'}
 		</button>

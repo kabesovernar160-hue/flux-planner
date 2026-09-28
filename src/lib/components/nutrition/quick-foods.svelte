@@ -1,13 +1,7 @@
 <script lang="ts">
 	import { ArrowCounterClockwise, PencilSimple, Star } from 'phosphor-svelte';
-	import {
-		quickLogFood,
-		repeatMeal,
-		toggleFavoriteFood,
-		undoFoodEntries,
-		type FoodSnapshot
-	} from '$lib/services/nutritionService';
-	import { toast } from '$lib/state/toast.svelte';
+	import { toggleFavoriteFood, type FoodSnapshot } from '$lib/services/nutritionService';
+	import { logFoodWithUndo, repeatMealWithUndo } from './quick-log';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { telegram } from '$lib/telegram';
 	import { activeFavorites, favoriteKey } from '$lib/utils/favorites';
@@ -27,9 +21,15 @@
 		onlogged: () => void;
 		/** Открыть блюдо в форме: поправить порцию перед записью. */
 		onedit: (food: FoodSnapshot) => void;
+		/**
+		 * Отступы снаружи. Проп, а не обёртка у вызывающего: когда записей
+		 * ещё нет, блок не рисуется вовсе, и пустая обёртка с отступом
+		 * оставляла бы дыру над камерой.
+		 */
+		class?: string;
 	};
 
-	let { meal, onlogged, onedit }: Props = $props();
+	let { meal, onlogged, onedit, class: className = '' }: Props = $props();
 
 	type Tab = 'frequent' | 'recent' | 'favorites';
 
@@ -77,35 +77,16 @@
 	}
 
 	function log(food: FoodSnapshot) {
-		const result = quickLogFood(food, meal);
-
-		if (!result.ok) {
-			// Испорченная старая запись — открываем форму: там видно, что не так.
+		// Испорченная старая запись — открываем форму: там видно, что не так.
+		if (!logFoodWithUndo(food, meal)) {
 			onedit(food);
 			return;
 		}
-
-		telegram.haptic.notification('success');
-		const id = result.value.id;
-		toast.show(`Записано · ${food.name}`, {
-			label: 'Отменить',
-			run: () => undoFoodEntries([id])
-		});
 		onlogged();
 	}
 
 	function repeat(item: MealRepeat) {
-		const result = repeatMeal(item.items, item.meal);
-		if (!result.ok) return;
-
-		telegram.haptic.notification('success');
-		const ids = result.value.map((entry) => entry.id);
-		const count = ids.length;
-		toast.show(
-			`Повторён ${item.label.replace('вчерашний ', '')} · ${count} ${count === 1 ? 'блюдо' : count < 5 ? 'блюда' : 'блюд'}`,
-			{ label: 'Отменить', run: () => undoFoodEntries(ids) }
-		);
-		onlogged();
+		if (repeatMealWithUndo(item)) onlogged();
 	}
 
 	function star(food: FoodSnapshot) {
@@ -151,7 +132,7 @@
 </script>
 
 {#if visible}
-	<section class="tone-amber" aria-label="Быстрая запись">
+	<section class="tone-amber {className}" aria-label="Быстрая запись">
 		{#if repeats.length > 0}
 			<!-- Вчерашний приём целиком: самый частый сценарий — «то же, что вчера». -->
 			<div class="mb-3 flex flex-col gap-1.5">

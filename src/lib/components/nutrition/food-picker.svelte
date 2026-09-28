@@ -63,7 +63,8 @@
 	}
 </script>
 
-<div>
+<!-- Поиск продукта — всегда про еду: тон задан здесь, а не ожидается снаружи. -->
+<div class="tone-amber">
 	<label for="{uid}-search" class="text-xs text-muted-foreground">Найти продукт</label>
 	<div class="relative mt-1.5">
 		<MagnifyingGlass
@@ -79,7 +80,7 @@
 			placeholder="Овсянка, курица, банан…"
 			class="w-full rounded-xl border border-line-strong bg-white/[0.03] py-2.5 pr-3 pl-9
 			       text-sm transition-colors duration-300 ease-flux outline-none
-			       placeholder:text-muted-foreground/50 focus:border-lavender"
+			       placeholder:text-muted-foreground/50 focus:border-tone"
 		/>
 	</div>
 
@@ -93,9 +94,9 @@
 						<button
 							type="button"
 							onclick={() => repeat(food)}
-							class="flex w-full items-center gap-3 rounded-xl border border-lavender/30
+							class="flex w-full items-center gap-3 rounded-xl border border-tone/30
 							       bg-white/[0.02] px-3 py-2.5 text-left transition-[transform,border-color]
-							       duration-500 ease-flux hover:border-lavender/60 active:scale-[0.98]"
+							       duration-500 ease-flux hover:border-tone/60 active:scale-[0.98]"
 						>
 							<span class="min-w-0 flex-1 truncate text-sm">{food.name}</span>
 							<span class="tabular shrink-0 text-xs text-muted-foreground">
@@ -131,7 +132,7 @@
 							onclick={() => pick(food)}
 							class="flex w-full items-center gap-3 rounded-xl border border-line/70
 							       bg-white/[0.02] px-3 py-2.5 text-left transition-[transform,border-color]
-							       duration-500 ease-flux hover:border-lavender/60 active:scale-[0.98]"
+							       duration-500 ease-flux hover:border-tone/60 active:scale-[0.98]"
 						>
 							<span class="min-w-0 flex-1 truncate text-sm">{food.name}</span>
 							<span class="tabular shrink-0 text-xs text-muted-foreground">
