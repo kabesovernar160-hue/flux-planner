@@ -10,6 +10,7 @@
 		Star,
 		Wallet
 	} from 'phosphor-svelte';
+	import type { Component } from 'svelte';
 	import EmptyAction from '$lib/components/ui/empty-action.svelte';
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
@@ -36,23 +37,37 @@
 		spendingByDay,
 		totalOf
 	} from '$lib/utils/analytics';
-	import { formatMacro, formatMoney, formatNumber, formatWeight } from '$lib/utils/format';
+	import { addDays, getToday } from '$lib/utils/date';
+	import {
+		formatMacro,
+		formatMoney,
+		formatNumber,
+		formatWeight,
+		pluralDays
+	} from '$lib/utils/format';
 
 	/**
-	 * Неделя, месяц и квартал.
+	 * Неделя, месяц, квартал и год.
 	 *
 	 * Первые две — привычные рамки, между которыми есть смысл сравнивать.
-	 * Квартал выходит за глубину бесплатного тарифа: это и есть то самое
-	 * «вся история» на Pro, обещанное в условиях.
+	 * Длинные периоды выходят за глубину бесплатного тарифа: это и есть
+	 * «вся история» на Pro, обещанная в условиях.
 	 */
 	const PERIODS = [
-		{ days: 7, label: '7 дней' },
-		{ days: 30, label: '30 дней' },
-		{ days: 90, label: '90 дней' },
-		{ days: 365, label: 'Год' }
+		{ days: 7, label: '7 дней', previous: 'к прошлым 7 дням' },
+		{ days: 30, label: '30 дней', previous: 'к прошлым 30 дням' },
+		{ days: 90, label: '90 дней', previous: 'к прошлым 90 дням' },
+		{ days: 365, label: 'Год', previous: 'к прошлому году' }
 	];
 
 	let days = $state(7);
+	const periodIndex = $derived(
+		Math.max(
+			0,
+			PERIODS.findIndex((period) => period.days === days)
+		)
+	);
+	const previousLabel = $derived(PERIODS[periodIndex].previous);
 
 	/** Глубина истории на текущем тарифе. null — ограничения нет. */
 	const historyDays = $derived(billing.historyDays);
@@ -69,9 +84,20 @@
 	});
 
 	const end = $derived(plannerStore.currentDate);
+	const today = $derived(getToday(plannerStore.doc.user.timezone));
 	const currency = $derived(plannerStore.doc.settings.currency);
 	const locale = $derived(plannerStore.doc.settings.locale);
 	const money = (value: number) => formatMoney(value, currency, locale);
+
+	/**
+	 * Знак валюты отдельно от числа.
+	 *
+	 * В цифре-герое сумма набирается моно-начертанием, а «₽» рядом с ней
+	 * в том же размере весит как ещё одна цифра. Знак берётся из самого
+	 * форматтера, поэтому доллар остаётся слева, а рубль — справа.
+	 */
+	const currencySign = $derived(money(0).replace(/[\d\s  .,]/g, ''));
+	const signFirst = $derived(money(0).trim().indexOf(currencySign) === 0);
 
 	const calories = $derived(caloriesByDay(plannerStore.foodEntries, end, days));
 	const macros = $derived(averageMacros(plannerStore.foodEntries, end, days));
@@ -117,30 +143,122 @@
 		)
 	);
 
-	/** Ниже этого порога разница — шум, а не изменение. */
-	const NOISE = 0.03;
-
-	function trendText(change: number | null): string | null {
-		if (change === null) return null;
-		if (Math.abs(change) < NOISE) return `Столько же, сколько в прошлые ${days} дней.`;
-
-		// Рост больше чем вдвое читается разами, а не процентами: «на 464 %»
-		// приходится переводить в уме, «в 5,6 раза» — нет.
-		if (change >= 1) {
-			const times = (1 + change).toFixed(1).replace('.', ',');
-			return `В ${times} раза больше, чем в прошлые ${days} дней.`;
-		}
-
-		const percent = Math.round(Math.abs(change) * 100);
-		return `На ${percent} % ${change > 0 ? 'больше' : 'меньше'}, чем в прошлые ${days} дней.`;
-	}
-
 	const avgSpending = $derived(average(spending));
 	const totalSpending = $derived(totalOf(spending));
 	const habitPercent = $derived(Math.round(average(habitRate) * 100));
 
+	/**
+	 * Привычки прошлого периода — в процентах, а не относительным изменением.
+	 * «На 12 % больше от 60 %» заставляет считать процент от процента;
+	 * «было 60 %» читается сразу.
+	 */
+	const previousHabitPercent = $derived.by(() => {
+		const rate = habitRateByDay(plannerStore.habits, plannerStore.habitCompletions, before, days);
+		// Привычек тогда ещё не было — сравнивать не с чем.
+		const createdBefore = plannerStore.habits.some(
+			(habit) => !habit.createdAt || habit.createdAt.slice(0, 10) <= before
+		);
+		return createdBefore ? Math.round(average(rate) * 100) : null;
+	});
+
 	const goal = $derived(plannerStore.todayNutrition.calorieGoal);
 	const budget = $derived(plannerStore.todayFinance.budget);
+
+	/**
+	 * Доли энергии от белков, жиров и углеводов.
+	 *
+	 * Граммы между собой не сравниваются — грамм жира вдвое калорийнее
+	 * грамма белка. Полоска показывает, из чего сложены калории.
+	 */
+	const macroEnergy = $derived.by(() => {
+		const protein = macros.protein * 4;
+		const fat = macros.fat * 9;
+		const carbs = macros.carbs * 4;
+		const total = protein + fat + carbs || 1;
+		return [
+			{ key: 'protein', label: 'Белки', grams: macros.protein, share: protein / total, alpha: 1 },
+			{ key: 'fat', label: 'Жиры', grams: macros.fat, share: fat / total, alpha: 0.6 },
+			{ key: 'carbs', label: 'Углеводы', grams: macros.carbs, share: carbs / total, alpha: 0.32 }
+		];
+	});
+
+	/**
+	 * Четыре крупные категории и «остальное».
+	 *
+	 * Полный список на восемь строк делает карточку длиннее ответа: куда
+	 * ушли деньги, видно по первым трём-четырём.
+	 */
+	const categoryRows = $derived.by(() => {
+		const head = categories.slice(0, 4);
+		const rest = categories.slice(4);
+		const rows = head.map((category, index) => ({
+			key: category.category as string,
+			label: CATEGORY_LABELS[category.category],
+			amount: category.amount,
+			share: category.share,
+			alpha: [1, 0.66, 0.44, 0.28][index]
+		}));
+		if (rest.length > 0) {
+			rows.push({
+				key: 'rest',
+				label: 'Остальное',
+				amount: rest.reduce((total, item) => total + item.amount, 0),
+				share: rest.reduce((total, item) => total + item.share, 0),
+				alpha: 0.16
+			});
+		}
+		return rows;
+	});
+
+	/* ───────────── Подписи ───────────── */
+
+	const MONTHS_OF = [
+		'января',
+		'февраля',
+		'марта',
+		'апреля',
+		'мая',
+		'июня',
+		'июля',
+		'августа',
+		'сентября',
+		'октября',
+		'ноября',
+		'декабря'
+	];
+
+	function dateLabel(date: string, withYear = false): string {
+		const [year, month, day] = date.split('-').map(Number);
+		return `${day} ${MONTHS_OF[month - 1]}${withYear ? ` ${year}` : ''}`;
+	}
+
+	/** «22–28 сентября», «30 августа — 28 сентября», с годом — если период его пересекает. */
+	const rangeLabel = $derived.by(() => {
+		const start = addDays(end, -(days - 1));
+		const crossesYear = start.slice(0, 4) !== end.slice(0, 4);
+		if (start.slice(0, 7) === end.slice(0, 7)) {
+			return `${Number(start.slice(8))}–${dateLabel(end)}`;
+		}
+		return `${dateLabel(start, crossesYear)} — ${dateLabel(end, crossesYear)}`;
+	});
+
+	/** Ниже этого порога разница — шум, а не изменение. */
+	const NOISE = 0.03;
+
+	/**
+	 * Сравнение с прошлым периодом: стрелка и величина.
+	 *
+	 * Рост больше чем вдвое читается разами, а не процентами: «на 464 %»
+	 * приходится переводить в уме, «в 5,6 раза» — нет.
+	 */
+	function trendOf(change: number | null): { arrow: string; text: string } | null {
+		if (change === null || !Number.isFinite(change)) return null;
+		if (Math.abs(change) < NOISE) return { arrow: '→', text: 'столько же' };
+		if (change >= 1) {
+			return { arrow: '↑', text: `в ${(1 + change).toFixed(1).replace('.', ',')} раза` };
+		}
+		return { arrow: change > 0 ? '↑' : '↓', text: `${Math.round(Math.abs(change) * 100)} %` };
+	}
 
 	function pickPeriod(value: number) {
 		if (locked(value)) {
@@ -156,18 +274,97 @@
 	}
 </script>
 
-<PageHeader title="Аналитика" subtitle="Записей за период: {trackedDays}" />
+{#snippet cardTitle(Icon: Component, title: string, note?: string)}
+	<div class="mb-4 flex items-center gap-2">
+		<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+			<Icon size={15} weight="regular" class="text-tone" />
+		</span>
+		<h2 class="flex-1 text-sm font-medium">{title}</h2>
+		{#if note}
+			<span class="tabular text-xs text-muted-foreground">{note}</span>
+		{/if}
+	</div>
+{/snippet}
 
-<div class="mb-4 flex gap-1.5 rounded-full border border-line/70 bg-white/[0.02] p-1">
+<!--
+	Сравнение без цвета: меньше калорий или больше трат — хорошо это или
+	плохо, зависит от цели человека, а не от знака. Цвет здесь соврал бы.
+-->
+{#snippet trend(change: number | null)}
+	{@const value = trendOf(change)}
+	{#if value}
+		<span class="whitespace-nowrap">
+			<span class="tabular font-medium text-foreground/85">{value.arrow} {value.text}</span>
+			{previousLabel}
+		</span>
+	{/if}
+{/snippet}
+
+{#snippet hero(value: string, unit: string, unitFirst = false)}
+	<p class="flex items-baseline gap-1.5">
+		{#if unitFirst}
+			<span class="text-lg font-medium text-muted-foreground">{unit}</span>
+		{/if}
+		<!--
+			Разряды разделены узким зазором, а не пробелом: в моно-начертании
+			пробел шириной в цифру, и «1 450» распадалось на два числа.
+		-->
+		<span class="fx-num leading-none {value.length > 8 ? 'text-3xl' : 'text-5xl'}">
+			{#each value.split(/[\s  ]/) as group, index (index)}
+				{#if index > 0}<span class="inline-block w-[0.22em]"></span>{/if}{group}
+			{/each}
+		</span>
+		{#if !unitFirst}
+			<span class="text-sm text-muted-foreground">{unit}</span>
+		{/if}
+	</p>
+{/snippet}
+
+{#snippet shareBar(rows: { key: string; share: number; alpha: number }[])}
+	<!-- Одна полоса долями одного тона: сразу видно, кто главный, без легенды из пяти цветов. -->
+	<div class="flex h-2 gap-0.5 overflow-hidden rounded-full">
+		{#each rows as row (row.key)}
+			{#if row.share > 0}
+				<span
+					class="h-full rounded-full bg-tone first:rounded-l-full last:rounded-r-full"
+					style="flex: {row.share} 1 0%; opacity: {row.alpha};"
+				></span>
+			{/if}
+		{/each}
+	</div>
+{/snippet}
+
+<PageHeader title="Аналитика" subtitle={rangeLabel} />
+
+<!--
+	Переключатель периода. Плашка выбранного пункта одна и переезжает,
+	а не загорается на новом месте: так видно, откуда и куда переключились.
+-->
+<div
+	class="fx-rise relative mb-4 grid grid-cols-4 rounded-full border border-line/70 bg-white/[0.02] p-1
+	       shadow-[inset_0_1px_0_0_var(--fx-glass-highlight)]"
+	style="--fx-step: 0;"
+	role="group"
+	aria-label="Период"
+>
+	<span
+		aria-hidden="true"
+		class="pointer-events-none absolute top-1 bottom-1 left-1 rounded-full bg-lavender/14
+		       shadow-[inset_0_1px_0_0_oklch(1_0_0/0.06)] transition-transform duration-500 ease-flux"
+		style="width: calc((100% - 0.5rem) / 4); transform: translateX({periodIndex * 100}%);"
+	></span>
 	{#each PERIODS as period (period.days)}
 		<button
 			type="button"
 			onclick={() => pickPeriod(period.days)}
 			aria-pressed={days === period.days}
-			class="flex flex-1 items-center justify-center gap-1 rounded-full py-2 text-xs font-medium
-			       transition-colors duration-400 ease-flux
-			       {days === period.days ? 'bg-lavender/12 text-lavender-hi' : 'text-muted-foreground'}
-			       {locked(period.days) ? 'text-muted-foreground/50' : ''}"
+			class="relative flex h-9 items-center justify-center gap-1 rounded-full text-sm transition-colors
+			       duration-400 ease-flux max-[359px]:text-xs
+			       {days === period.days
+				? 'font-medium text-lavender-hi'
+				: locked(period.days)
+					? 'text-muted-foreground/55'
+					: 'text-muted-foreground'}"
 		>
 			{#if locked(period.days)}
 				<Lock size={12} weight="light" />
@@ -178,294 +375,330 @@
 </div>
 
 {#if lockExplained}
-	<GlassCard class="mb-4">
-		<p class="text-xs leading-relaxed text-muted-foreground">
-			На бесплатном тарифе аналитика показывает последние {historyDays} дней. Записи старше никуда не
-			делись — они на устройстве и в выгрузке, и снова откроются на Pro.
-		</p>
-		<a
-			href="/settings"
-			class="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-2.5
-			       text-sm font-medium text-void shadow-accent transition-transform duration-500
-			       ease-flux active:scale-[0.98]"
-		>
-			<Star size={15} weight="fill" />
-			Посмотреть тариф
-		</a>
-	</GlassCard>
+	<div class="fx-rise mb-4">
+		<GlassCard>
+			<p class="text-sm leading-relaxed text-muted-foreground">
+				На бесплатном тарифе аналитика показывает последние {historyDays} дней. Записи старше никуда не
+				делись — они на устройстве и в выгрузке, и снова откроются на Pro.
+			</p>
+			<a
+				href="/settings"
+				class="mt-4 flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-lavender
+				       py-2.5 text-sm font-medium text-void shadow-accent transition-transform duration-500
+				       ease-flux active:scale-[0.98]"
+			>
+				<Star size={15} weight="fill" />
+				Посмотреть тариф
+			</a>
+		</GlassCard>
+	</div>
 {/if}
 
 <!-- Над карточками: раз в неделю и закрывается крестиком, см. InviteNudge. -->
 <InviteNudge />
 
 <div class="flex flex-col gap-4">
-	<GlassCard tone="amber">
-		<div class="mb-3 flex items-center gap-2">
-			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
-				<ForkKnife size={15} weight="regular" class="text-tone" />
-			</span>
-			<h2 class="flex-1 text-sm font-medium">Калории</h2>
-			<span class="tabular text-xs text-muted-foreground">цель {formatNumber(goal)}</span>
-		</div>
+	<div class="fx-rise" style="--fx-step: 1;">
+		<GlassCard tone="amber">
+			{@render cardTitle(ForkKnife, 'Калории', `цель ${formatNumber(goal)}`)}
 
-		{#if trackedDays === 0}
-			<EmptyAction
-				text="Здесь будет средняя за день и за каким приёмом набегают калории."
-				label="Сфоткать еду"
-				icon={Camera}
-				onclick={() => ui.openFoodSheet()}
-			/>
-		{:else}
-			<p class="fx-num text-3xl leading-none">
-				{formatNumber(Math.round(avgCalories))}
-				<span class="font-sans text-sm font-normal text-muted-foreground">ккал в среднем</span>
-			</p>
-			<p class="mt-1 text-xs text-muted-foreground">
-				Считается по дням с записями, их {trackedDays} из {days}.
-				{#if trendText(caloriesTrend)}
-					<span class="text-foreground/70">{trendText(caloriesTrend)}</span>
-				{/if}
-			</p>
+			{#if trackedDays === 0}
+				<EmptyAction
+					text="Здесь будет средняя за день и за каким приёмом набегают калории."
+					label="Сфоткать еду"
+					icon={Camera}
+					onclick={() => ui.openFoodSheet()}
+				/>
+			{:else}
+				{@render hero(formatNumber(Math.round(avgCalories)), 'ккал')}
+				<p class="mt-2 text-xs leading-relaxed text-muted-foreground">
+					в среднем за день с записями ·
+					{#if trendOf(caloriesTrend)}
+						{@render trend(caloriesTrend)}
+					{:else}
+						{trackedDays} из {days}
+						{pluralDays(days)}
+					{/if}
+				</p>
 
-			<div class="mt-4">
-				<PeriodBars values={calories} {goal} labels={days <= 7} warnOverGoal />
-			</div>
+				<div class="mt-5">
+					<PeriodBars
+						values={calories}
+						{goal}
+						highlight={today}
+						aggregate="meanActive"
+						unit="ккал"
+						label="Калории по дням"
+						warnOverGoal
+					/>
+				</div>
 
-			<div class="mt-4 grid grid-cols-3 gap-2">
-				{#each [['Белки', macros.protein], ['Жиры', macros.fat], ['Углеводы', macros.carbs]] as [label, value] (label)}
-					<div class="rounded-xl border border-line/70 bg-white/[0.02] px-2 py-2.5 text-center">
-						<p class="text-[11px] text-muted-foreground">{label}</p>
-						<p class="tabular mt-0.5 text-sm font-medium">{formatMacro(value as number)} г</p>
-					</div>
-				{/each}
-			</div>
-			<p class="mt-2 text-[11px] text-muted-foreground">Средние значения за день с записями.</p>
-
-			{#if meals.length > 1}
-				<!--
-					Разбивка по приёмам отвечает на вопрос, который сумма за день
-					не берёт: перебор набегает за ужином или его добирают перекусами.
-				-->
-				<div class="mt-4 border-t border-line/70 pt-3">
-					<p class="mb-2 text-xs text-muted-foreground">Откуда калории</p>
-					<ul class="flex flex-col gap-2">
-						{#each meals as meal (meal.meal)}
-							<li>
-								<div class="mb-1 flex items-baseline gap-2">
-									<span class="min-w-0 flex-1 truncate text-xs">{meal.label}</span>
-									<span class="tabular text-xs text-muted-foreground">
-										{Math.round(meal.share * 100)}%
+				<div class="mt-5 border-t border-line/60 pt-4">
+					<p class="mb-2.5 text-xs text-muted-foreground">Из чего калории</p>
+					{@render shareBar(macroEnergy)}
+					<div class="mt-3 grid grid-cols-3 gap-2">
+						{#each macroEnergy as macro (macro.key)}
+							<div class="min-w-0">
+								<p class="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+									<span
+										class="size-1.5 shrink-0 rounded-full bg-tone"
+										style="opacity: {macro.alpha};"
+									></span>
+									{macro.label}
+								</p>
+								<p class="tabular mt-1 text-sm font-medium">
+									{formatMacro(macro.grams)} г
+									<span class="text-xs font-normal text-muted-foreground">
+										{Math.round(macro.share * 100)}%
 									</span>
-									<span class="tabular text-xs font-medium">
-										{formatNumber(Math.round(meal.calories))} ккал
-									</span>
-								</div>
-								<div class="h-1 overflow-hidden rounded-full bg-line">
-									<div
-										class="h-full rounded-full bg-tone"
-										style="width: {Math.round(meal.share * 100)}%"
-									></div>
-								</div>
-							</li>
+								</p>
+							</div>
 						{/each}
-					</ul>
+					</div>
+				</div>
+
+				{#if meals.length > 1}
+					<!--
+						Разбивка по приёмам отвечает на вопрос, который сумма за день
+						не берёт: перебор набегает за ужином или его добирают перекусами.
+					-->
+					<div class="mt-4 border-t border-line/60 pt-4">
+						<p class="mb-2.5 text-xs text-muted-foreground">По приёмам пищи</p>
+						<ul class="flex flex-col gap-2.5">
+							{#each meals as meal (meal.meal)}
+								<li>
+									<div class="mb-1.5 flex items-baseline gap-2">
+										<span class="min-w-0 flex-1 truncate text-sm">{meal.label}</span>
+										<span class="tabular text-xs text-muted-foreground">
+											{Math.round(meal.share * 100)}%
+										</span>
+										<span class="tabular text-sm font-medium">
+											{formatNumber(Math.round(meal.calories))}
+										</span>
+									</div>
+									<div class="h-1 overflow-hidden rounded-full bg-white/[0.06]">
+										<div
+											class="h-full rounded-full bg-tone"
+											style="width: {Math.round(meal.share * 100)}%"
+										></div>
+									</div>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+			{/if}
+		</GlassCard>
+	</div>
+
+	<div class="fx-rise" style="--fx-step: 2;">
+		<GlassCard tone="mint">
+			{@render cardTitle(CheckCircle, 'Привычки')}
+
+			{#if plannerStore.habits.length === 0}
+				<EmptyAction
+					text="Здесь появятся серии и доля выполненных дней."
+					label="Добавить привычку"
+					icon={Plus}
+					onclick={() => ui.openHabitSheet()}
+				/>
+			{:else}
+				{@render hero(String(habitPercent), '%')}
+				<p class="mt-2 text-xs leading-relaxed text-muted-foreground">
+					выполнено в среднем за день
+					{#if previousHabitPercent !== null && habitPercent !== previousHabitPercent}
+						·
+						<span class="whitespace-nowrap">
+							<span class="tabular font-medium text-foreground/85">
+								{habitPercent > previousHabitPercent ? '↑' : '↓'} было {previousHabitPercent} %
+							</span>
+						</span>
+					{/if}
+				</p>
+
+				<div class="mt-5">
+					<!-- Доли 0…1 приводятся к процентам для общей шкалы графика. -->
+					<PeriodBars
+						values={habitRate.map((day) => ({ date: day.date, value: day.value * 100 }))}
+						goal={100}
+						highlight={today}
+						unit="%"
+						axisFormat={(value) => `${Math.round(value)}%`}
+						label="Выполнение привычек по дням"
+						height={96}
+					/>
+				</div>
+
+				<div class="mt-5 grid grid-cols-2 gap-2">
+					<div class="flex items-center gap-3 rounded-xl bg-tone/[0.07] px-3 py-3">
+						<Fire size={18} weight="fill" class="shrink-0 text-tone" />
+						<div class="min-w-0">
+							<p class="text-[11px] text-muted-foreground">Серия сейчас</p>
+							<p class="tabular mt-0.5 text-sm font-medium">
+								{plannerStore.currentStreak}&nbsp;{pluralDays(plannerStore.currentStreak)}
+							</p>
+						</div>
+					</div>
+					<div class="flex items-center gap-3 rounded-xl border border-line/60 px-3 py-3">
+						<Fire size={18} weight="light" class="shrink-0 text-muted-foreground" />
+						<div class="min-w-0">
+							<p class="text-[11px] text-muted-foreground">Лучшая серия</p>
+							<p class="tabular mt-0.5 text-sm font-medium">
+								{plannerStore.longestStreak}&nbsp;{pluralDays(plannerStore.longestStreak)}
+							</p>
+						</div>
+					</div>
 				</div>
 			{/if}
-		{/if}
-	</GlassCard>
+		</GlassCard>
+	</div>
 
-	<GlassCard>
-		<div class="mb-3 flex items-center gap-2">
-			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
-				<Scales size={15} weight="regular" class="text-tone" />
-			</span>
-			<h2 class="flex-1 text-sm font-medium">Вес</h2>
-			{#if latest}
-				<span class="tabular text-xs text-muted-foreground">{latest.date}</span>
-			{/if}
-		</div>
+	<div class="fx-rise" style="--fx-step: 3;">
+		<GlassCard tone="sky">
+			{@render cardTitle(Wallet, 'Траты', `лимит ${money(budget)} в день`)}
 
-		{#if !latest}
-			<EmptyAction
-				text="Раз в неделю на весы — и здесь появится график и прогноз до цели."
-				label="Записать вес"
-				icon={Scales}
-				onclick={() => ui.openWeightSheet()}
-			/>
-		{:else}
-			<p class="fx-num text-3xl leading-none">
-				{formatWeight(latest.weightKg)}
-				<span class="font-sans text-sm font-normal text-muted-foreground">кг</span>
-			</p>
-
-			{#if weightDelta === null}
-				<p class="mt-1 text-xs text-muted-foreground">
-					За период одно взвешивание — динамику покажут два и больше.
-				</p>
+			{#if totalSpending === 0 && totalIncome === 0}
+				<EmptyAction
+					text="Здесь будет видно, куда уходят деньги и сколько остаётся."
+					label="Записать трату"
+					icon={Wallet}
+					onclick={() => ui.openFinanceSheet(undefined, 'expense')}
+				/>
 			{:else}
+				{@render hero(formatNumber(Math.round(totalSpending), locale), currencySign, signFirst)}
+				<p class="mt-2 text-xs leading-relaxed text-muted-foreground">
+					за период, {money(Math.round(avgSpending))} в день
+					{#if trendOf(spendingTrend)}
+						· {@render trend(spendingTrend)}
+					{/if}
+				</p>
+
+				<div class="mt-5">
+					<PeriodBars
+						values={spending}
+						goal={budget}
+						highlight={today}
+						format={(value) => money(Math.round(value))}
+						label="Траты по дням"
+						height={96}
+						warnOverGoal
+					/>
+				</div>
+
+				{#if totalIncome > 0}
+					<!--
+						Доход и баланс рядом с тратами: без них «потрачено 40 000»
+						не отвечает на вопрос, хорошо это или плохо.
+					-->
+					<div class="mt-5 grid grid-cols-2 gap-2">
+						<div class="rounded-xl border border-line/60 px-3 py-2.5">
+							<p class="text-[11px] text-muted-foreground">Доход</p>
+							<p class="tabular mt-0.5 text-sm font-medium text-success">+{money(totalIncome)}</p>
+						</div>
+						<div class="rounded-xl border border-line/60 px-3 py-2.5">
+							<p class="text-[11px] text-muted-foreground">Баланс</p>
+							<p class="tabular mt-0.5 text-sm font-medium {balance < 0 ? 'text-destructive' : ''}">
+								{balance >= 0 ? '+' : '−'}{money(Math.abs(balance))}
+							</p>
+						</div>
+					</div>
+				{/if}
+
+				{#if categoryRows.length > 0}
+					<div class="mt-5 border-t border-line/60 pt-4">
+						<p class="mb-2.5 text-xs text-muted-foreground">Куда ушли</p>
+						{@render shareBar(categoryRows)}
+						<ul class="mt-3 flex flex-col gap-2">
+							{#each categoryRows as row (row.key)}
+								<li class="flex items-center gap-2.5">
+									<span class="size-2 shrink-0 rounded-full bg-tone" style="opacity: {row.alpha};"
+									></span>
+									<span class="min-w-0 flex-1 truncate text-sm">{row.label}</span>
+									<span class="tabular text-xs text-muted-foreground">
+										{Math.round(row.share * 100)}%
+									</span>
+									<span class="tabular w-20 text-right text-sm font-medium"
+										>{money(row.amount)}</span
+									>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+			{/if}
+		</GlassCard>
+	</div>
+
+	<div class="fx-rise" style="--fx-step: 4;">
+		<GlassCard>
+			{@render cardTitle(
+				Scales,
+				'Вес',
+				latest ? `${latest.date === today ? 'сегодня' : dateLabel(latest.date)}` : undefined
+			)}
+
+			{#if !latest}
+				<EmptyAction
+					text="Раз в неделю на весы — и здесь появится график и прогноз до цели."
+					label="Записать вес"
+					icon={Scales}
+					onclick={() => ui.openWeightSheet()}
+				/>
+			{:else}
+				{@render hero(formatWeight(latest.weightKg), 'кг')}
 				<!--
 					Ноль важен не меньше роста и снижения: «вес не изменился» —
 					это ответ, а не отсутствие данных.
 				-->
-				<p class="mt-1 text-xs text-muted-foreground">
-					{#if weightDelta === 0}
+				<p class="mt-2 text-xs leading-relaxed text-muted-foreground">
+					{#if weightDelta === null}
+						За период одно взвешивание — динамику покажут два и больше.
+					{:else if weightDelta === 0}
 						За период вес не изменился.
 					{:else}
-						{weightDelta > 0 ? '+' : '−'}{formatWeight(Math.abs(weightDelta))} кг за период.
+						<span class="tabular font-medium text-foreground/85">
+							{weightDelta > 0 ? '↑ +' : '↓ −'}{formatWeight(Math.abs(weightDelta))} кг
+						</span>
+						за период
 					{/if}
 				</p>
-			{/if}
 
-			<div class="mt-4">
-				<LineChart values={weights} format={formatWeight} />
-			</div>
-
-			{#if progress}
-				<!--
-					Прогноз выдаётся только при движении к цели и достаточной
-					истории: дата, посчитанная по одному килограмму, читается
-					как обещание, которого никто не давал.
-				-->
-				<div class="mt-4 border-t border-line/70 pt-3 text-xs text-muted-foreground">
-					{#if progress.remainingKg <= 0.1 && progress.remainingKg >= -0.1}
-						<p>Цель {formatWeight(progress.goalKg)} кг достигнута.</p>
-					{:else}
-						<p>
-							До цели {formatWeight(progress.goalKg)} кг —
-							{formatWeight(Math.abs(progress.remainingKg))} кг
-							{progress.remainingKg > 0 ? 'вниз' : 'вверх'}.
-						</p>
-					{/if}
-
-					{#if progress.perWeekKg !== null && progress.perWeekKg !== 0}
-						<p class="mt-1">
-							Темп: {progress.perWeekKg > 0 ? '+' : '−'}{formatWeight(Math.abs(progress.perWeekKg))} кг
-							в неделю.
-							{#if progress.etaDate}
-								При нём цель — около {progress.etaDate}.
-							{/if}
-						</p>
-					{/if}
+				<div class="mt-5">
+					<LineChart values={weights} format={formatWeight} goal={progress?.goalKg ?? null} />
 				</div>
-			{/if}
-		{/if}
-	</GlassCard>
 
-	<GlassCard tone="mint">
-		<div class="mb-3 flex items-center gap-2">
-			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
-				<CheckCircle size={15} weight="regular" class="text-tone" />
-			</span>
-			<h2 class="flex-1 text-sm font-medium">Привычки</h2>
-			<span class="tabular text-xs text-muted-foreground">{habitPercent}%</span>
-		</div>
+				{#if progress}
+					<!--
+						Прогноз выдаётся только при движении к цели и достаточной
+						истории: дата, посчитанная по одному килограмму, читается
+						как обещание, которого никто не давал.
+					-->
+					<div class="mt-5 border-t border-line/60 pt-4 text-sm leading-relaxed">
+						{#if progress.remainingKg <= 0.1 && progress.remainingKg >= -0.1}
+							<p>Цель {formatWeight(progress.goalKg)} кг достигнута.</p>
+						{:else}
+							<p>
+								До цели {formatWeight(progress.goalKg)} кг —
+								<span class="tabular font-medium">
+									{formatWeight(Math.abs(progress.remainingKg))} кг
+								</span>
+								{progress.remainingKg > 0 ? 'вниз' : 'вверх'}
+							</p>
+						{/if}
 
-		{#if plannerStore.habits.length === 0}
-			<EmptyAction
-				text="Здесь появятся серии и доля выполненных дней."
-				label="Добавить привычку"
-				icon={Plus}
-				onclick={() => ui.openHabitSheet()}
-			/>
-		{:else}
-			<!-- Доли 0…1 приводятся к процентам для общей шкалы графика. -->
-			<PeriodBars
-				values={habitRate.map((day) => ({ date: day.date, value: day.value * 100 }))}
-				goal={100}
-				labels={days <= 7}
-				height={90}
-			/>
-
-			<div class="mt-4 grid grid-cols-2 gap-2">
-				<div class="flex items-center gap-2.5 rounded-xl border border-line/70 px-3 py-2.5">
-					<Fire size={16} weight="fill" class="shrink-0 text-tone" />
-					<div class="min-w-0">
-						<p class="text-[11px] text-muted-foreground">Сейчас</p>
-						<p class="tabular text-sm font-medium">{plannerStore.currentStreak} дней</p>
+						{#if progress.perWeekKg !== null && progress.perWeekKg !== 0}
+							<p class="mt-1 text-xs text-muted-foreground">
+								Темп {progress.perWeekKg > 0 ? '+' : '−'}{formatWeight(
+									Math.abs(progress.perWeekKg)
+								)} кг в неделю{#if progress.etaDate}, при нём цель — около {dateLabel(
+										progress.etaDate,
+										progress.etaDate.slice(0, 4) !== today.slice(0, 4)
+									)}{/if}.
+							</p>
+						{/if}
 					</div>
-				</div>
-				<div class="flex items-center gap-2.5 rounded-xl border border-line/70 px-3 py-2.5">
-					<Fire size={16} weight="light" class="shrink-0 text-muted-foreground" />
-					<div class="min-w-0">
-						<p class="text-[11px] text-muted-foreground">Лучшая серия</p>
-						<p class="tabular text-sm font-medium">{plannerStore.longestStreak} дней</p>
-					</div>
-				</div>
-			</div>
-		{/if}
-	</GlassCard>
-
-	<GlassCard tone="sky">
-		<div class="mb-3 flex items-center gap-2">
-			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
-				<Wallet size={15} weight="regular" class="text-tone" />
-			</span>
-			<h2 class="flex-1 text-sm font-medium">Траты</h2>
-			<span class="tabular text-xs text-muted-foreground">лимит {money(budget)}</span>
-		</div>
-
-		{#if totalSpending === 0 && totalIncome === 0}
-			<EmptyAction
-				text="Здесь будет видно, куда уходят деньги и сколько остаётся."
-				label="Записать трату"
-				icon={Wallet}
-				onclick={() => ui.openFinanceSheet(undefined, 'expense')}
-			/>
-		{:else}
-			<p class="fx-num text-3xl leading-none">
-				{money(totalSpending)}
-			</p>
-			<p class="mt-1 text-xs text-muted-foreground">
-				В среднем {money(Math.round(avgSpending))} в день.
-				{#if trendText(spendingTrend)}
-					<span class="text-foreground/70">{trendText(spendingTrend)}</span>
 				{/if}
-			</p>
-
-			<div class="mt-4">
-				<PeriodBars values={spending} goal={budget} labels={days <= 7} height={90} warnOverGoal />
-			</div>
-
-			{#if totalIncome > 0}
-				<!--
-					Доход и баланс рядом с тратами: без них «потрачено 40 000»
-					не отвечает на вопрос, хорошо это или плохо.
-				-->
-				<div class="mt-4 grid grid-cols-2 gap-2">
-					<div class="rounded-xl border border-line/70 bg-white/[0.02] px-3 py-2.5">
-						<p class="text-[11px] text-muted-foreground">Доход</p>
-						<p class="tabular mt-0.5 text-sm font-medium text-success">+{money(totalIncome)}</p>
-					</div>
-					<div class="rounded-xl border border-line/70 bg-white/[0.02] px-3 py-2.5">
-						<p class="text-[11px] text-muted-foreground">Баланс</p>
-						<p class="tabular mt-0.5 text-sm font-medium {balance < 0 ? 'text-destructive' : ''}">
-							{balance >= 0 ? '+' : '−'}{money(Math.abs(balance))}
-						</p>
-					</div>
-				</div>
 			{/if}
-
-			<ul class="mt-4 flex flex-col gap-2">
-				{#each categories as category (category.category)}
-					<li>
-						<div class="mb-1 flex items-baseline gap-2">
-							<span class="min-w-0 flex-1 truncate text-xs">
-								{CATEGORY_LABELS[category.category]}
-							</span>
-							<span class="tabular text-xs text-muted-foreground">
-								{Math.round(category.share * 100)}%
-							</span>
-							<span class="tabular text-xs font-medium">{money(category.amount)}</span>
-						</div>
-						<div class="h-1 overflow-hidden rounded-full bg-line">
-							<div
-								class="h-full rounded-full bg-tone"
-								style="width: {Math.round(category.share * 100)}%"
-							></div>
-						</div>
-					</li>
-				{/each}
-			</ul>
-		{/if}
-	</GlassCard>
+		</GlassCard>
+	</div>
 </div>

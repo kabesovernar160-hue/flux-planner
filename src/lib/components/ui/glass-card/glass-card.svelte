@@ -106,6 +106,17 @@
 		       via-white/20 to-transparent"
 	></span>
 
+	<!--
+		Свет, зашедший в толщу стекла у верхней кромки. Отдельным слоем, а не
+		вторым фоном: фон у карточки задают снаружи (bg-[var(--fx-glass-tint-solid)]
+		и т.п.), и второй градиент в том же свойстве они бы затёрли.
+	-->
+	<span
+		aria-hidden="true"
+		class="pointer-events-none absolute inset-0 rounded-[inherit]"
+		style="background: var(--fx-glass-sheen);"
+	></span>
+
 	{#if tone}
 		<!--
 			Свечение намеренно почти незаметное: карточка различается
