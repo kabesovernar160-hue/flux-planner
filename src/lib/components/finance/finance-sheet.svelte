@@ -17,7 +17,7 @@
 	);
 </script>
 
-<Sheet open={ui.financeSheetOpen} {title} onclose={() => ui.closeFinanceSheet()}>
+<Sheet open={ui.financeSheetOpen} {title} tone="sky" onclose={() => ui.closeFinanceSheet()}>
 	<!--
 		key перемонтирует форму при смене предвыбранной категории: поля снимают
 		начальные значения один раз, и без перемонтирования тап по другой быстрой
