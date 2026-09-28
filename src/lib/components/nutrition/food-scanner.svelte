@@ -536,7 +536,7 @@
 				{#if quotaExceeded}
 					<!-- Тариф — это Pro, а Pro по правилам лавандовый, даже внутри шторки еды. -->
 					<a
-						href="/settings"
+						href="/settings/plan"
 						onclick={handleClose}
 						class="flex w-full items-center justify-center gap-2 rounded-full bg-lavender py-3
 						       text-sm font-medium text-void shadow-accent transition-transform duration-500
