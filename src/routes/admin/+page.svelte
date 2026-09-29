@@ -16,6 +16,7 @@
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import { sourceLabel, type AdminStats, type CohortDay, type Rate } from '$lib/stats/metrics';
+	import { canUseServer } from '$lib/state/authMode.svelte';
 	import { telegram } from '$lib/telegram';
 	import { authHeaders } from '$lib/telegram/auth';
 	import { formatNumber } from '$lib/utils/format';
@@ -35,7 +36,7 @@
 	let refreshing = $state(false);
 
 	async function load() {
-		if (!telegram.isEmbedded || !telegram.initData) {
+		if (!canUseServer()) {
 			status = 'outside';
 			return;
 		}

@@ -8,6 +8,7 @@ import {
 import { resetDriverForTests } from './storage';
 import { SyncQueue } from './syncQueue.svelte';
 import { plannerStore } from '$lib/stores/plannerStore.svelte';
+import { authMode } from '$lib/state/authMode.svelte';
 import { telegram } from '$lib/telegram';
 import type { TelegramWebApp } from '$lib/telegram';
 
@@ -198,5 +199,49 @@ describe('устройство с данными', () => {
 		await queue.syncNow();
 
 		expect(pullUrls[0]).toContain('since=2026-01-20');
+	});
+});
+
+describe('приложение на телефоне без Telegram', () => {
+	/**
+	 * После входа по коду из бота подписи нет, а синхронизация должна идти:
+	 * удостоверяет кука устройства, её браузер добавляет сам.
+	 */
+	it('синхронизируется по сессии устройства, без заголовка подписи', async () => {
+		const seenHeaders: Record<string, string>[] = [];
+		const inner = globalThis.fetch;
+		globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+			seenHeaders.push({ ...((init?.headers as Record<string, string>) ?? {}) });
+			return inner(input, init);
+		}) as typeof fetch;
+
+		telegram.isEmbedded = false;
+		telegram.webApp = null;
+		authMode.setDevice(true);
+
+		try {
+			plannerStore.updateSettings({ calorieGoal: 1800 });
+			await plannerStore.flush();
+			await queue.syncNow();
+
+			expect(pushes[0].settings?.calorieGoal).toBe(1800);
+			expect(seenHeaders.length).toBeGreaterThan(0);
+			for (const headers of seenHeaders) {
+				expect(headers).not.toHaveProperty('x-telegram-init-data');
+			}
+		} finally {
+			authMode.setDevice(false);
+		}
+	});
+
+	it('без входа и без Telegram молчит', async () => {
+		telegram.isEmbedded = false;
+		telegram.webApp = null;
+		authMode.setDevice(false);
+
+		await queue.syncNow();
+
+		expect(pushes).toHaveLength(0);
+		expect(pullUrls).toHaveLength(0);
 	});
 });

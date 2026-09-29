@@ -8,9 +8,9 @@
 	import { addDays, dayOfWeek, getToday } from '$lib/utils/date';
 	import { greeting, pluralDays } from '$lib/utils/format';
 
-	// Вне Telegram имени нет — подставляем нейтральное, чтобы экран
-	// не выглядел сломанным во время локальной разработки.
-	const name = $derived(telegram.user?.first_name ?? 'Гость');
+	// Вне Telegram имя берётся из аккаунта (вход по коду из бота), а без
+	// входа — нейтральное, чтобы экран не выглядел сломанным.
+	const name = $derived(telegram.user?.first_name ?? (plannerStore.doc.user.firstName || 'Гость'));
 
 	/**
 	 * Внутри Telegram на месте марки — сам человек: главная про его день,

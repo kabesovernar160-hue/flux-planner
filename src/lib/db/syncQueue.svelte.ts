@@ -10,7 +10,8 @@ import {
 import { getDriver, STORES, type StoreName } from './storage';
 import { billing } from '$lib/state/billing.svelte';
 import { plannerStore } from '$lib/stores/plannerStore.svelte';
-import { telegram } from '$lib/telegram';
+import { canUseServer } from '$lib/state/authMode.svelte';
+import { authHeaders } from '$lib/telegram/auth';
 import { nowIso } from '$lib/utils/date';
 
 export type SyncStatus = 'idle' | 'syncing' | 'offline' | 'error';
@@ -184,8 +185,8 @@ export class SyncQueue {
 	}
 
 	async #run(): Promise<void> {
-		if (!telegram.isEmbedded || !telegram.initData) {
-			// Вне Telegram синхронизировать нечем: подписи нет, сервер откажет.
+		if (!canUseServer()) {
+			// Ни подписи Telegram, ни входа на устройстве — сервер откажет.
 			// Данные остаются локально — это штатный режим, а не ошибка.
 			this.status = 'idle';
 			return;
@@ -200,10 +201,9 @@ export class SyncQueue {
 		this.status = 'syncing';
 		this.lastError = null;
 
-		const headers = {
-			'content-type': 'application/json',
-			'x-telegram-init-data': telegram.initData
-		};
+		// В Telegram — подпись в заголовке, на телефоне без Telegram —
+		// кука сессии устройства, её браузер добавит сам.
+		const headers = authHeaders({ 'content-type': 'application/json' });
 
 		try {
 			const watermark = readWatermark();

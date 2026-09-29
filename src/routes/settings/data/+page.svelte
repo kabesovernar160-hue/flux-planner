@@ -28,9 +28,11 @@
 			case 'authenticated':
 				return `Вход выполнен${session.user?.username ? ` · @${session.user.username}` : ''}`;
 			case 'authenticating':
-				return 'Проверяем подпись Telegram…';
+				return 'Проверяем вход…';
 			case 'local':
-				return 'Открыто вне Telegram';
+				return 'Без входа: только на этом устройстве';
+			case 'signedOut':
+				return 'Вход не выполнен';
 			case 'error':
 				return session.error ?? 'Не удалось войти';
 			default:
@@ -272,7 +274,7 @@
 		step={0}
 		footer={session.isAuthenticated
 			? undefined
-			: 'Синхронизация работает внутри Telegram: сервер принимает данные только по подписи Telegram. Здесь всё сохраняется локально.'}
+			: 'Синхронизация работает после входа — в Telegram или по коду из бота (Настройки → Устройства). Сейчас всё сохраняется только на этом устройстве.'}
 	>
 		<SettingsRow
 			icon={syncBroken ? CloudSlash : CloudCheck}
@@ -370,7 +372,7 @@
 					label={deleteLabel}
 					hint={session.isAuthenticated
 						? 'Стирает записи и на сервере. Отменить это нельзя.'
-						: 'Стирает записи и на сервере. Работает внутри Telegram: сервер отвечает только по подписи.'}
+						: 'Стирает записи и на сервере. Работает после входа — в Telegram или по коду из бота.'}
 					disabled={deleting || !session.isAuthenticated}
 					onclick={askDelete}
 					class={confirmingDelete ? 'bg-destructive/15' : undefined}

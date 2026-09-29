@@ -1,5 +1,5 @@
 import { REFERRAL_CAP_DAYS, REFERRAL_REWARD_DAYS } from '$lib/billing/referral';
-import { telegram } from '$lib/telegram';
+import { canUseServer } from '$lib/state/authMode.svelte';
 import { authHeaders } from '$lib/telegram/auth';
 
 export type ReferralStatus = 'idle' | 'loading' | 'ready' | 'unavailable';
@@ -37,8 +37,8 @@ class ReferralState {
 	}
 
 	async #load(): Promise<void> {
-		if (!telegram.isEmbedded || !telegram.initData) {
-			// Ссылка привязана к аккаунту Telegram: вне его выдавать её некому.
+		if (!canUseServer()) {
+			// Ссылка привязана к аккаунту: без входа выдавать её некому.
 			this.status = 'unavailable';
 			return;
 		}
