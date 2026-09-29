@@ -151,9 +151,16 @@ export interface TelegramWebApp {
 	disableVerticalSwipes?(): void;
 	enableVerticalSwipes?(): void;
 
+	/** Bot API 8.0+ — ярлык Mini App на главном экране телефона. */
+	addToHomeScreen?(): void;
+	checkHomeScreenStatus?(callback: (status: HomeScreenStatus) => void): void;
+
 	onEvent(eventType: string, callback: (...args: unknown[]) => void): void;
 	offEvent(eventType: string, callback: (...args: unknown[]) => void): void;
 }
+
+/** Ответ checkHomeScreenStatus: ярлык есть, его нет или клиент не умеет. */
+export type HomeScreenStatus = 'unsupported' | 'unknown' | 'added' | 'missed';
 
 declare global {
 	interface Window {

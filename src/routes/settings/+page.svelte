@@ -15,6 +15,7 @@
 	import SettingsGroup from '$lib/components/settings/settings-group.svelte';
 	import SettingsRow from '$lib/components/settings/settings-row.svelte';
 	import { syncShortLabel } from '$lib/components/settings/sync-label';
+	import HomeScreenRow from '$lib/components/settings/home-screen-row.svelte';
 	import ThemeRow from '$lib/components/settings/theme-row.svelte';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import { syncQueue } from '$lib/db/syncQueue.svelte';
@@ -74,6 +75,7 @@
 		/>
 		<!-- Тема переключается прямо здесь: ради трёх вариантов экран не нужен. -->
 		<ThemeRow />
+		<HomeScreenRow />
 	</SettingsGroup>
 
 	<SettingsGroup step={2}>
