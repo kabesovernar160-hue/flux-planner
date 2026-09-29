@@ -71,7 +71,12 @@ export default defineConfig(({ mode }) => {
 
 				// Не adapter-auto: приложению нужен собственный сервер, а выбор
 				// между Node и Vercel делается явно — см. selectAdapter.
-				adapter: selectAdapter()
+				adapter: selectAdapter(),
+
+				// Сервис-воркер регистрируется вручную ($lib/pwa) и только вне
+				// Telegram: Mini App он ничего не даёт, а кеш внутри WebView клиента
+				// лишь мешал бы обновлениям.
+				serviceWorker: { register: false }
 			})
 		]
 	};
