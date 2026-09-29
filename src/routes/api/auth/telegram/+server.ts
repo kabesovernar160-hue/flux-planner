@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { isAdminTelegramId } from '$lib/server/admin/access';
+import { authPayload } from '$lib/server/auth/respond';
 import { AuthError, requireUser } from '$lib/server/auth/session';
 import { apiError, logServerError } from '$lib/server/errors';
 import { checkRateLimit } from '$lib/server/rateLimit';
@@ -22,29 +22,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	}
 
 	try {
-		const { user, repositories } = await requireUser(request);
-
-		// Настройки отдаются прямо здесь, вместе с входом.
-		// Ждать первой синхронизации нельзя: до неё приложение видит пустые
-		// настройки и встречает знакомого человека приветствием для новичка.
-		const state = await repositories.planner.get(user.id);
-
-		// Наружу отдаём только то, что клиент и так о себе знает.
-		// Внутренний идентификатор тоже безопасен: он не даёт доступа
-		// без действующей подписи.
-		return json({
-			user: {
-				id: user.id,
-				telegramUserId: user.telegramUserId,
-				firstName: user.firstName,
-				username: user.username,
-				timezone: user.timezone
-			},
-			state: state ? { settings: state.settings, settingsUpdatedAt: state.updatedAt } : null,
-			// Только чтобы показать строку «Статистика» в настройках. Сама
-			// статистика проверяет права заново: флаг из ответа ничего не открывает.
-			...(isAdminTelegramId(user.telegramUserId) ? { admin: true } : {})
-		});
+		return json(await authPayload(await requireUser(request)));
 	} catch (error) {
 		if (error instanceof AuthError) {
 			return apiError(error.code, error.message, error.status);

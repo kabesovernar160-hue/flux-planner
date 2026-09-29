@@ -400,5 +400,40 @@ export const MIGRATIONS: Migration[] = [
 				updated_at TEXT NOT NULL
 			)`
 		]
+	},
+	{
+		// Вход без Telegram: приложение на главном экране телефона.
+		// login_tokens — одноразовые коды из бота на десять минут,
+		// device_sessions — долгие сессии устройств по куке. В обеих
+		// таблицах только хеши: утёкшая база не должна открывать дневники.
+		// previous_secret_hash держит прежний секрет несколько минут после
+		// ротации, чтобы параллельные запросы со старой кукой не выкинули
+		// человека из приложения.
+		name: '0011_device_sessions',
+		statements: [
+			`CREATE TABLE IF NOT EXISTS login_tokens (
+				id TEXT PRIMARY KEY,
+				user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				token_hash TEXT NOT NULL,
+				created_at TEXT NOT NULL,
+				expires_at TEXT NOT NULL,
+				used_at TEXT
+			)`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS login_token_hash_idx ON login_tokens (token_hash)`,
+			`CREATE INDEX IF NOT EXISTS login_token_user_idx ON login_tokens (user_id)`,
+			`CREATE TABLE IF NOT EXISTS device_sessions (
+				id TEXT PRIMARY KEY,
+				user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				secret_hash TEXT NOT NULL,
+				previous_secret_hash TEXT,
+				label TEXT NOT NULL,
+				created_at TEXT NOT NULL,
+				rotated_at TEXT NOT NULL,
+				last_seen_at TEXT NOT NULL,
+				expires_at TEXT NOT NULL,
+				revoked_at TEXT
+			)`,
+			`CREATE INDEX IF NOT EXISTS device_session_user_idx ON device_sessions (user_id)`
+		]
 	}
 ];

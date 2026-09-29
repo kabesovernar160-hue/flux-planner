@@ -73,6 +73,7 @@ export const HELP_TEXT = [
 	'',
 	'Записывать в дневник буду только после вашего подтверждения.',
 	'Полная картина дня — в приложении.',
+	'Приложение на телефон без Telegram — команда /phone.',
 	'',
 	'Что-то неудобно или сломалось — напишите «/feedback» и дальше текст,',
 	'он уйдёт прямо разработчику.'
@@ -122,7 +123,12 @@ export const SUBSCRIPTION_CANCEL_FAILED_TEXT = [
 ].join('\n');
 
 export interface InlineKeyboard {
-	inline_keyboard: { text: string; web_app?: { url: string }; callback_data?: string }[][];
+	inline_keyboard: {
+		text: string;
+		web_app?: { url: string };
+		url?: string;
+		callback_data?: string;
+	}[][];
 }
 
 /**
@@ -290,3 +296,52 @@ export const NO_FOOD_TEXT = [
 	'',
 	'Попробуйте снять блюдо целиком при нормальном свете или добавьте его вручную в приложении.'
 ].join('\n');
+
+/**
+ * Приложение на телефоне без Telegram: вход по ссылке из бота.
+ *
+ * Кнопка «📱 Приложение на телефон» (и команда /phone) выдаёт одноразовый
+ * код. Ссылка идёт обычной url-кнопкой, а не web_app: её надо открыть
+ * в браузере телефона — там приложение ставится на главный экран. Код
+ * повторён текстом для айфона: приложение на главном экране не видит куку
+ * Safari, и там его вводят руками.
+ *
+ * Ссылка — только в кнопке, не в тексте: превью ссылки в чате Telegram
+ * строит запросом на сервер, и лишний визит на страницу входа ни к чему.
+ */
+export const PHONE_APP_BUTTON = '📱 Приложение на телефон';
+export const PHONE_LOGIN_BUTTON = '📱 Войти на этом устройстве';
+export const PHONE_LOGIN_CALLBACK = 'login';
+
+export function phoneLoginText(code: string): string {
+	return [
+		'Flux Planner на главном экране телефона — без Telegram, со своей иконкой.',
+		'',
+		'1. Нажмите кнопку ниже — страница откроется в браузере.',
+		'2. Нажмите «Войти» и добавьте приложение на главный экран.',
+		'',
+		'Если ссылка открылась внутри Telegram, откройте её в Safari или Chrome (меню «⋯»).',
+		`Если приложение спросит код: ${code}`,
+		'',
+		'Ссылка и код работают 10 минут и только один раз.'
+	].join('\n');
+}
+
+export function phoneLoginKeyboard(loginUrl: string): InlineKeyboard {
+	return { inline_keyboard: [[{ text: PHONE_LOGIN_BUTTON, url: loginUrl }]] };
+}
+
+export const PHONE_LOGIN_RATE_LIMITED_TEXT =
+	'Коды входа уже выданы несколько раз подряд. Подождите пару минут и попробуйте снова.';
+
+/** Справка: кнопка приложения и вход на телефоне. */
+export function helpKeyboard(appUrl: string | undefined): InlineKeyboard {
+	const rows: InlineKeyboard['inline_keyboard'] = [];
+
+	if (isValidMiniAppUrl(appUrl)) {
+		rows.push([{ text: OPEN_APP_BUTTON, web_app: { url: appUrl as string } }]);
+		rows.push([{ text: PHONE_APP_BUTTON, callback_data: PHONE_LOGIN_CALLBACK }]);
+	}
+
+	return { inline_keyboard: rows };
+}

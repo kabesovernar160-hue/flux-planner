@@ -292,6 +292,60 @@ export const captureTokens = sqliteTable(
 );
 
 /**
+ * Одноразовые коды входа на устройстве без Telegram.
+ *
+ * Бот выдаёт код по кнопке «📱 Приложение на телефон», приложение в браузере
+ * меняет его на сессию устройства. Живёт десять минут, срабатывает один раз,
+ * в базе — только хеш.
+ */
+export const loginTokens = sqliteTable(
+	'login_tokens',
+	{
+		id: text('id').primaryKey(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		/** SHA-256 от нормализованного кода, в шестнадцатеричном виде. */
+		tokenHash: text('token_hash').notNull(),
+		createdAt: text('created_at').notNull(),
+		expiresAt: text('expires_at').notNull(),
+		/** Код обменян на сессию — второй раз не сработает. */
+		usedAt: text('used_at')
+	},
+	(table) => [
+		uniqueIndex('login_token_hash_idx').on(table.tokenHash),
+		index('login_token_user_idx').on(table.userId)
+	]
+);
+
+/**
+ * Сессии устройств: приложение на главном экране, браузер.
+ *
+ * Кука несёт «идентификатор.секрет», в базе — хеш секрета. Секрет
+ * периодически меняется; прежний хеш принимается ещё несколько минут,
+ * чтобы запросы, ушедшие со старой кукой, не выкинули человека.
+ */
+export const deviceSessions = sqliteTable(
+	'device_sessions',
+	{
+		id: text('id').primaryKey(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		secretHash: text('secret_hash').notNull(),
+		previousSecretHash: text('previous_secret_hash'),
+		/** «iPhone · Safari» — чтобы в списке устройств было что узнать. */
+		label: text('label').notNull(),
+		createdAt: text('created_at').notNull(),
+		rotatedAt: text('rotated_at').notNull(),
+		lastSeenAt: text('last_seen_at').notNull(),
+		expiresAt: text('expires_at').notNull(),
+		revokedAt: text('revoked_at')
+	},
+	(table) => [index('device_session_user_idx').on(table.userId)]
+);
+
+/**
  * Счётчики частоты запросов.
  *
  * Служебная таблица: в синхронизацию не входит, пользователю не принадлежит,
@@ -444,6 +498,8 @@ export type HabitCompletionRow = typeof habitCompletions.$inferSelect;
 export type FinanceEntryRow = typeof financeEntries.$inferSelect;
 export type WeightEntryRow = typeof weightEntries.$inferSelect;
 export type CaptureTokenRow = typeof captureTokens.$inferSelect;
+export type LoginTokenRow = typeof loginTokens.$inferSelect;
+export type DeviceSessionRow = typeof deviceSessions.$inferSelect;
 export type DailyNutritionRow = typeof dailyNutrition.$inferSelect;
 export type DailyFinanceRow = typeof dailyFinance.$inferSelect;
 export type PlanItemRow = typeof planItems.$inferSelect;

@@ -6,6 +6,13 @@ import { AiError } from '$lib/server/ai/types';
 import { getReadyDb } from '$lib/server/db/client';
 import { createRepositories, type Repositories } from '$lib/server/db/repositories';
 import { logServerError } from '$lib/server/errors';
+import {
+	issueLoginToken,
+	LOGIN_TOKEN_LIMIT,
+	LOGIN_TOKEN_WINDOW_MS,
+	loginUrl
+} from '$lib/server/auth/loginTokens';
+import { checkRateLimit } from '$lib/server/rateLimit';
 import { trackBotStart } from '$lib/server/activity/activity';
 import { hasAnyRecord } from '$lib/server/notifications/activationNudges';
 import { settleReferral } from '$lib/server/referrals/notify';
@@ -41,9 +48,15 @@ import {
 	formatSavedMessage,
 	formatScanMessage,
 	HELP_TEXT,
+	helpKeyboard,
 	isValidMiniAppUrl,
 	miniAppKeyboard,
 	NO_FOOD_TEXT,
+	PHONE_APP_BUTTON,
+	PHONE_LOGIN_CALLBACK,
+	PHONE_LOGIN_RATE_LIMITED_TEXT,
+	phoneLoginKeyboard,
+	phoneLoginText,
 	SUBSCRIPTION_CANCEL_FAILED_TEXT,
 	SUBSCRIPTION_NONE_TEXT,
 	subscriptionCancelledText,
@@ -163,6 +176,45 @@ async function sendWelcome(chatId: number): Promise<void> {
 }
 
 /**
+ * Вход в приложение на телефоне без Telegram.
+ *
+ * Бот — единственный, кто точно знает, кто пишет, поэтому код входа
+ * выдаёт он. Код одноразовый, живёт десять минут, в базе — только хеш.
+ * Предел выдачи общий с кнопкой в приложении.
+ */
+async function sendPhoneLogin(
+	chatId: number,
+	fromId: number,
+	from: TelegramMessage['from']
+): Promise<void> {
+	const url = miniAppUrl();
+
+	if (!isValidMiniAppUrl(url)) {
+		logServerError('telegram/phone', new Error('TELEGRAM_MINI_APP_URL не задан или не https'));
+		await sendMessage(chatId, APP_URL_MISSING_TEXT);
+		return;
+	}
+
+	const { userId } = await resolveUser(String(fromId), from);
+
+	const limit = await checkRateLimit(
+		`login-token:user:${userId}`,
+		LOGIN_TOKEN_LIMIT,
+		LOGIN_TOKEN_WINDOW_MS
+	);
+	if (!limit.allowed) {
+		await sendMessage(chatId, PHONE_LOGIN_RATE_LIMITED_TEXT);
+		return;
+	}
+
+	const issued = await issueLoginToken(await getReadyDb(), userId);
+
+	await sendMessage(chatId, phoneLoginText(issued.code), {
+		replyMarkup: phoneLoginKeyboard(loginUrl(url as string, issued.token))
+	});
+}
+
+/**
  * /start и /app.
  *
  * Учётная запись заводится уже здесь, а не при первом открытии приложения:
@@ -203,6 +255,13 @@ async function handleStart(
 	// заводит строку, и вызванный первым он сделал бы человека «не новым»,
 	// а приглашение по /start ref_… перестало бы засчитываться.
 	await trackBotStart(fromId, from, text);
+
+	// t.me/<бот>?start=login — кнопка «Открыть бота» на экране входа
+	// приложения: человек пришёл за кодом, приветствие ему не нужно.
+	if (text.split(/\s+/)[1] === 'login') {
+		await sendPhoneLogin(chatId, fromId, from);
+		return;
+	}
 
 	await sendWelcome(chatId);
 }
@@ -389,6 +448,12 @@ async function handleCallback(query: TelegramCallbackQuery): Promise<void> {
 	const parts = (query.data ?? '').split(':');
 
 	if (!query.id || !chatId || !fromId) return;
+
+	if (query.data === PHONE_LOGIN_CALLBACK) {
+		await answerCallbackQuery(query.id);
+		await sendPhoneLogin(chatId, fromId, query.from);
+		return;
+	}
 
 	const example = exampleFromCallback(query.data);
 	if (example !== null) {
@@ -716,7 +781,12 @@ async function handleMessage(message: TelegramMessage, chatId: number, fromId: n
 	}
 
 	if (name === '/help') {
-		await sendMessage(chatId, HELP_TEXT, { replyMarkup: miniAppKeyboard(miniAppUrl()) });
+		await sendMessage(chatId, HELP_TEXT, { replyMarkup: helpKeyboard(miniAppUrl()) });
+		return;
+	}
+
+	if (name === '/phone' || name === '/login' || text === PHONE_APP_BUTTON) {
+		await sendPhoneLogin(chatId, fromId, message.from);
 		return;
 	}
 
@@ -751,7 +821,7 @@ async function handleMessage(message: TelegramMessage, chatId: number, fromId: n
 		return;
 	}
 
-	await sendMessage(chatId, HELP_TEXT, { replyMarkup: miniAppKeyboard(miniAppUrl()) });
+	await sendMessage(chatId, HELP_TEXT, { replyMarkup: helpKeyboard(miniAppUrl()) });
 }
 
 export const POST: RequestHandler = async ({ request }) => {
