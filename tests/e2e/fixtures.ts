@@ -23,6 +23,16 @@ export const test = base.extend<{ consoleErrors: string[] }>({
 		await page.route('https://telegram.org/**', (route) =>
 			route.fulfill({ body: '', contentType: 'application/javascript' })
 		);
+		// Вне Telegram без входа приложение открывает экран входа. Эти тесты
+		// проверяют сам дневник, поэтому стартуют как «Пользоваться без входа».
+		// Вход по коду проверяется отдельно, в pwa.spec.ts.
+		await page.addInitScript(() => {
+			try {
+				localStorage.setItem('fx-local-only', '1');
+			} catch {
+				/* хранилище недоступно — тест увидит экран входа и упадёт честно */
+			}
+		});
 		await use(page);
 	}
 });

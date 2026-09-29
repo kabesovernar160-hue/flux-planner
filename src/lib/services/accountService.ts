@@ -1,6 +1,6 @@
 import { syncQueue } from '$lib/db/syncQueue.svelte';
 import { plannerStore } from '$lib/stores/plannerStore.svelte';
-import { telegram } from '$lib/telegram';
+import { canUseServer } from '$lib/state/authMode.svelte';
 import { authHeaders } from '$lib/telegram/auth';
 import type { ServiceResult } from './nutritionService';
 
@@ -16,10 +16,12 @@ import type { ServiceResult } from './nutritionService';
  * на сервере — то есть с уверенностью, что всё удалено, когда это не так.
  */
 export async function deleteAccount(): Promise<ServiceResult<null>> {
-	if (!telegram.isEmbedded || !telegram.initData) {
+	if (!canUseServer()) {
 		return {
 			ok: false,
-			errors: { auth: 'Удаление работает внутри Telegram: сервер отвечает только по подписи' }
+			errors: {
+				auth: 'Удаление работает после входа: откройте приложение в Telegram или войдите по коду из бота'
+			}
 		};
 	}
 

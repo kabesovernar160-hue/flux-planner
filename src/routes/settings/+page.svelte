@@ -3,6 +3,7 @@
 		BellSimple,
 		ChartBar,
 		Database,
+		DeviceMobile,
 		Gift,
 		Info,
 		Lightning,
@@ -101,6 +102,12 @@
 				hint="Воронка, возвраты и источники рекламы"
 			/>
 		{/if}
+		<SettingsRow
+			href="/settings/devices"
+			icon={DeviceMobile}
+			label="Устройства"
+			value="Приложение на телефон"
+		/>
 		<SettingsRow href="/settings/capture" icon={Lightning} label="Запись без Telegram" />
 		<SettingsRow
 			href="/settings/data"

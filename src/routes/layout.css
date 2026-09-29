@@ -172,15 +172,21 @@
 	   Переменные --tg-* выставляет сам клиент Telegram.
 	   Фолбэки нужны, чтобы приложение открывалось и в браузере.
 	   ───────────────────────────────────────────────────────────── */
+	/* Вне Telegram (браузер, приложение на главном экране) переменных --tg-*
+	   нет, и отступы берутся у самой системы: env(safe-area-inset-*) —
+	   чёлка, строка состояния под black-translucent и жестовая полоса.
+	   Внутри Telegram клиент выставляет --tg-* и env() не участвует. */
 	--fx-vh: var(--tg-viewport-stable-height, 100dvh);
 	--fx-safe-top: calc(
-		var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px)
+		var(--tg-safe-area-inset-top, env(safe-area-inset-top, 0px)) +
+			var(--tg-content-safe-area-inset-top, 0px)
 	);
 	--fx-safe-bottom: calc(
-		var(--tg-safe-area-inset-bottom, 0px) + var(--tg-content-safe-area-inset-bottom, 0px)
+		var(--tg-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) +
+			var(--tg-content-safe-area-inset-bottom, 0px)
 	);
-	--fx-safe-left: var(--tg-safe-area-inset-left, 0px);
-	--fx-safe-right: var(--tg-safe-area-inset-right, 0px);
+	--fx-safe-left: var(--tg-safe-area-inset-left, env(safe-area-inset-left, 0px));
+	--fx-safe-right: var(--tg-safe-area-inset-right, env(safe-area-inset-right, 0px));
 }
 
 /* ─────────────────────────────────────────────────────────────────

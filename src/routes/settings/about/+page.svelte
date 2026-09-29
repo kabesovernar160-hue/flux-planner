@@ -6,6 +6,7 @@
 	import { GlassCard } from '$lib/components/ui/glass-card';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import { LEGAL_UPDATED } from '$lib/legal';
+	import { session } from '$lib/state/session.svelte';
 	import { telegram } from '$lib/telegram';
 </script>
 
@@ -30,9 +31,12 @@
 		<p class="text-sm leading-relaxed text-pretty text-muted-foreground">
 			{#if telegram.isEmbedded}
 				Приветствие и кнопка запуска живут в чате с ботом — там же можно прислать фото еды.
+			{:else if session.isAuthenticated}
+				Приложение на этом устройстве связано с вашим аккаунтом Telegram: записи синхронизируются,
+				распознавание по фото работает.
 			{:else}
-				Полный набор возможностей — внутри Telegram: там работают распознавание по фото и
-				синхронизация между устройствами.
+				Войдите по коду из бота — тогда заработают распознавание по фото и синхронизация между
+				устройствами.
 			{/if}
 		</p>
 	</GlassCard>

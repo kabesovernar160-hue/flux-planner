@@ -7,6 +7,7 @@
 	import { addTransaction } from '$lib/services/financeService';
 	import { ui } from '$lib/state/ui.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
+	import { canUseServer } from '$lib/state/authMode.svelte';
 	import { telegram } from '$lib/telegram';
 	import { authHeaders } from '$lib/telegram/auth';
 	import type { PlanKind } from '$lib/types/plan';
@@ -193,7 +194,7 @@
 	 * пункт плана всё равно добавится по локальным правилам.
 	 */
 	async function parseOnServer(text: string) {
-		if (!telegram.isEmbedded || !telegram.initData) return null;
+		if (!canUseServer()) return null;
 		if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
 
 		try {

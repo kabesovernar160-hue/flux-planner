@@ -1,4 +1,4 @@
-import { telegram } from '$lib/telegram';
+import { canUseServer } from '$lib/state/authMode.svelte';
 import { authHeaders } from '$lib/telegram/auth';
 import type { ServiceResult } from './nutritionService';
 
@@ -24,7 +24,7 @@ function offline(): ServiceResult<never> {
 }
 
 async function call<T>(method: string): Promise<ServiceResult<T>> {
-	if (!telegram.isEmbedded || !telegram.initData) return offline();
+	if (!canUseServer()) return offline();
 
 	try {
 		const response = await fetch('/api/capture/token', {

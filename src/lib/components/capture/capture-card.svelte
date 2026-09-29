@@ -138,7 +138,7 @@
 
 	{#if !session.isAuthenticated}
 		<p class="mt-3 border-t border-line/60 pt-3 text-xs leading-relaxed text-muted-foreground">
-			Ключ выдаётся внутри Telegram: сервер отвечает только по подписи.
+			Ключ выдаётся после входа — в Telegram или по коду из бота.
 		</p>
 	{:else}
 		{#if token}

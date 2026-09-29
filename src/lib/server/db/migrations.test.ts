@@ -34,7 +34,9 @@ describe('миграции', () => {
 			'rate_limits',
 			'referral_codes',
 			'referrals',
-			'activation_nudges'
+			'activation_nudges',
+			'login_tokens',
+			'device_sessions'
 		]) {
 			expect(names).toContain(table);
 		}

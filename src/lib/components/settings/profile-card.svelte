@@ -36,14 +36,18 @@
 	/** Откуда данные: человеку важно знать, уедут ли они на другой телефон. */
 	const accountLine = $derived.by(() => {
 		switch (session.status) {
-			case 'authenticated':
-				return username ? `@${username} · вход через Telegram` : 'Вход через Telegram';
+			case 'authenticated': {
+				const via = session.kind === 'device' ? 'вход по коду из бота' : 'вход через Telegram';
+				return username ? `@${username} · ${via}` : via[0].toUpperCase() + via.slice(1);
+			}
 			case 'authenticating':
-				return 'Проверяем подпись Telegram…';
+				return 'Проверяем вход…';
 			case 'error':
-				return 'Не удалось войти через Telegram';
+				return session.error ?? 'Не удалось войти';
+			case 'signedOut':
+				return 'Вход не выполнен';
 			default:
-				return 'Открыто вне Telegram';
+				return 'Без входа: только на этом устройстве';
 		}
 	});
 

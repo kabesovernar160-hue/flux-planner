@@ -20,6 +20,7 @@
 	import { session } from '$lib/state/session.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
+	import { pwa } from '$lib/pwa/pwa.svelte';
 	import { telegram } from '$lib/telegram';
 	import { theme } from '$lib/theme';
 
@@ -86,8 +87,32 @@
 	 */
 	let onboardingDismissed = $state(false);
 
+	/**
+	 * Экран входа живёт сам по себе: без навигации, шторок и приветствия.
+	 * Ему нечего предложить, пока человек не вошёл.
+	 */
+	const bare = $derived(page.url.pathname === '/login');
+
+	/**
+	 * Вне Telegram без входа — на экран входа.
+	 *
+	 * Раньше приложение молча открывалось «только с локальными данными»,
+	 * и человек, поставивший его на главный экран, не видел ни одной своей
+	 * записи из Telegram, не понимая почему. Теперь он сразу видит, как
+	 * войти, а остаться без облака можно одной кнопкой там же.
+	 * Правовые страницы открываются и без входа.
+	 */
+	const OPEN_PATHS = ['/login', '/privacy', '/terms'];
+
+	$effect(() => {
+		if (session.status !== 'signedOut') return;
+		if (OPEN_PATHS.includes(page.url.pathname)) return;
+		void goto('/login', { replaceState: true });
+	});
+
 	const needsOnboarding = $derived(
 		!onboardingDismissed &&
+			!bare &&
 			session.profileKnown &&
 			plannerStore.status !== 'idle' &&
 			plannerStore.status !== 'hydrating' &&
@@ -116,7 +141,8 @@
 	 * не под приветствием, не под шторкой и не раньше, чем экран наполнился.
 	 */
 	const createHintActive = $derived(
-		page.url.pathname === '/' &&
+		!bare &&
+			page.url.pathname === '/' &&
 			firstRun.settled &&
 			!needsOnboarding &&
 			!showOnboarding &&
@@ -139,6 +165,8 @@
 			const disposeTelegram = telegram.init();
 			// После Telegram: тема окружения зависит от того, встроены ли мы в клиент.
 			const disposeTheme = theme.init();
+			// Установка и сервис-воркер — только вне Telegram.
+			const disposePwa = pwa.init(telegram.isEmbedded);
 
 			// Вход на сервере: подпись initData проверяется там, и только после
 			// ответа пользователь считается авторизованным. Ждать этого интерфейсу
@@ -187,6 +215,7 @@
 			return () => {
 				disposeTelegram();
 				disposeTheme();
+				disposePwa();
 				unsubscribe();
 				syncQueue.dispose();
 				plannerStore.dispose();
@@ -215,7 +244,7 @@
 	style="
 		min-height: var(--fx-vh);
 		padding-top: calc(var(--fx-safe-top) + 1rem);
-		padding-bottom: calc(var(--fx-safe-bottom) + 6.5rem);
+		padding-bottom: calc(var(--fx-safe-bottom) + {bare ? '1.5rem' : '6.5rem'});
 		padding-left: calc(var(--fx-safe-left) + 1rem);
 		padding-right: calc(var(--fx-safe-right) + 1rem);
 	"
@@ -223,7 +252,9 @@
 	{@render children()}
 </div>
 
-<BottomNav oncreate={() => ui.openCreateSheet()} />
+{#if !bare}
+	<BottomNav oncreate={() => ui.openCreateSheet()} />
+{/if}
 <CreateHint active={createHintActive} />
 
 {#if showOnboarding}

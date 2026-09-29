@@ -1,4 +1,5 @@
 import { PLANS, type Entitlement, type PlanId, type PlanLimits } from '$lib/billing/plans';
+import { canUseServer } from '$lib/state/authMode.svelte';
 import { telegram } from '$lib/telegram';
 import { authHeaders } from '$lib/telegram/auth';
 
@@ -61,8 +62,8 @@ class BillingState {
 	}
 
 	async refresh(): Promise<void> {
-		if (!telegram.isEmbedded || !telegram.initData) {
-			// Вне Telegram платных возможностей нет вовсе: сканер туда
+		if (!canUseServer()) {
+			// Без входа платных возможностей нет вовсе: сканер туда
 			// и так не пускает, а показывать тариф не из чего.
 			this.status = 'unavailable';
 			return;
@@ -107,6 +108,15 @@ class BillingState {
 		if (this.purchase === 'creating' || this.purchase === 'awaiting') return;
 
 		this.error = null;
+
+		// Звёзды принимает только клиент Telegram. Вне его счёт выписывать
+		// незачем: открыть его всё равно нечем.
+		if (!telegram.isEmbedded) {
+			this.error = 'Оплата звёздами доступна в приложении Telegram';
+			this.purchase = 'failed';
+			return;
+		}
+
 		this.purchase = 'creating';
 
 		try {

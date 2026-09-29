@@ -19,6 +19,33 @@
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
 
 		<!--
+			Приложение на главном экране телефона, без Telegram.
+			Манифест — для Android и десктопного Chrome; iOS читает свои мета-теги
+			и apple-touch-icon. black-translucent отдаёт приложению зону под
+			строкой состояния, отступ приходит из env(safe-area-inset-top)
+			через --fx-safe-top. Внутри Telegram всё это ни на что не влияет.
+		-->
+		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="apple-mobile-web-app-title" content="Flux" />
+		<meta name="application-name" content="Flux Planner" />
+
+		<!--
+			Предложение установки Chrome присылает один раз и может успеть до того,
+			как смонтируется приложение. Событие откладывается здесь, а забирает
+			его $lib/pwa, когда человек дойдёт до экрана установки.
+		-->
+		<script>
+			window.addEventListener('beforeinstallprompt', function (event) {
+				event.preventDefault();
+				window.__fxInstallPrompt = event;
+			});
+		</script>
+
+		<!--
 			Фон до загрузки стилей бандла, в тон --fx-void обеих тем.
 			Без него между первым кадром и CSS окно успевало мигнуть белым
 			(или тёмным в светлой теме).

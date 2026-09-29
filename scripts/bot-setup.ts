@@ -21,6 +21,7 @@ const COMMANDS = [
 	{ command: 'start', description: 'Открыть Flux Planner' },
 	{ command: 'app', description: 'Открыть приложение' },
 	{ command: 'help', description: 'Что умею в чате' },
+	{ command: 'phone', description: 'Приложение на телефон без Telegram' },
 	{ command: 'feedback', description: 'Написать отзыв разработчику' }
 ];
 
