@@ -25,13 +25,18 @@
 	}
 </script>
 
+<!--
+	Тон мятный задан на самой кнопке, а не ждётся от карточки: привычки
+	мятные везде, и отметка в нейтральной карточке (календарь) иначе
+	наследовала бы лаванду бренда.
+-->
 <button
 	type="button"
 	role="checkbox"
 	aria-checked={checked}
 	aria-label={label}
 	onclick={toggle}
-	class="group flex w-full items-center gap-3 rounded-lg py-1.5 text-left
+	class="tone-mint group flex w-full items-center gap-3 rounded-lg py-1.5 text-left
 	       transition-transform duration-500 ease-flux active:scale-[0.99]"
 >
 	<span

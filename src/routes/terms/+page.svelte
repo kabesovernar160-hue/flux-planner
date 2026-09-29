@@ -16,18 +16,27 @@
 	<title>Условия использования — Flux Planner</title>
 </svelte:head>
 
-<PageHeader title="Условия использования" subtitle="Обновлено {LEGAL_UPDATED}" back="/settings" />
+<PageHeader
+	title="Условия использования"
+	subtitle="Обновлено {LEGAL_UPDATED}"
+	back="/settings/about"
+/>
 
-<div class="space-y-3 pb-4">
+<div class="flex flex-col gap-4 pb-4">
 	<GlassCard>
 		<h2 class="mb-2 flex items-center gap-2 text-sm font-medium">
-			<Scroll size={15} weight="light" class="text-lavender" />
+			<span class="grid size-7 shrink-0 place-items-center rounded-lg bg-tone/12">
+				<Scroll size={15} weight="regular" class="text-tone" />
+			</span>
 			Что это за приложение
 		</h2>
 		<p class="text-xs leading-relaxed text-muted-foreground">
 			Flux Planner — дневник питания, привычек и финансов внутри Telegram. Пользуясь им, вы
 			соглашаетесь с тем, что написано ниже. Не согласны — просто не пользуйтесь: данные с
-			устройства можно выгрузить и стереть в настройках.
+			устройства можно выгрузить и стереть в
+			<a href="/settings/data" class="text-lavender underline-offset-2 hover:underline"
+				>настройках данных</a
+			>.
 		</p>
 	</GlassCard>
 

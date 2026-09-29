@@ -259,9 +259,7 @@
 						aria-pressed={activity === value}
 						class="flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left
 						       transition-[transform,border-color] duration-500 ease-flux active:scale-[0.98]
-						       {activity === value
-							? 'border-lavender bg-lavender/[0.08]'
-							: 'border-line/70 bg-ink/[0.02]'}"
+						       {activity === value ? 'border-lavender bg-lavender/[0.08]' : 'border-line/70 bg-ink/[0.02]'}"
 					>
 						<span
 							class="grid size-4 shrink-0 place-items-center rounded-full border

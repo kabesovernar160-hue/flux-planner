@@ -11,7 +11,9 @@ import { defineConfig } from '@playwright/test';
  * Вьюпорт — айфон средней величины: Mini App живёт только в телефоне,
  * и горизонтальное переполнение на десктопной ширине не поймать.
  */
-const PORT = 5173;
+// Порт переопределяется E2E_PORT: несколько копий репозитория, прогоняющих
+// тесты одновременно, иначе подхватили бы чужой уже запущенный dev-сервер.
+const PORT = Number(process.env.E2E_PORT) || 5173;
 
 export default defineConfig({
 	testDir: 'tests/e2e',

@@ -103,7 +103,12 @@
 	}
 </script>
 
-<form onsubmit={submit} class="py-1">
+<!--
+	Форма привычки — раздел привычек, поэтому выбор и главная кнопка мятные,
+	а не лавандовые: шторку открывают и с главной, и цвет должен сразу
+	говорить, о чём она.
+-->
+<form onsubmit={submit} class="tone-mint py-1">
 	<label for="{uid}-name" class="text-xs text-muted-foreground">Название</label>
 	<input
 		id="{uid}-name"
@@ -114,7 +119,7 @@
 		aria-invalid={Boolean(errors.name)}
 		class="mt-1.5 w-full rounded-xl border bg-ink/[0.03] px-3 py-2.5 text-sm transition-colors
 		       duration-300 ease-flux outline-none placeholder:text-muted-foreground/50
-		       focus:border-lavender {errors.name ? 'border-destructive' : 'border-line-strong'}"
+		       focus:border-tone {errors.name ? 'border-destructive' : 'border-line-strong'}"
 	/>
 	{#if errors.name}
 		<p class="mt-1 text-xs text-destructive">{errors.name}</p>
@@ -136,7 +141,7 @@
 				class="grid aspect-square place-items-center rounded-xl border transition-[transform,border-color,background-color]
 				       duration-500 ease-flux active:scale-90
 				       {icon === key
-					? 'border-lavender bg-lavender/12 text-lavender'
+					? 'border-tone bg-tone/12 text-tone'
 					: 'border-line/70 bg-ink/[0.02] text-muted-foreground'}"
 			>
 				<Icon size={18} weight="light" />
@@ -156,16 +161,14 @@
 				aria-pressed={frequency === option.id}
 				class="flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left
 				       transition-[transform,border-color] duration-500 ease-flux active:scale-[0.98]
-				       {frequency === option.id
-					? 'border-lavender bg-lavender/[0.08]'
-					: 'border-line/70 bg-ink/[0.02]'}"
+				       {frequency === option.id ? 'border-tone bg-tone/[0.08]' : 'border-line/70 bg-ink/[0.02]'}"
 			>
 				<span
 					class="grid size-4 shrink-0 place-items-center rounded-full border
-					       {frequency === option.id ? 'border-lavender' : 'border-line-strong'}"
+					       {frequency === option.id ? 'border-tone' : 'border-line-strong'}"
 				>
 					{#if frequency === option.id}
-						<span class="size-2 rounded-full bg-lavender"></span>
+						<span class="size-2 rounded-full bg-tone"></span>
 					{/if}
 				</span>
 				<span class="min-w-0 flex-1">
@@ -186,7 +189,7 @@
 					class="flex-1 rounded-lg border py-2 text-xs transition-[transform,border-color,background-color]
 					       duration-500 ease-flux active:scale-90
 					       {targetDays.includes(day)
-						? 'border-lavender bg-lavender/12 text-lavender'
+						? 'border-tone bg-tone/12 text-tone'
 						: 'border-line/70 bg-ink/[0.02] text-muted-foreground'}"
 				>
 					{label}
@@ -211,9 +214,9 @@
 		{/if}
 		<button
 			type="submit"
-			class="flex-[1.4] rounded-full bg-lavender py-3 text-sm font-medium text-on-accent
-			       shadow-accent transition-transform duration-500 ease-flux
-			       hover:bg-lavender-hi active:scale-[0.98]"
+			class="flex-[1.4] rounded-full bg-tone py-3 text-sm font-medium text-on-accent
+			       shadow-[0_12px_32px_-16px_var(--fx-tone)] transition-transform duration-500 ease-flux
+			       active:scale-[0.98]"
 		>
 			{habit ? 'Сохранить' : 'Добавить'}
 		</button>

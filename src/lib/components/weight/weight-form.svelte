@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { Minus, Plus } from 'phosphor-svelte';
 	import { plannerStore } from '$lib/stores/plannerStore.svelte';
 	import { telegram } from '$lib/telegram';
 	import {
@@ -86,55 +87,72 @@
 </script>
 
 <form onsubmit={submit} class="py-1">
-	<label for="{uid}-weight" class="text-xs text-muted-foreground">Вес, кг</label>
+	<label for="{uid}-weight" class="block text-center text-xs text-muted-foreground">Вес, кг</label>
 
-	<div class="mt-2 flex items-center gap-2">
+	<div class="mt-3 flex items-center gap-3">
 		<button
 			type="button"
 			onclick={() => step(-0.1)}
 			aria-label="Меньше на сто граммов"
-			class="grid size-11 shrink-0 place-items-center rounded-full border border-line-strong
-			       text-lg transition-transform duration-500 ease-flux active:scale-90"
+			class="grid size-12 shrink-0 place-items-center rounded-full border border-line-strong
+			       transition-transform duration-500 ease-flux active:scale-90"
 		>
-			−
+			<Minus size={16} weight="light" />
 		</button>
 
-		<input
-			id="{uid}-weight"
-			bind:value
-			oninput={() => (error = null)}
-			type="text"
-			inputmode="decimal"
-			autocomplete="off"
-			placeholder="78,4"
-			aria-invalid={Boolean(error)}
-			class="tabular min-w-0 flex-1 rounded-xl border bg-ink/[0.03] px-3 py-3 text-center
-			       text-2xl font-semibold transition-colors duration-300 ease-flux outline-none
-			       placeholder:text-muted-foreground/40 focus:border-lavender
+		<!--
+			Цифра — герой экрана: на весы встают ради одного числа.
+			Ширина поля — по числу знаков (моноширинное начертание, ch
+			точен), чтобы «кг» стояло вплотную к цифрам, а не у края рамки.
+		-->
+		<div
+			class="flex min-w-0 flex-1 items-baseline justify-center gap-1.5 rounded-card border
+			       bg-ink/[0.03] px-3 py-4 transition-colors duration-300 ease-flux
+			       focus-within:border-lavender
 			       {error ? 'border-destructive' : 'border-line-strong'}"
-		/>
+		>
+			<input
+				id="{uid}-weight"
+				bind:value
+				oninput={() => (error = null)}
+				type="text"
+				inputmode="decimal"
+				autocomplete="off"
+				placeholder="78,4"
+				aria-invalid={Boolean(error)}
+				class="fx-num min-w-0 bg-transparent text-center text-6xl leading-none outline-none
+				       placeholder:text-muted-foreground/30"
+				style:width="{Math.max(3, (value || '78,4').length) + 0.5}ch"
+			/>
+			<span aria-hidden="true" class="shrink-0 text-sm text-muted-foreground">кг</span>
+		</div>
 
 		<button
 			type="button"
 			onclick={() => step(0.1)}
 			aria-label="Больше на сто граммов"
-			class="grid size-11 shrink-0 place-items-center rounded-full border border-line-strong
-			       text-lg transition-transform duration-500 ease-flux active:scale-90"
+			class="grid size-12 shrink-0 place-items-center rounded-full border border-line-strong
+			       transition-transform duration-500 ease-flux active:scale-90"
 		>
-			+
+			<Plus size={16} weight="light" />
 		</button>
 	</div>
 
 	{#if error}
-		<p class="mt-2 text-xs text-destructive">{error}</p>
+		<p class="mt-2.5 text-center text-xs text-destructive">{error}</p>
 	{:else if delta !== null && delta !== 0}
-		<p class="mt-2 text-center text-xs text-muted-foreground">
-			{delta > 0 ? '+' : '−'}{formatWeight(Math.abs(delta))} кг к прошлому взвешиванию
+		<p class="mt-2.5 text-center text-xs text-muted-foreground">
+			<span class="tabular font-medium text-lavender"
+				>{delta > 0 ? '+' : '−'}{formatWeight(Math.abs(delta))} кг</span
+			>
+			к прошлому взвешиванию
 		</p>
 	{:else if existing}
-		<p class="mt-2 text-center text-xs text-muted-foreground">
+		<p class="mt-2.5 text-center text-xs text-muted-foreground">
 			Сегодня уже записано — новое значение заменит прежнее.
 		</p>
+	{:else}
+		<p class="mt-2.5 text-center text-xs text-muted-foreground">Кнопки меняют вес на сто граммов</p>
 	{/if}
 
 	<div class="mt-5 flex gap-2">

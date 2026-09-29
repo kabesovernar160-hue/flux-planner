@@ -34,16 +34,21 @@
 	открывает нужную форму. Цвет кнопки берётся из тона карточки.
 -->
 <div class={tone ? `tone-${tone}` : undefined}>
-	<p class="py-1 text-sm leading-relaxed text-muted-foreground">{text}</p>
+	<p class="text-sm leading-relaxed text-muted-foreground">{text}</p>
+	<!--
+		min-h-10 — минимальная мишень касания по правилам. Подпись text-sm:
+		это главное действие карточки, а не вторичная ссылка.
+	-->
 	<button
 		type="button"
 		onclick={run}
-		class="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-tone/35
-	       bg-tone/10 py-2.5 text-xs font-medium transition-[transform,border-color] duration-500
-	       ease-flux hover:border-tone/60 active:scale-[0.98]"
+		class="mt-3 flex min-h-10 w-full items-center justify-center gap-2 rounded-full border
+		       border-tone/30 bg-tone/10 px-4 py-2.5 text-sm font-medium
+		       shadow-[inset_0_1px_0_0_var(--fx-glass-highlight)] transition-[transform,border-color,background-color]
+		       duration-500 ease-flux hover:border-tone/55 hover:bg-tone/14 active:scale-[0.98]"
 	>
 		{#if Icon}
-			<Icon size={14} weight="regular" class="text-tone" />
+			<Icon size={16} weight="regular" class="shrink-0 text-tone" />
 		{/if}
 		{label}
 	</button>

@@ -137,10 +137,28 @@
 	const FIELD =
 		'w-full rounded-xl border bg-ink/[0.03] px-3 py-2.5 text-sm outline-none ' +
 		'transition-colors duration-300 ease-flux placeholder:text-muted-foreground/50 ' +
-		'focus:border-lavender';
+		'focus:border-tone';
+
+	/**
+	 * Знак валюты рядом с суммой.
+	 *
+	 * Берётся из Intl, а не из таблицы: валюта задаётся в настройках, и
+	 * «₽», «$» или «Br» должны совпадать с тем, как сумма потом покажется
+	 * в списке трат.
+	 */
+	const currencySign = $derived.by(() => {
+		const { currency, locale } = plannerStore.doc.settings;
+		try {
+			const parts = new Intl.NumberFormat(locale, { style: 'currency', currency }).formatToParts(0);
+			return parts.find((part) => part.type === 'currency')?.value ?? currency;
+		} catch {
+			return currency;
+		}
+	});
 </script>
 
-<form onsubmit={submit} class="py-1">
+<!-- Деньги — голубые, где бы форму ни открыли: тон задан на самой форме. -->
+<form onsubmit={submit} class="tone-sky py-1">
 	<!-- Расход или доход. Сегменты, а не выпадающий список: вариантов всего два. -->
 	<div class="flex rounded-full border border-line-strong p-1" role="group" aria-label="Тип записи">
 		{#each [['expense', 'Расход'], ['income', 'Доход']] as const as [value, label] (value)}
@@ -148,11 +166,11 @@
 				type="button"
 				onclick={() => pickType(value)}
 				aria-pressed={type === value}
-				class="flex-1 rounded-full py-2 text-xs font-medium transition-colors duration-300 ease-flux
+				class="h-9 flex-1 rounded-full text-xs font-medium transition-colors duration-300 ease-flux
 				       {type === value
 					? value === 'income'
 						? 'bg-success text-on-accent'
-						: 'bg-lavender text-on-accent'
+						: 'bg-tone text-on-accent'
 					: 'text-muted-foreground'}"
 			>
 				{label}
@@ -169,7 +187,7 @@
 					onclick={() => repeat(item)}
 					class="flex items-center gap-1.5 rounded-full border border-line-strong px-3 py-1.5
 					       text-[11px] transition-[transform,border-color] duration-500 ease-flux
-					       hover:border-lavender/60 active:scale-95"
+					       hover:border-tone/60 active:scale-95"
 				>
 					<span class="max-w-28 truncate">{item.note ?? CATEGORY_LABELS[item.category]}</span>
 					<span class="tabular text-muted-foreground">
@@ -184,25 +202,39 @@
 		</div>
 	{/if}
 
-	<div class="mt-3.5 flex flex-col gap-1.5">
-		<label for="{uid}-amount" class="text-xs text-muted-foreground">Сумма</label>
-		<input
-			id="{uid}-amount"
-			bind:value={amount}
-			type="text"
-			inputmode="decimal"
-			autocomplete="off"
-			placeholder="0"
-			aria-invalid={Boolean(errors.amount)}
-			aria-describedby={errors.amount ? `${uid}-amount-error` : undefined}
-			class="tabular {FIELD} text-lg font-semibold {errors.amount
-				? 'border-destructive'
-				: 'border-line-strong'}"
-		/>
-		{#if errors.amount}
-			<p id="{uid}-amount-error" class="text-xs text-destructive">{errors.amount}</p>
-		{/if}
+	<!--
+		Сумма — главное поле формы и самая крупная цифра на экране: её
+		сверяют с чеком, и ошибка на порядок должна быть видна сразу.
+		Рамка на всём блоке, а не на поле: касание по подписи или знаку
+		валюты тоже ставит курсор в сумму.
+	-->
+	<div
+		class="mt-3.5 rounded-card border bg-ink/[0.03] px-4 pt-3 pb-3.5 transition-colors
+		       duration-300 ease-flux focus-within:border-tone
+		       {errors.amount ? 'border-destructive' : 'border-line-strong'}"
+	>
+		<label for="{uid}-amount" class="block text-xs text-muted-foreground">Сумма</label>
+		<div class="mt-1.5 flex items-baseline gap-2">
+			<input
+				id="{uid}-amount"
+				bind:value={amount}
+				type="text"
+				inputmode="decimal"
+				autocomplete="off"
+				placeholder="0"
+				aria-invalid={Boolean(errors.amount)}
+				aria-describedby={errors.amount ? `${uid}-amount-error` : undefined}
+				class="fx-num min-w-0 flex-1 bg-transparent text-5xl leading-none outline-none
+				       placeholder:text-muted-foreground/30"
+			/>
+			<span aria-hidden="true" class="fx-num shrink-0 text-3xl leading-none text-muted-foreground">
+				{currencySign}
+			</span>
+		</div>
 	</div>
+	{#if errors.amount}
+		<p id="{uid}-amount-error" class="mt-1.5 text-xs text-destructive">{errors.amount}</p>
+	{/if}
 
 	<fieldset class="mt-4">
 		<legend class="mb-2 text-xs text-muted-foreground">Категория</legend>
@@ -212,9 +244,10 @@
 					type="button"
 					onclick={() => pickCategory(value)}
 					aria-pressed={category === value}
-					class="rounded-full border px-3 py-1.5 text-xs transition-colors duration-300 ease-flux
+					class="h-9 rounded-full border px-3.5 text-xs transition-[transform,border-color,color]
+					       duration-300 ease-flux active:scale-95
 					       {category === value
-						? 'border-lavender bg-lavender/15 text-lavender'
+						? 'border-tone/70 bg-tone/12 font-medium text-tone'
 						: 'border-line-strong text-muted-foreground'}"
 				>
 					{CATEGORY_LABELS[value]}
@@ -260,9 +293,11 @@
 		{/if}
 		<button
 			type="submit"
-			class="flex-[1.4] rounded-full py-3 text-sm font-medium text-on-accent shadow-accent
-			       transition-transform duration-500 ease-flux active:scale-[0.98]
-			       {type === 'income' ? 'bg-success hover:brightness-110' : 'bg-lavender hover:bg-lavender-hi'}"
+			class="flex-[1.4] rounded-full py-3 text-sm font-medium text-on-accent transition-transform
+			       duration-500 ease-flux hover:brightness-105 active:scale-[0.98]
+			       {type === 'income'
+				? 'bg-success shadow-[0_12px_32px_-16px_var(--success)]'
+				: 'bg-tone shadow-[0_12px_32px_-16px_var(--fx-tone)]'}"
 		>
 			{initial ? 'Сохранить' : type === 'income' ? 'Добавить доход' : 'Добавить трату'}
 		</button>

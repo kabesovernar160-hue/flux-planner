@@ -60,32 +60,45 @@
 
 {#if visible}
 	<div class="fx-rise mb-4" style="--fx-step: 1;">
+		<!--
+			Лаванда, а не тон раздела: приглашение — про сам продукт и Pro,
+			это цвет бренда. Лёгкий лавандовый отлив слева отличает карточку
+			от разделов аналитики, но не спорит с ними за внимание.
+		-->
 		<GlassCard padding="sm">
-			<div class="flex items-center gap-3">
-				<span class="grid size-9 shrink-0 place-items-center rounded-xl bg-tone/12">
-					<Gift size={17} weight="regular" class="text-tone" />
+			<span
+				aria-hidden="true"
+				class="pointer-events-none absolute -inset-y-3.5 -left-3.5 w-2/3 bg-gradient-to-r from-lavender/[0.09] to-transparent"
+			></span>
+			<div class="relative flex items-center gap-3">
+				<span class="grid size-9 shrink-0 place-items-center rounded-lg bg-lavender/12">
+					<Gift size={17} weight="regular" class="text-lavender" />
 				</span>
-				<p class="min-w-0 flex-1 text-xs leading-relaxed">
-					Позовите друга — оба получите {referral.rewardDays}&nbsp;{pluralDays(referral.rewardDays)}
-					Pro
-				</p>
+				<div class="min-w-0 flex-1">
+					<p class="text-sm font-medium">Позовите друга</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">
+						Оба получите {referral.rewardDays}&nbsp;{pluralDays(referral.rewardDays)} Pro
+					</p>
+				</div>
 				<button
 					type="button"
 					onclick={share}
 					aria-label="Поделиться приглашением"
-					class="grid size-9 shrink-0 place-items-center rounded-full bg-lavender text-on-accent
-					       transition-transform duration-500 ease-flux active:scale-90"
+					class="grid size-10 shrink-0 place-items-center rounded-full bg-lavender text-on-accent
+					       shadow-accent transition-transform duration-500 ease-flux hover:bg-lavender-hi
+					       active:scale-90"
 				>
-					<ShareFat size={15} weight="fill" />
+					<ShareFat size={16} weight="fill" />
 				</button>
+				<!-- size-10: рядом другая кнопка, и промах по крестику отправил бы приглашение. -->
 				<button
 					type="button"
 					onclick={close}
 					aria-label="Скрыть приглашение"
-					class="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground
+					class="-mr-1 grid size-10 shrink-0 place-items-center rounded-full text-muted-foreground
 					       transition-transform duration-500 ease-flux active:scale-90"
 				>
-					<X size={14} weight="light" />
+					<X size={15} weight="light" />
 				</button>
 			</div>
 		</GlassCard>

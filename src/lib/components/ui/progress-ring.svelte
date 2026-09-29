@@ -33,11 +33,17 @@
 </script>
 
 <div class="relative grid place-items-center" style="width: {size}px; height: {size}px;">
-	<!-- Мягкое свечение под дугой. Статичный радиальный градиент, не фильтр:
-	     blur здесь стоил бы перерисовки на каждом кадре анимации. -->
+	<!--
+		Мягкое свечение под дугой — в тоне карточки, а не всегда лавандовое:
+		в янтарной плитке лавандовый ореол выдавал чужой раздел.
+		Статичный радиальный градиент, не фильтр: blur здесь стоил бы
+		перерисовки на каждом кадре анимации.
+	-->
 	<div
 		class="pointer-events-none absolute inset-3 rounded-full"
-		style="background: radial-gradient(circle, var(--fx-ring-glow), transparent 68%);"
+		style="background: radial-gradient(circle, color-mix(in oklch, {over
+			? 'var(--destructive)'
+			: 'var(--fx-tone)'} 14%, transparent), transparent 68%);"
 	></div>
 
 	<svg
@@ -64,6 +70,12 @@
 			stroke-width={stroke}
 		/>
 
+		<!--
+			Смещение задано через style, а не атрибутом: CSS-переход надёжно
+			срабатывает на смену свойства, и кольцо дорастает до нового значения
+			после каждой записи, а не перепрыгивает. 500 мс — верхняя граница
+			движения по docs/design.md: дольше отдача начинает ощущаться задержкой.
+		-->
 		<circle
 			cx={size / 2}
 			cy={size / 2}
@@ -73,8 +85,7 @@
 			stroke-width={stroke}
 			stroke-linecap="round"
 			stroke-dasharray={circumference}
-			stroke-dashoffset={offset}
-			style="transition: stroke-dashoffset 1.1s var(--fx-ease);"
+			style="stroke-dashoffset: {offset}px; transition: stroke-dashoffset 0.5s var(--fx-ease);"
 		/>
 	</svg>
 

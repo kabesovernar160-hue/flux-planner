@@ -36,13 +36,14 @@
 <div class="flex flex-1 items-center justify-center">
 	<GlassCard padding="lg" bezel class="w-full text-center">
 		<div
-			class="mx-auto mb-4 grid size-12 place-items-center rounded-full border border-line-strong"
+			class="mx-auto mb-4 grid size-14 place-items-center rounded-full border border-line-strong
+			       bg-ink/[0.03] shadow-[inset_0_1px_0_0_var(--fx-glass-highlight)]"
 		>
-			<Warning size={22} weight="light" class={notFound ? 'text-lavender' : 'text-destructive'} />
+			<Warning size={24} weight="light" class={notFound ? 'text-lavender' : 'text-destructive'} />
 		</div>
 
-		<h1 class="text-base font-semibold tracking-tight">{title}</h1>
-		<p class="mt-2 text-xs leading-relaxed text-muted-foreground">{explanation}</p>
+		<h1 class="text-lg font-semibold tracking-tight">{title}</h1>
+		<p class="mt-2 text-sm leading-relaxed text-muted-foreground">{explanation}</p>
 
 		{#if page.error?.message && !notFound}
 			<!-- Текст ошибки с сервера уже безопасен для показа: подробности
@@ -62,11 +63,11 @@
 				<button
 					type="button"
 					onclick={reload}
-					class="flex items-center justify-center gap-2 rounded-full bg-lavender py-2.5 text-xs
-					       font-medium text-primary-foreground transition-transform duration-500 ease-flux
-					       active:scale-[0.98]"
+					class="flex min-h-10 items-center justify-center gap-2 rounded-full bg-lavender py-2.5
+					       text-sm font-medium text-primary-foreground shadow-accent transition-transform
+					       duration-500 ease-flux hover:bg-lavender-hi active:scale-[0.98]"
 				>
-					<ArrowCounterClockwise size={13} weight="light" />
+					<ArrowCounterClockwise size={15} weight="light" />
 					Обновить
 				</button>
 			{/if}
@@ -74,16 +75,17 @@
 			<a
 				href="/"
 				onclick={() => telegram.haptic.impact('light')}
-				class="rounded-full py-2.5 text-xs font-medium transition-[transform,border-color]
+				class="flex min-h-10 items-center justify-center rounded-full py-2.5 text-sm font-medium
+				       transition-[transform,border-color]
 				       duration-500 ease-flux active:scale-[0.98]
 				       {notFound
-					? 'bg-lavender text-primary-foreground'
+					? 'bg-lavender text-primary-foreground shadow-accent'
 					: 'border border-line-strong hover:border-lavender/60'}"
 			>
 				На главную
 			</a>
 		</div>
 
-		<p class="mt-4 text-[0.6875rem] text-muted-foreground/70">Код {page.status}</p>
+		<p class="tabular mt-4 text-[11px] text-muted-foreground/70">Код {page.status}</p>
 	</GlassCard>
 </div>

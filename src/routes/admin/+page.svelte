@@ -265,11 +265,11 @@
 	<div class="flex flex-col gap-4" aria-busy="true" aria-label="Загрузка статистики">
 		<div class="grid grid-cols-2 gap-3">
 			{#each [0, 1, 2, 3] as index (index)}
-				<div class="h-28 animate-pulse rounded-card bg-white/[0.04]"></div>
+				<div class="h-28 animate-pulse rounded-card bg-ink/[0.04]"></div>
 			{/each}
 		</div>
-		<div class="h-52 animate-pulse rounded-card bg-white/[0.04]"></div>
-		<div class="h-44 animate-pulse rounded-card bg-white/[0.04]"></div>
+		<div class="h-52 animate-pulse rounded-card bg-ink/[0.04]"></div>
+		<div class="h-44 animate-pulse rounded-card bg-ink/[0.04]"></div>
 	</div>
 {:else}
 	{@const funnel = stats.funnel}
@@ -346,7 +346,7 @@
 								</span>
 								<span class="fx-num w-12 text-right text-sm">{pct(step.value)}</span>
 							</div>
-							<div class="h-2 overflow-hidden rounded-full bg-white/[0.05]">
+							<div class="h-2 overflow-hidden rounded-full bg-ink/[0.05]">
 								<div
 									class="h-full rounded-full transition-[width] duration-700 ease-flux"
 									style="width: {Math.max(
@@ -396,7 +396,7 @@
 					>
 						<span
 							class="relative block w-full overflow-hidden rounded-[3px] transition-colors duration-300 ease-flux
-							       {active ? 'bg-lavender/45' : 'bg-white/[0.09]'}"
+							       {active ? 'bg-lavender/45' : 'bg-ink/[0.09]'}"
 							style="height: {height}%"
 						>
 							{#if day.activated > 0}
@@ -415,7 +415,7 @@
 			</div>
 
 			{#if selected}
-				<div class="mt-3 rounded-xl border border-line/70 bg-white/[0.02] px-3 py-2.5">
+				<div class="mt-3 rounded-xl border border-line/70 bg-ink/[0.02] px-3 py-2.5">
 					<p class="mb-1.5 text-xs text-muted-foreground">{dayLabel(selected.date, true)}</p>
 					<div class="grid grid-cols-5 gap-1 text-center">
 						{#each selectedCells as [label, value] (label)}
@@ -517,7 +517,7 @@
 								<span class="min-w-0 flex-1 truncate text-sm">{sourceLabel(item.source)}</span>
 								<span class="fx-num text-sm">{formatNumber(item.started)}</span>
 							</div>
-							<div class="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.05]">
+							<div class="mt-1.5 h-1 overflow-hidden rounded-full bg-ink/[0.05]">
 								<div
 									class="h-full rounded-full bg-lavender/70"
 									style="width: {sourcesTotal ? (item.started / sourcesTotal) * 100 : 0}%"

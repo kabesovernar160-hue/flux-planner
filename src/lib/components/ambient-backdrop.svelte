@@ -9,9 +9,10 @@
 	Зерно поверх градиентов убирает бандинг — полосы, в которые распадаются
 	плавные тёмные переходы на OLED-экранах телефонов.
 
-	Цвета пятен, прозрачность и режим наложения зерна берутся из токенов
-	--fx-backdrop-* и --fx-grain-*: в светлой теме пятна бледнее, а зерно
-	ложится через multiply — overlay на почти белом фоне его не показывает.
+	Цвета пятен, затемнение к низу, прозрачность и режим наложения зерна
+	берутся из токенов --fx-backdrop-* и --fx-grain-*: в светлой теме пятна
+	бледнее, а зерно ложится через multiply — overlay на почти белом фоне
+	его не показывает.
 -->
 <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
 	<div
@@ -20,8 +21,20 @@
 			background:
 				radial-gradient(60rem 42rem at 10% -12%, var(--fx-backdrop-1), transparent 62%),
 				radial-gradient(44rem 34rem at 98% 6%, var(--fx-backdrop-2), transparent 64%),
-				radial-gradient(52rem 40rem at 46% 112%, var(--fx-backdrop-3), transparent 66%);
+				radial-gradient(52rem 40rem at 46% 112%, var(--fx-backdrop-3), transparent 66%),
+				radial-gradient(36rem 28rem at -8% 58%, var(--fx-backdrop-4), transparent 64%);
 		"
+	></div>
+
+	<!--
+		Затемнение к низу экрана. Нижняя панель — стекло с блюром, и под ней
+		должно быть темнее, чем под шапкой: иначе подписи меню ложатся на
+		самое светлое место фона и теряют контраст. Заодно появляется глубина —
+		свет сверху, тень снизу, как в комнате с окном.
+	-->
+	<div
+		class="absolute inset-0"
+		style="background: linear-gradient(180deg, transparent 55%, var(--fx-backdrop-fade) 100%);"
 	></div>
 
 	<div

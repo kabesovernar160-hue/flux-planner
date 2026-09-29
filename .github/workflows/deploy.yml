@@ -1,0 +1,98 @@
+# Проверка и выкат на свой сервер (docs/deployment.md, «Выкат на свой сервер»).
+#
+# На каждый пуш в main сначала гоняются проверки, и только если они зелёные —
+# выкат: копия базы, git pull, пересборка контейнеров, проверка /api/health.
+# Выкат идёт с раннера GitHub по SSH: ключ лежит в секретах репозитория,
+# а не в коде и не у того, кто пушит.
+#
+# Секреты (Settings → Secrets and variables → Actions):
+#   DEPLOY_HOST     адрес сервера
+#   DEPLOY_USER     пользователь SSH
+#   DEPLOY_SSH_KEY  приватный ключ, чей публичный лежит в authorized_keys
+#   DEPLOY_URL      https://ваш-домен — для проверки после выката
+#   DEPLOY_PATH     каталог проекта, по умолчанию /opt/flux-planner
+#
+# Пока DEPLOY_HOST не задан, выкат пропускается, а проверки работают:
+# без этого каждый пуш краснел бы до настройки сервера.
+
+name: Проверка и выкат
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Два выката одновременно дрались бы за docker compose на одном сервере.
+# Начатый не отменяется: оборванная на середине пересборка хуже очереди.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'deploy' }}
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    name: Проверки
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  deploy:
+    name: Выкат
+    needs: checks
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/flux-planner' }}
+    steps:
+      - name: Сервер не настроен
+        if: env.DEPLOY_HOST == ''
+        run: echo "::notice::Секрет DEPLOY_HOST не задан — выкат пропущен."
+
+      - name: Ключ SSH
+        if: env.DEPLOY_HOST != ''
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      # Копия базы — до pull: если новая версия что-то испортит, откатываться
+      # есть на что. Копия не снялась — выката нет. При самом первом выкате
+      # контейнера ещё нет, копировать нечего.
+      - name: Копия базы, обновление, пересборка
+        if: env.DEPLOY_HOST != ''
+        run: |
+          ssh -i ~/.ssh/deploy "$DEPLOY_USER@$DEPLOY_HOST" "DEPLOY_PATH='$DEPLOY_PATH' sh -s" <<'EOF'
+          set -eu
+          cd "$DEPLOY_PATH"
+          if [ -n "$(docker compose ps -q app)" ]; then ./scripts/backup.sh; fi
+          git pull --ff-only
+          docker compose up -d --build
+          docker image prune -f > /dev/null
+          EOF
+
+      # Сборка и запуск миграций занимают до минуты — ждём, а не падаем сразу.
+      - name: Проверка /api/health
+        if: env.DEPLOY_HOST != '' && env.DEPLOY_URL != ''
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "$DEPLOY_URL/api/health"; then exit 0; fi
+            sleep 5
+          done
+          echo "::error::$DEPLOY_URL/api/health не ответил за 2,5 минуты"
+          ssh -i ~/.ssh/deploy "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && docker compose logs --tail 80 app"
+          exit 1

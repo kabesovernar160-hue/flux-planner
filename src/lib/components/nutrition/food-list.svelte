@@ -134,7 +134,12 @@
 	{/each}
 {/if}
 
-<Sheet open={editing !== null} title="Изменить запись" onclose={() => (editing = null)}>
+<Sheet
+	open={editing !== null}
+	title="Изменить запись"
+	tone="amber"
+	onclose={() => (editing = null)}
+>
 	{#if editing}
 		<!--
 			key по идентификатору: форма снимает начальные значения один раз,
