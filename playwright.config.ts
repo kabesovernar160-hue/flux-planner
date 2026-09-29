@@ -28,6 +28,9 @@ export default defineConfig({
 	use: {
 		baseURL: `http://localhost:${PORT}`,
 		browserName: 'chromium',
+		// PW_CHANNEL=chrome — установленный Chrome вместо скачанного Chromium,
+		// если `npx playwright install` на машине не запускали.
+		...(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {}),
 		viewport: { width: 390, height: 844 },
 		deviceScaleFactor: 2,
 		isMobile: true,
